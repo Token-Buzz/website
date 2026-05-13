@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TokenBuzz · Hear the market before you see it</title>
+<link rel="stylesheet" href="colors_and_type.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee+Inline&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" />
+<style>
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--fg-1);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* paper grain on the light theme only */
+  html[data-theme="light"] body {
+    background-image:
+      radial-gradient(circle at 0% 0%, rgba(11,11,12,0.025) 0, transparent 40%),
+      radial-gradient(circle at 100% 100%, rgba(255,107,44,0.04) 0, transparent 40%);
+  }
+  html[data-theme="dark"] body {
+    background-image:
+      radial-gradient(circle at 0% 0%, rgba(255,107,44,0.04) 0, transparent 50%),
+      radial-gradient(circle at 100% 0%, rgba(255,179,71,0.03) 0, transparent 40%);
+  }
+  a { color: inherit; }
+  *:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* button hover/press */
+  button, a[role="button"] {
+    transition: transform 120ms var(--ease-out), background 160ms var(--ease-out);
+  }
+  button:active { transform: scale(0.98); }
+
+  /* feature card hover */
+  .feature-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-2);
+  }
+
+  /* faq button hover ring */
+  #faq button:hover span:last-child {
+    background: var(--surface-hover);
+  }
+
+  /* pricing CTA hover */
+  .price-card:hover { box-shadow: var(--shadow-2); }
+
+  @keyframes tb-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,44,0.55); }
+    50%      { box-shadow: 0 0 0 8px rgba(255,107,44,0); }
+  }
+  @keyframes tb-marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  @keyframes tb-cursor {
+    50% { opacity: 0; }
+  }
+
+  /* nav links: subtle underline-on-hover */
+  .nav-links a {
+    position: relative;
+    padding: 4px 0;
+  }
+  .nav-links a:hover { color: var(--fg-1); }
+  .nav-links a::after {
+    content: "";
+    position: absolute; left: 0; right: 0; bottom: -2px;
+    height: 1px; background: var(--accent);
+    transform: scaleX(0); transform-origin: left;
+    transition: transform 160ms var(--ease-out);
+  }
+  .nav-links a:hover::after { transform: scaleX(1); }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .hero-grid,
+    .features-header,
+    .pricing-header,
+    .faq-grid,
+    .cta-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+    .features-grid,
+    .pricing-grid,
+    .how-grid,
+    .stat-strip { grid-template-columns: 1fr !important; }
+    .price-card { transform: none !important; }
+    .footer-grid { grid-template-columns: 1fr 1fr !important; gap: 32px !important; }
+    .hero-display { font-size: 56px !important; }
+    .nav-links { display: none !important; }
+  }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="primitives.jsx"></script>
+<script type="text/babel" src="sections-1.jsx"></script>
+<script type="text/babel" src="sections-2.jsx"></script>
+<script type="text/babel" src="sections-3.jsx"></script>
+
+<script type="text/babel">
+const { Nav, Hero, StatStrip } = window.MSections1;
+const { Features, HowItWorks } = window.MSections2;
+const { Pricing, FAQ, CTA, Footer } = window.MSections3;
+const { LiveTicker } = window.M;
+const { TweaksPanel, TweakSection, TweakRadio, TweakToggle, useTweaks } = window;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "dark",
+  "showLiveTicker": true,
+  "heroVariant": "default",
+  "ctaSticky": false
+}/*EDITMODE-END*/;
+
+const TICKER_DATA = [
+  { s: "PEPE",  p: "$0.0000182",  d: 24.10,  b: "buzz +412%" },
+  { s: "SOL",   p: "$182.40",     d: -2.31,  b: "buzz −18%" },
+  { s: "TURBO", p: "$0.0041",     d: 8.07,   b: "buzz +96%" },
+  { s: "BONK",  p: "$0.000033",   d: -4.62,  b: "buzz +7%" },
+  { s: "WIF",   p: "$2.41",       d: 12.40,  b: "buzz +84%" },
+  { s: "MOG",   p: "$0.00000176", d: 41.20,  b: "buzz +218%" },
+  { s: "BRETT", p: "$0.092",      d: -1.18,  b: "buzz +22%" },
+  { s: "DOGE",  p: "$0.171",      d: 0.42,   b: "buzz −4%" },
+  { s: "FART",  p: "$0.0014",     d: 18.30,  b: "buzz +132%" },
+];
+
+const HERO_VARIANTS = {
+  default: {
+    line: ["Hear", "the market", "before you", "see it."],
+    accentWord: "see",
+    sub: "TokenBuzz tracks real-time buzz, sentiment, and mentions across X for any token or keyword. The chart catches up later.",
+  },
+  buzz: {
+    line: ["Every ticker", "has a", "fan club.", "We listen."],
+    accentWord: "listen",
+    sub: "412k handles, ranked by historical accuracy, scored every twelve seconds. The narrative shows up before the candle does.",
+  },
+  signal: {
+    line: ["The chart", "is the", "last to", "know."],
+    accentWord: "last",
+    sub: "By the time a token shows up on your screen, the people who matter have been talking about it for twenty minutes. We surface that twenty minutes.",
+  },
+};
+
+function HeroSwitchable({ variant, onCTAClick }) {
+  const v = HERO_VARIANTS[variant] || HERO_VARIANTS.default;
+  const { MDisplay, MEyebrow, MButton, BuzzDotM } = window.M;
+  const { HeroPanel } = window.MSections1;
+  return (
+    <section data-screen-label="hero" style={{
+      padding: "72px 32px 40px",
+      maxWidth: 1280, margin: "0 auto",
+      display: "grid", gridTemplateColumns: "1.1fr 0.95fr", gap: 56, alignItems: "center",
+    }} className="hero-grid">
+      <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <BuzzDotM />
+          <MEyebrow style={{ color: "var(--accent)" }}>Live · 2,140 mentions/min</MEyebrow>
+        </div>
+        <MDisplay size="xl" className="hero-display" style={{ fontSize: "clamp(48px, 7vw, 84px)" }}>
+          {v.line.map((seg, i) => (
+            <React.Fragment key={i}>
+              {seg.split(" ").map((w, j, arr) => {
+                const last = j === arr.length - 1 && i === v.line.length - 1;
+                const isAccent = w.replace(/[.,!?]/g, "").toLowerCase() === v.accentWord.toLowerCase();
+                return (
+                  <React.Fragment key={j}>
+                    {isAccent
+                      ? <span style={{ color: "var(--buzz-500)" }}>{w}</span>
+                      : w}
+                    {j < arr.length - 1 ? " " : ""}
+                  </React.Fragment>
+                );
+              })}
+              {i < v.line.length - 1 && <br />}
+            </React.Fragment>
+          ))}
+        </MDisplay>
+        <div style={{
+          font: "400 18px/1.55 var(--font-sans)", color: "var(--fg-2)",
+          maxWidth: 520, textWrap: "pretty",
+        }}>
+          {v.sub}
+        </div>
+        <div style={{ display: "flex", gap: 12, marginTop: 4, flexWrap: "wrap" }}>
+          <MButton variant="primary" size="lg" iconRight="arrowR" onClick={onCTAClick}>Start tracking — free</MButton>
+          <MButton variant="ghost" size="lg" icon="play" onClick={onCTAClick}>See how it works</MButton>
+        </div>
+        <div style={{ display: "flex", gap: 16, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
+          <span style={{ font: "500 12px var(--font-mono)", color: "var(--fg-3)", letterSpacing: "0.06em" }}>Trusted by analysts at</span>
+          <div style={{ display: "flex", gap: 18, opacity: 0.78, flexWrap: "wrap" }}>
+            {["JUMP", "CMS", "PARADIGM", "DRAGONFLY", "FRAMEWORK"].map(l =>
+              <span key={l} style={{ font: "700 13px var(--font-sans)", letterSpacing: "0.16em", color: "var(--fg-2)" }}>{l}</span>
+            )}
+          </div>
+        </div>
+      </div>
+      <HeroPanel />
+    </section>
+  );
+}
+
+function Site() {
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const [flash, setFlash] = React.useState("");
+
+  // Apply theme on root
+  React.useEffect(() => {
+    document.documentElement.setAttribute("data-theme", tweaks.theme);
+  }, [tweaks.theme]);
+
+  const onCTAClick = (e) => {
+    e?.preventDefault?.();
+    setFlash("Welcome aboard. (This is a static mockup — wire to /signup when ready.)");
+    setTimeout(() => setFlash(""), 2600);
+  };
+
+  return (
+    <div>
+      <Nav onCTAClick={onCTAClick} />
+      <HeroSwitchable variant={tweaks.heroVariant} onCTAClick={onCTAClick} />
+      {tweaks.showLiveTicker && <LiveTicker items={TICKER_DATA} />}
+      <StatStrip />
+      <Features />
+      <HowItWorks onCTAClick={onCTAClick} />
+      <Pricing onCTAClick={onCTAClick} />
+      <FAQ />
+      <CTA onCTAClick={onCTAClick} />
+      <Footer />
+
+      {/* CTA flash toast */}
+      <div style={{
+        position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+        background: "var(--data-bg)", color: "var(--data-fg)",
+        padding: "12px 18px", borderRadius: 999,
+        font: "500 13px var(--font-mono)", letterSpacing: "-0.005em",
+        border: "1px solid var(--data-line)",
+        boxShadow: "var(--shadow-2)",
+        opacity: flash ? 1 : 0,
+        pointerEvents: flash ? "auto" : "none",
+        transition: "opacity 200ms var(--ease-out), transform 200ms var(--ease-out)",
+        translate: flash ? "-50% 0" : "-50% 8px",
+        zIndex: 100,
+        display: "flex", alignItems: "center", gap: 10,
+      }}>
+        <span style={{ color: "var(--data-pos)" }}>●</span>{flash}
+      </div>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Theme">
+          <TweakRadio
+            label="Surface"
+            value={tweaks.theme}
+            onChange={v => setTweak("theme", v)}
+            options={[
+              { label: "Paper",    value: "light" },
+              { label: "Terminal", value: "dark" },
+            ]}
+          />
+        </TweakSection>
+        <TweakSection label="Hero copy">
+          <TweakRadio
+            label="Headline"
+            value={tweaks.heroVariant}
+            onChange={v => setTweak("heroVariant", v)}
+            options={[
+              { label: "Hear",    value: "default" },
+              { label: "Fan club", value: "buzz" },
+              { label: "Chart",   value: "signal" },
+            ]}
+          />
+        </TweakSection>
+        <TweakSection label="Live ticker">
+          <TweakToggle
+            label="Show under hero"
+            value={tweaks.showLiveTicker}
+            onChange={v => setTweak("showLiveTicker", v)}
+          />
+        </TweakSection>
+      </TweaksPanel>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<Site />);
+</script>
+</body>
+</html>

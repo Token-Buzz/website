@@ -1,0 +1,336 @@
+/* =============================================================
+   TokenBuzz — Colors & Type
+   Bloomberg terminal precision, warm human palette.
+   ============================================================= */
+
+/* ---------- Fonts (Google Fonts) ---------- */
+@import url('https://fonts.googleapis.com/css2?family=Bungee+Inline&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap');
+
+:root {
+  /* =========================================================
+     COLORS — Warm peach/cream foundation with terminal ink
+     Pulled from the logo's signature peach + black block.
+     ========================================================= */
+
+  /* Backgrounds (peach → cream → paper) */
+  --peach-50:  #FDF5EC;   /* nearly white, faint warm tint */
+  --peach-100: #FBEEDD;   /* paper, light surfaces */
+  --peach-200: #F7D8BE;   /* signature logo peach */
+  --peach-300: #F1BE9C;   /* deeper peach, hover surfaces */
+  --peach-400: #E59C6E;   /* terracotta-leaning accent */
+
+  /* Ink (terminal black) */
+  --ink-1000: #0B0B0C;   /* pure terminal black, primary type on peach */
+  --ink-900:  #161617;
+  --ink-800:  #232325;
+  --ink-700:  #34343A;
+  --ink-600:  #55555E;   /* secondary type */
+  --ink-500:  #7A7A82;   /* tertiary type, metadata */
+  --ink-400:  #A3A3AB;   /* disabled */
+  --ink-300:  #C9C9CF;
+  --ink-200:  #E1DDD6;   /* hairline borders on peach */
+  --ink-100:  #EFEAE1;   /* subtle dividers */
+
+  /* Accent — Buzz Orange (the "buzz" pulse) */
+  --buzz-50:   #FFF1E6;
+  --buzz-100:  #FFD9BA;
+  --buzz-300:  #FFA876;
+  --buzz-500:  #FF6B2C;   /* primary CTA / live indicator */
+  --buzz-600:  #E5531A;
+  --buzz-700:  #B83E10;
+
+  /* Sentiment — warm, not crypto-default */
+  --bull-500:  #4F8A4A;   /* sage green — bullish */
+  --bull-100:  #DCEACF;
+  --bear-500:  #C8462E;   /* terracotta red — bearish */
+  --bear-100:  #F5D4C8;
+  --neutral-500: #C68A2E; /* amber — neutral / mixed */
+  --neutral-100: #F2E1BF;
+
+  /* Data viz extras (sparingly) */
+  --data-violet: #6E5BA3;
+  --data-teal:   #2E7F7B;
+  --data-rose:   #B8527E;
+
+  /* Terminal dark mode (the "Bloomberg" mode) */
+  --term-bg:     #0E0D0B;   /* warm-tinted black, not pure */
+  --term-surface:#17150F;
+  --term-line:   #2A2620;
+  --term-fg:     #F6E9D4;   /* warm cream text */
+  --term-dim:    #A39378;
+  --term-amber:  #FFB347;   /* CRT amber, terminal glow */
+  --term-green:  #7BC47F;   /* up tick */
+  --term-red:    #E0664E;   /* down tick */
+
+  /* =========================================================
+     SEMANTIC COLOR ALIASES — DARK BY DEFAULT
+     "Warm terminal" is the canonical TokenBuzz look. Light mode is
+     opt-in via [data-theme="light"] on <html> or <body>.
+     Use these in components — not the raw scale.
+     ========================================================= */
+
+  --bg:           #14110D;
+  --bg-elevated:  #1A1612;
+  --bg-sunken:    #0E0D0B;
+  --bg-inverse:   var(--peach-100);
+
+  --surface:        #1F1B14;
+  --surface-hover:  #25201A;
+  --surface-active: #2A2620;
+
+  --fg:    #F6E9D4;
+  --fg-1:  #F6E9D4;
+  --fg-2:  #C9B894;
+  --fg-3:  #A39378;
+  --fg-4:  #6B5F4A;
+  --fg-on-dark: #F6E9D4;
+
+  --border:          #2A2620;
+  --border-strong:   #4A3F30;
+  --border-hairline: rgba(246,233,212,0.08);
+
+  --accent:        var(--buzz-500);
+  --accent-hover:  #FF7E45;
+  --accent-press:  var(--buzz-600);
+  --accent-soft:   rgba(255,107,44,0.14);
+
+  /* Sentiment — slightly brighter for legibility on warm dark */
+  --pos: #7BC47F;
+  --neg: #E0664E;
+  --neu: #FFB347;
+
+  /* =========================================================
+     TYPOGRAPHY
+     ========================================================= */
+
+  --font-display: 'Bungee Inline', 'Druk Wide', 'Impact', sans-serif;
+  --font-sans:    'Space Grotesk', 'Söhne', system-ui, sans-serif;
+  --font-serif:   'Fraunces', 'Tiempos', Georgia, serif;
+  --font-mono:    'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Type scale — major third on display, refined steps on body */
+  --fs-d1: 72px;   /* hero display */
+  --fs-d2: 56px;
+  --fs-d3: 40px;
+  --fs-h1: 32px;
+  --fs-h2: 24px;
+  --fs-h3: 20px;
+  --fs-h4: 17px;
+  --fs-body: 15px;
+  --fs-small: 13px;
+  --fs-micro: 11px;
+
+  --lh-tight: 1.05;
+  --lh-snug:  1.2;
+  --lh-body:  1.5;
+  --lh-loose: 1.65;
+
+  --tracking-display: 0.01em;
+  --tracking-eyebrow: 0.18em;   /* tracked-out caps, like "SLOGAN TEXT" */
+  --tracking-mono:   -0.01em;
+  --tracking-body:   -0.005em;
+
+  /* =========================================================
+     SPACING — 4px base
+     ========================================================= */
+  --sp-0:  0;
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-7:  32px;
+  --sp-8:  40px;
+  --sp-9:  56px;
+  --sp-10: 72px;
+  --sp-11: 96px;
+
+  /* =========================================================
+     RADII — soft but not bubbly
+     ========================================================= */
+  --r-1: 4px;
+  --r-2: 6px;
+  --r-3: 10px;
+  --r-4: 14px;
+  --r-5: 20px;
+  --r-pill: 999px;
+
+  /* Terminal "CRT" glow (used sparingly on live tickers) */
+  --glow-buzz: 0 0 0 1px var(--buzz-500), 0 0 18px -2px rgba(255,107,44,0.35);
+
+  /* Shadow tweaks — sharper, deeper for warm dark */
+  --shadow-1: 0 1px 0 rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-2: 0 2px 8px rgba(0,0,0,0.4), 0 12px 24px -8px rgba(0,0,0,0.5);
+  --shadow-3: 0 16px 40px -10px rgba(0,0,0,0.6);
+  --inner-line: inset 0 0 0 1px var(--border);
+  --inner-line-strong: inset 0 0 0 1px var(--border-strong);
+
+  /* =========================================================
+     THEME-AWARE SEMANTICS
+     --inv-*       : high-contrast "block" surface. FLIPS in dark mode.
+                     Used for: logo block, secondary button, active nav,
+                     "featured" pricing card, HUM. mark, etc.
+     --data-*      : the data-plane / terminal surface. STAYS DARK
+                     in both themes — the consistent Bloomberg-look
+                     identity. Used for: chart backgrounds, hero
+                     dashboard mock, live ticker, footer, code blocks.
+     --accent-surface : large warm panels (CTA hero, featured callouts).
+     --bg-translucent : sticky-chrome backdrop tint.
+     ========================================================= */
+  --inv-bg: #FBEEDD;
+  --inv-fg: #0B0B0C;
+  --inv-border: #FBEEDD;
+
+  --data-bg:      #0B0B0C;
+  --data-surface: #17150F;
+  --data-fg:      #F6E9D4;
+  --data-dim:     #A39378;
+  --data-line:    #2A2620;
+  --data-amber:   #FFB347;
+  --data-pos:     #7BC47F;
+  --data-neg:     #E0664E;
+
+  --bg-translucent: rgba(20,17,13,0.84);
+
+  --accent-surface:    #1F1812;
+  --accent-surface-fg: #F6E9D4;
+
+  color-scheme: dark;
+
+  /* =========================================================
+     MOTION
+     ========================================================= */
+  --ease-out:   cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-snap:  cubic-bezier(0.3, 1.4, 0.4, 1);   /* slight overshoot for "pulse" */
+  --dur-fast:  120ms;
+  --dur-base:  200ms;
+  --dur-slow:  360ms;
+}
+
+/* =============================================================
+   LIGHT THEME — opt in via <html data-theme="light"> or <body data-theme="light">
+   "Warm paper" mode. The original peach-and-ink palette, useful for
+   marketing collateral, print, and high-glare environments.
+   ============================================================= */
+
+[data-theme="light"] {
+  /* Backgrounds — peach paper */
+  --bg:           var(--peach-100);
+  --bg-elevated:  var(--peach-50);
+  --bg-sunken:    var(--peach-200);
+  --bg-inverse:   var(--ink-1000);
+
+  --surface:        #FFFCF6;
+  --surface-hover:  #FBF5E9;
+  --surface-active: var(--peach-100);
+
+  /* Text — warm near-black on paper */
+  --fg-1: var(--ink-1000);
+  --fg-2: var(--ink-600);
+  --fg-3: var(--ink-500);
+  --fg-4: var(--ink-400);
+  --fg-on-dark: var(--peach-100);
+
+  /* Borders */
+  --border:          var(--ink-200);
+  --border-strong:   var(--ink-700);
+  --border-hairline: rgba(11,11,12,0.08);
+
+  /* Inversion — dark block on light surface */
+  --inv-bg:     var(--ink-1000);
+  --inv-fg:     var(--peach-100);
+  --inv-border: var(--ink-900);
+
+  /* Accent — same buzz orange, calmer soft tint */
+  --accent:       var(--buzz-500);
+  --accent-hover: var(--buzz-600);
+  --accent-press: var(--buzz-700);
+  --accent-soft:  var(--buzz-50);
+
+  /* Sentiment — saturated for paper */
+  --pos: var(--bull-500);
+  --neg: var(--bear-500);
+  --neu: var(--neutral-500);
+
+  /* Translucent chrome — warm peach tint */
+  --bg-translucent: rgba(251,238,221,0.78);
+
+  /* Accent surface (CTA) — signature peach swatch */
+  --accent-surface:    var(--peach-200);
+  --accent-surface-fg: var(--ink-1000);
+
+  /* Shadow tweaks — restrained warm shadows */
+  --shadow-1: 0 1px 0 rgba(11,11,12,0.04), 0 1px 2px rgba(11,11,12,0.04);
+  --shadow-2: 0 2px 4px rgba(11,11,12,0.05), 0 8px 16px -8px rgba(11,11,12,0.08);
+  --shadow-3: 0 10px 30px -10px rgba(11,11,12,0.18);
+
+  color-scheme: light;
+}
+
+/* Apply background + foreground when a theme is explicitly set on body or html */
+html[data-theme], body[data-theme] {
+  background: var(--bg);
+  color: var(--fg-1);
+}
+
+/* =============================================================
+   SEMANTIC TYPE — drop on any element
+   ============================================================= */
+
+.t-display-1, h1.t-display {
+  font-family: var(--font-display);
+  font-size: var(--fs-d1);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-display);
+  color: var(--fg-1);
+  text-transform: uppercase;
+}
+.t-display-2 {
+  font-family: var(--font-display);
+  font-size: var(--fs-d2);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-display);
+  text-transform: uppercase;
+}
+.t-display-3 {
+  font-family: var(--font-display);
+  font-size: var(--fs-d3);
+  line-height: var(--lh-snug);
+  text-transform: uppercase;
+}
+.t-h1 { font: 600 var(--fs-h1)/var(--lh-snug) var(--font-sans); letter-spacing: var(--tracking-body); color: var(--fg-1); }
+.t-h2 { font: 600 var(--fs-h2)/var(--lh-snug) var(--font-sans); letter-spacing: var(--tracking-body); color: var(--fg-1); }
+.t-h3 { font: 600 var(--fs-h3)/var(--lh-snug) var(--font-sans); color: var(--fg-1); }
+.t-h4 { font: 600 var(--fs-h4)/1.35 var(--font-sans); color: var(--fg-1); }
+
+.t-body  { font: 400 var(--fs-body)/var(--lh-body) var(--font-sans); color: var(--fg-1); letter-spacing: var(--tracking-body); }
+.t-small { font: 400 var(--fs-small)/1.45 var(--font-sans); color: var(--fg-2); }
+.t-micro { font: 500 var(--fs-micro)/1.3 var(--font-sans); color: var(--fg-3); }
+
+.t-eyebrow {
+  font: 600 var(--fs-micro)/1.2 var(--font-sans);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+
+.t-mono       { font: 500 var(--fs-small)/1.4 var(--font-mono); letter-spacing: var(--tracking-mono); }
+.t-mono-tabular { font: 500 var(--fs-body)/1.3 var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.t-mono-data  { font: 600 var(--fs-h2)/1.1 var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+.t-serif-quote {
+  font: 500 var(--fs-h2)/1.3 var(--font-serif);
+  font-style: italic;
+  color: var(--fg-1);
+}
+
+/* Color utilities */
+.c-fg     { color: var(--fg-1); }
+.c-fg-2   { color: var(--fg-2); }
+.c-fg-3   { color: var(--fg-3); }
+.c-pos    { color: var(--pos); }
+.c-neg    { color: var(--neg); }
+.c-neu    { color: var(--neu); }
+.c-accent { color: var(--accent); }

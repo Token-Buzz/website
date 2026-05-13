@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem __TRACKED_VAR__/.claude/projects/ -Recurse -Filter *.jsonl)",
+      "Bash(Sort-Object LastWriteTime -Descending)",
+      "Bash(Select-Object -First 50)",
+      "Bash(Select-Object FullName, LastWriteTime)",
+      "Bash(Select-Object FullName)"
+    ]
+  }
+}

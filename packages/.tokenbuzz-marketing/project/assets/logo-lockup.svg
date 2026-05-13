@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240" width="640" height="240" role="img" aria-label="TokenBuzz logo">
+  <defs>
+    
+  </defs>
+  <rect class="bg" width="640" height="240"></rect>
+  <rect class="blk" x="80" y="60" width="480" height="92" rx="2"></rect>
+  <text class="wm" x="320" y="123" text-anchor="middle">TOKENBUZZ.APP</text>
+  <text class="sl" x="320" y="186" text-anchor="middle">HEAR THE MARKET</text>
+</svg>

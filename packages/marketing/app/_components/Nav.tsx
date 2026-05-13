@@ -1,0 +1,60 @@
+import Wordmark from './Wordmark'
+import Button from './Button'
+
+const NAV_LINKS = [
+  { label: 'Features', href: '#features' },
+  { label: 'Pricing',  href: '#pricing' },
+  { label: 'FAQ',      href: '#faq' },
+]
+
+export default function Nav() {
+  return (
+    <nav
+      style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        padding: '14px 32px',
+        background: 'var(--bg-translucent)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        borderBottom: '1px solid var(--border-hairline)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 24,
+      }}
+    >
+      <a href="#" style={{ textDecoration: 'none' }}>
+        <Wordmark size={18} suffix=".APP" />
+      </a>
+
+      <div style={{ flex: 1 }} />
+
+      <div className="nav-links" style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
+        {NAV_LINKS.map(({ label, href }) => (
+          <a
+            key={label}
+            href={href}
+            style={{
+              font: '500 14px var(--font-sans)',
+              color: 'var(--fg-2)',
+              textDecoration: 'none',
+              letterSpacing: '-0.005em',
+            }}
+          >
+            {label}
+          </a>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Button variant="link" size="md" style={{ padding: '10px 12px' }} href="#">
+          Sign in
+        </Button>
+        <Button variant="primary" size="md" iconRight="arrowR" href="#">
+          Get started
+        </Button>
+      </div>
+    </nav>
+  )
+}
