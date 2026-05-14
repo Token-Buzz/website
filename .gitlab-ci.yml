@@ -94,6 +94,7 @@ deploy:production:
     url: https://${DOMAIN}
   variables:
     DOMAIN: ${PROD_DOMAIN_MARKETING}
+    WEB_DOMAIN: ${PROD_DOMAIN_MARKETING}
   script:
     - npx sst install --stage production
     - npx sst deploy --stage production
