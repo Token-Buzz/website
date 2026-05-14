@@ -200,7 +200,7 @@ export default function ContactForm() {
             marginTop:    0,
           }}
         >
-          Thanks for reaching out. We'll get back to you shortly — check your inbox for a copy.
+          Thanks for reaching out. We&apos;ll get back to you shortly — check your inbox for a copy.
         </p>
         <Button variant="ghost" onClick={() => setStatus('idle')}>
           Send another message

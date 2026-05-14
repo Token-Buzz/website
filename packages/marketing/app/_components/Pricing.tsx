@@ -231,7 +231,7 @@ export default function Pricing() {
               alignSelf: 'end',
             }}
           >
-            Pay monthly. Cancel anytime. No annual lock-in, no "contact sales" tier. The Free
+            Pay monthly. Cancel anytime. No annual lock-in, no &quot;contact sales&quot; tier. The Free
             plan covers a hobby; Pro covers a position; Alpha covers a desk.
           </div>
         </div>

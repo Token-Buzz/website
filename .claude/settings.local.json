@@ -8,7 +8,8 @@
       "Bash(Select-Object FullName)",
       "Bash(Get-ChildItem -Path \"D:\\\\Repositories\\\\tokenbuzz\\\\website\" -Force)",
       "Bash(Select-Object Name, FullName, PSIsContainer)",
-      "Bash(Format-Table -AutoSize)"
+      "Bash(Format-Table -AutoSize)",
+      "Bash(node_modules/.bin/next --help)"
     ]
   }
 }

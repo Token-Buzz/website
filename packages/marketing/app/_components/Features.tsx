@@ -184,7 +184,7 @@ function VizHum() {
       </div>
       <div style={{ color: 'var(--data-fg)' }}>
         <span style={{ color: 'var(--data-amber)' }}>$MOG</span>
-        {' '}buzz is up 218% but it's all one cluster — six new wallets, same handle network. I'd watch but wouldn't chase yet.
+        {' '}buzz is up 218% but it&apos;s all one cluster — six new wallets, same handle network. I&apos;d watch but wouldn&apos;t chase yet.
         <span
           style={{
             display: 'inline-block',
@@ -313,7 +313,7 @@ export default function Features() {
           }}
         >
           Every other crypto tool tells you the chart moved. We tell you who started talking
-          about it twenty minutes earlier — and whether they've ever been right.
+          about it twenty minutes earlier — and whether they&apos;ve ever been right.
         </div>
       </div>
 

@@ -5,7 +5,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:marketing": "pnpm --filter @website/marketing dev",
+    "dev:marketing": "npm run dev -w packages/marketing",
+    "lint:marketing": "npm run lint -w packages/marketing",
     "set-gitlab-vars": "tsx scripts/set-gitlab-vars.ts"
   },
   "devDependencies": {

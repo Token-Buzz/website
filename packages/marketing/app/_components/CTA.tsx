@@ -67,7 +67,7 @@ export default function CTA() {
           </div>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Button variant="primary" size="lg" iconRight="arrowR" href="#">
-              Get started — it's free
+              Get started — it&apos;s free
             </Button>
             <Button
               variant="ghost"
@@ -116,7 +116,7 @@ export default function CTA() {
               <span style={{ color: 'var(--data-pos)' }}>+24.1%</span>
             </div>
             <div style={{ marginTop: 12, color: 'var(--data-dim)' }}>
-              # the chart still hasn't moved.
+              # the chart still hasn&apos;t moved.
             </div>
           </div>
         </div>

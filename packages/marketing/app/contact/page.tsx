@@ -47,7 +47,7 @@ export default function ContactPage() {
                 margin: 0,
               }}
             >
-              Have a question, feedback, or partnership inquiry? We'd love to hear from you.
+              Have a question, feedback, or partnership inquiry? We&apos;d love to hear from you.
             </p>
           </div>
           <ContactForm />

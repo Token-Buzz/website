@@ -148,7 +148,7 @@ export default function FAQ() {
                 marginTop: 20,
               }}
             >
-              Couldn't find what you needed? Email{' '}
+              Couldn&apos;t find what you needed? Email{' '}
               <a
                 href="mailto:hello@tokenbuzz.app"
                 style={{

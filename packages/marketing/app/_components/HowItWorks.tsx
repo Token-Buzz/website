@@ -99,7 +99,7 @@ function StepVisualAsk() {
       >
         You
       </div>
-      <div>What's pushing $PEPE today?</div>
+      <div>What&apos;s pushing $PEPE today?</div>
       <div
         style={{
           color: 'var(--data-amber)',
