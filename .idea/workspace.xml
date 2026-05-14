@@ -4,21 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4b183301-30ac-4a11-a352-95b5adc4d3da" name="Changes" comment="Comitting pipeline">
-      <change beforePath="$PROJECT_DIR$/.claude/settings.local.json" beforeDir="false" afterPath="$PROJECT_DIR$/.claude/settings.local.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/packages/marketing/app/_components/CTA.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/packages/marketing/app/_components/CTA.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/packages/marketing/app/_components/ContactForm.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/packages/marketing/app/_components/ContactForm.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/packages/marketing/app/_components/FAQ.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/packages/marketing/app/_components/FAQ.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/packages/marketing/app/_components/Features.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/packages/marketing/app/_components/Features.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/packages/marketing/app/_components/HowItWorks.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/packages/marketing/app/_components/HowItWorks.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/packages/marketing/app/_components/Pricing.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/packages/marketing/app/_components/Pricing.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/packages/marketing/app/contact/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/packages/marketing/app/contact/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/packages/marketing/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/packages/marketing/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/packages/marketing/pnpm-lock.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/pnpm-lock.yaml" beforeDir="false" />
-    </list>
+    <list default="true" id="4b183301-30ac-4a11-a352-95b5adc4d3da" name="Changes" comment="Running dev" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -96,7 +82,7 @@
       <option name="presentableId" value="Default" />
       <updated>1778713061163</updated>
       <workItem from="1778713062222" duration="3604000" />
-      <workItem from="1778717926747" duration="3343000" />
+      <workItem from="1778717926747" duration="4092000" />
     </task>
     <task id="LOCAL-00001" summary="Init.">
       <option name="closed" value="true" />
@@ -114,7 +100,15 @@
       <option name="project" value="LOCAL" />
       <updated>1778720362976</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="Running dev">
+      <option name="closed" value="true" />
+      <created>1778721430442</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1778721430442</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -123,6 +117,7 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Init." />
     <MESSAGE value="Comitting pipeline" />
-    <option name="LAST_COMMIT_MESSAGE" value="Comitting pipeline" />
+    <MESSAGE value="Running dev" />
+    <option name="LAST_COMMIT_MESSAGE" value="Running dev" />
   </component>
 </project>
