@@ -5,7 +5,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:marketing": "pnpm --filter @website/marketing dev"
+    "dev:marketing": "pnpm --filter @website/marketing dev",
+    "set-gitlab-vars": "tsx scripts/set-gitlab-vars.ts"
   },
   "devDependencies": {
     "@tsconfig/node22": "^22",

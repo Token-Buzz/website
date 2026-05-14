@@ -5,7 +5,10 @@
       "Bash(Sort-Object LastWriteTime -Descending)",
       "Bash(Select-Object -First 50)",
       "Bash(Select-Object FullName, LastWriteTime)",
-      "Bash(Select-Object FullName)"
+      "Bash(Select-Object FullName)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Repositories\\\\tokenbuzz\\\\website\" -Force)",
+      "Bash(Select-Object Name, FullName, PSIsContainer)",
+      "Bash(Format-Table -AutoSize)"
     ]
   }
 }

@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__gitlab__list_pipelines",
+      "mcp__gitlab__list_pipeline_jobs",
+      "mcp__gitlab__get_pipeline_job_output",
+      "mcp__gitlab__get_pipeline_job",
+      "mcp__gitlab__list_merge_requests",
+      "mcp__gitlab__get_merge_request",
+      "mcp__gitlab__list_issues",
+      "mcp__gitlab__get_issue",
+      "mcp__Sanity__query_documents",
+      "mcp__Sanity__list_projects",
+      "mcp__Sanity__get_schema",
+      "mcp__Sanity__list_datasets",
+      "mcp__Sanity__get_document",
+      "mcp__Sanity__list_releases",
+      "mcp__Sanity__search_docs",
+      "mcp__Sanity__read_docs",
+      "mcp__gitlab__get_file_contents",
+      "mcp__gitlab__list_commits",
+      "mcp__gitlab__get_commit",
+      "mcp__gitlab__get_merge_request_diffs"
+    ]
+  }
+}
