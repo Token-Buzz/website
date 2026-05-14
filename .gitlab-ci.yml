@@ -54,7 +54,8 @@ deploy:dev:
     name: dev
     url: https://${DOMAIN}
   variables:
-    DOMAIN: ${DEV_DOMAIN}
+    DOMAIN: ${DEV_DOMAIN_MARKETING}
+    WEB_DOMAIN: ${DEV_DOMAIN_MARKETING}
   script:
     - npx sst install --stage dev
     - npx sst deploy --stage dev
@@ -68,7 +69,7 @@ destroy:dev:
     name: dev
     action: stop
   variables:
-    DOMAIN: ${DEV_DOMAIN}
+    DOMAIN: ${DEV_DOMAIN_MARKETING}
   script:
     - |
       LAST_COMMIT_TS=$(git log -1 --format="%ct")
@@ -92,7 +93,7 @@ deploy:production:
     name: production
     url: https://${DOMAIN}
   variables:
-    DOMAIN: ${PROD_DOMAIN}
+    DOMAIN: ${PROD_DOMAIN_MARKETING}
   script:
     - npx sst install --stage production
     - npx sst deploy --stage production
