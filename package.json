@@ -6,9 +6,13 @@
   ],
   "scripts": {
     "dev:marketing": "npm run dev -w packages/marketing",
+    "dev:application": "npm run dev -w packages/application",
     "lint": "npm run lint --workspaces --if-present",
     "lint:marketing": "npm run lint -w packages/marketing",
+    "lint:application": "npm run lint -w packages/application",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck:marketing": "npm run typecheck -w packages/marketing",
+    "typecheck:application": "npm run typecheck -w packages/application",
     "set-gitlab-vars": "tsx scripts/set-gitlab-vars.ts"
   },
   "devDependencies": {
@@ -16,6 +20,6 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "sst": "^3"
+    "sst": "^4"
   }
 }

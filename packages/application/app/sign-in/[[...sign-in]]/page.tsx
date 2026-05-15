@@ -1,0 +1,142 @@
+'use client'
+
+import { useState } from 'react'
+import { useSignIn } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { AuthShell } from '../../_auth/AuthShell'
+import { AuthCard } from '../../_auth/AuthCard'
+import { ModeTabs } from '../../_auth/ModeTabs'
+import { ProviderButton } from '../../_auth/ProviderButton'
+import { OrDivider } from '../../_auth/OrDivider'
+import { TextField } from '../../_auth/TextField'
+import { ContinueButton } from '../../_auth/ContinueButton'
+import { clerkErrorMessage } from '../../_auth/clerkErrors'
+
+const SSO_CALLBACK_URL = '/sso-callback'
+const POST_AUTH_URL = '/dashboard'
+
+type OAuthStrategy = 'oauth_google' | 'oauth_github' | 'oauth_microsoft'
+
+export default function SignInPage() {
+  const { signIn } = useSignIn()
+  const router = useRouter()
+
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPw, setShowPw] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!email.trim() || !password || !signIn) return
+    setLoading(true)
+    setError(null)
+
+    const { error: pwError } = await signIn.password({
+      emailAddress: email,
+      password,
+    })
+
+    if (pwError) {
+      setError(clerkErrorMessage(pwError))
+      setLoading(false)
+      return
+    }
+
+    if (signIn.status === 'complete') {
+      setSuccess(true)
+      const { error: finalizeError } = await signIn.finalize({
+        navigate: ({ session, decorateUrl }) => {
+          if (session?.currentTask) return
+          const url = decorateUrl(POST_AUTH_URL)
+          if (url.startsWith('http')) {
+            window.location.href = url
+          } else {
+            router.push(url)
+          }
+        },
+      })
+      if (finalizeError) {
+        setError(clerkErrorMessage(finalizeError))
+        setSuccess(false)
+        setLoading(false)
+      }
+      return
+    }
+
+    setError('Sign-in could not be completed. Please try again.')
+    setLoading(false)
+  }
+
+  async function handleOAuth(strategy: OAuthStrategy) {
+    if (!signIn) return
+    setError(null)
+    const { error: ssoError } = await signIn.sso({
+      strategy,
+      redirectUrl: POST_AUTH_URL,
+      redirectCallbackUrl: SSO_CALLBACK_URL,
+    })
+    if (ssoError) setError(clerkErrorMessage(ssoError))
+  }
+
+  return (
+    <AuthShell>
+      <AuthCard>
+        <ModeTabs mode="in" />
+        <div className="tb-card-body">
+          <form onSubmit={handleSubmit} className="tb-form">
+            <header className="tb-form-head">
+              <h1 className="tb-title">Sign in to TokenBuzz</h1>
+              <p className="tb-subtitle">Welcome back. Pick up where you left off.</p>
+            </header>
+
+            <div className="tb-providers">
+              <ProviderButton provider="google" onClick={() => handleOAuth('oauth_google')} disabled={loading} />
+              <ProviderButton provider="github" onClick={() => handleOAuth('oauth_github')} disabled={loading} />
+              <ProviderButton provider="microsoft" onClick={() => handleOAuth('oauth_microsoft')} disabled={loading} />
+            </div>
+
+            <OrDivider />
+
+            <TextField
+              label="Email address"
+              badge="Last used"
+              type="email"
+              value={email}
+              onChange={setEmail}
+              placeholder="you@domain.com"
+              autoFocus
+              autoComplete="email"
+            />
+
+            <TextField
+              label="Password"
+              type={showPw ? 'text' : 'password'}
+              value={password}
+              onChange={setPassword}
+              placeholder="Enter your password"
+              onTogglePassword={() => setShowPw((s) => !s)}
+              passwordVisible={showPw}
+              autoComplete="current-password"
+              error={error ?? undefined}
+            />
+
+            <p className="tb-forgot">
+              <Link href="/forgot-password">Forgot password?</Link>
+            </p>
+
+            <ContinueButton loading={loading} success={success} disabled={!email.trim() || !password} />
+
+            <p className="tb-footer-link">
+              Don&apos;t have an account?{' '}
+              <Link href="/sign-up">Sign up</Link>
+            </p>
+          </form>
+        </div>
+      </AuthCard>
+    </AuthShell>
+  )
+}

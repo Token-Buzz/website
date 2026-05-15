@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80" role="img" aria-label="TokenBuzz monogram">
+  <rect width="80" height="80" rx="6" fill="#0B0B0C"></rect>
+  
+  <g fill="none" stroke="#FBEEDD" stroke-width="2.2">
+    
+    <rect x="14" y="22" width="22" height="36" rx="1"></rect>
+    <rect x="20" y="28" width="10" height="24" rx="0.5"></rect>
+    <line x1="14" y1="29" x2="36" y2="29"></line>
+    
+    <rect x="44" y="22" width="22" height="36" rx="1"></rect>
+    <line x1="44" y1="40" x2="66" y2="40"></line>
+    <rect x="50" y="28" width="10" height="9" rx="0.5"></rect>
+    <rect x="50" y="43" width="10" height="9" rx="0.5"></rect>
+  </g>
+  
+  <circle cx="68" cy="14" r="3" fill="#FF6B2C"></circle>
+</svg>

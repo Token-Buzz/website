@@ -56,6 +56,8 @@ deploy:dev:
   variables:
     DOMAIN: ${DEV_DOMAIN_MARKETING}
     WEB_DOMAIN: ${DEV_DOMAIN_MARKETING}
+    CLERK_PUBLISHABLE_KEY: ${DEV_CLERK_PUBLISHABLE_KEY}
+    CLERK_SECRET_KEY: ${DEV_CLERK_SECRET_KEY}
   script:
     - npx sst install --stage dev
     - npx sst deploy --stage dev
@@ -95,6 +97,8 @@ deploy:production:
   variables:
     DOMAIN: ${PROD_DOMAIN_MARKETING}
     WEB_DOMAIN: ${PROD_DOMAIN_MARKETING}
+    CLERK_PUBLISHABLE_KEY: ${PROD_CLERK_PUBLISHABLE_KEY}
+    CLERK_SECRET_KEY: ${PROD_CLERK_SECRET_KEY}
   script:
     - npx sst install --stage production
     - npx sst deploy --stage production

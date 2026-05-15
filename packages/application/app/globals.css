@@ -1,0 +1,234 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =====================================================================
+   TokenBuzz — Design tokens
+   ===================================================================== */
+
+:root {
+  /* Backgrounds */
+  --peach-50:  #FDF5EC;
+  --peach-100: #FBEEDD;
+  --peach-200: #F7D8BE;
+  --peach-300: #F1BE9C;
+  --peach-400: #E59C6E;
+
+  /* Ink */
+  --ink-1000: #0B0B0C;
+  --ink-900:  #161617;
+  --ink-800:  #232325;
+  --ink-700:  #34343A;
+  --ink-600:  #55555E;
+  --ink-500:  #7A7A82;
+  --ink-400:  #A3A3AB;
+  --ink-300:  #C9C9CF;
+  --ink-200:  #E1DDD6;
+  --ink-100:  #EFEAE1;
+
+  /* Buzz orange */
+  --buzz-50:  #FFF1E6;
+  --buzz-100: #FFD9BA;
+  --buzz-300: #FFA876;
+  --buzz-500: #FF6B2C;
+  --buzz-600: #E5531A;
+  --buzz-700: #B83E10;
+
+  /* Sentiment */
+  --bull-500:    #4F8A4A;
+  --bull-100:    #DCEACF;
+  --bear-500:    #C8462E;
+  --bear-100:    #F5D4C8;
+  --neutral-500: #C68A2E;
+  --neutral-100: #F2E1BF;
+
+  /* Data viz */
+  --data-violet: #6E5BA3;
+  --data-teal:   #2E7F7B;
+  --data-rose:   #B8527E;
+
+  /* =====================================================================
+     SEMANTIC — dark by default
+     ===================================================================== */
+  --bg:           #14110D;
+  --bg-elevated:  #1A1612;
+  --bg-sunken:    #0E0D0B;
+  --bg-inverse:   var(--peach-100);
+
+  --surface:        #1F1B14;
+  --surface-hover:  #25201A;
+  --surface-active: #2A2620;
+
+  --fg:    #F6E9D4;
+  --fg-1:  #F6E9D4;
+  --fg-2:  #C9B894;
+  --fg-3:  #A39378;
+  --fg-4:  #6B5F4A;
+  --fg-on-dark: #F6E9D4;
+
+  --border:          #2A2620;
+  --border-strong:   #4A3F30;
+  --border-hairline: rgba(246,233,212,0.08);
+
+  --accent:        var(--buzz-500);
+  --accent-hover:  #FF7E45;
+  --accent-press:  var(--buzz-600);
+  --accent-soft:   rgba(255,107,44,0.14);
+
+  --pos: #7BC47F;
+  --neg: #E0664E;
+  --neu: #FFB347;
+
+  --bg-translucent:    rgba(20,17,13,0.84);
+  --accent-surface:    #1F1812;
+  --accent-surface-fg: #F6E9D4;
+
+  /* Typography scale */
+  --fs-d1: 72px;
+  --fs-d2: 56px;
+  --fs-d3: 40px;
+  --fs-h1: 32px;
+  --fs-h2: 24px;
+  --fs-h3: 20px;
+  --fs-h4: 17px;
+  --fs-body:  15px;
+  --fs-small: 13px;
+  --fs-micro: 11px;
+
+  --lh-tight: 1.05;
+  --lh-snug:  1.2;
+  --lh-body:  1.5;
+  --lh-loose: 1.65;
+
+  --tracking-display: 0.01em;
+  --tracking-eyebrow: 0.18em;
+  --tracking-mono:    -0.01em;
+  --tracking-body:    -0.005em;
+
+  /* Spacing — 4px base */
+  --sp-0:  0;
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-7:  32px;
+  --sp-8:  40px;
+  --sp-9:  56px;
+  --sp-10: 72px;
+  --sp-11: 96px;
+
+  /* Shadows */
+  --shadow-1: 0 1px 0 rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-2: 0 2px 8px rgba(0,0,0,0.4), 0 12px 24px -8px rgba(0,0,0,0.5);
+  --shadow-3: 0 16px 40px -10px rgba(0,0,0,0.6);
+  --inner-line: inset 0 0 0 1px var(--border);
+  --inner-line-strong: inset 0 0 0 1px var(--border-strong);
+
+  --glow-buzz: 0 0 0 1px var(--buzz-500), 0 0 18px -2px rgba(255,107,44,0.35);
+
+  /* Radii */
+  --r-1: 4px;  --r-2: 6px;   --r-3: 10px;
+  --r-4: 14px; --r-5: 20px;  --r-pill: 999px;
+
+  /* Motion */
+  --ease-out:    cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-snap:   cubic-bezier(0.3, 1.4, 0.4, 1);
+  --dur-fast:  120ms;
+  --dur-base:  200ms;
+  --dur-slow:  360ms;
+
+  /* Inversion — warm cream block on dark surface (logo, featured callouts) */
+  --inv-bg:     #FBEEDD;
+  --inv-fg:     #0B0B0C;
+  --inv-border: #FBEEDD;
+
+  color-scheme: dark;
+}
+
+/* =====================================================================
+   LIGHT THEME — opt-in via <html data-theme="light">
+   ===================================================================== */
+[data-theme="light"] {
+  --bg:           var(--peach-100);
+  --bg-elevated:  var(--peach-50);
+  --bg-sunken:    var(--peach-200);
+  --bg-inverse:   var(--ink-1000);
+
+  --surface:        #FFFCF6;
+  --surface-hover:  #FBF5E9;
+  --surface-active: var(--peach-100);
+
+  --fg-1: var(--ink-1000);
+  --fg-2: var(--ink-600);
+  --fg-3: var(--ink-500);
+  --fg-4: var(--ink-400);
+  --fg-on-dark: var(--peach-100);
+
+  --border:          var(--ink-200);
+  --border-strong:   var(--ink-700);
+  --border-hairline: rgba(11,11,12,0.08);
+
+  --inv-bg:     var(--ink-1000);
+  --inv-fg:     var(--peach-100);
+  --inv-border: var(--ink-900);
+
+  --accent:       var(--buzz-500);
+  --accent-hover: var(--buzz-600);
+  --accent-press: var(--buzz-700);
+  --accent-soft:  var(--buzz-50);
+
+  --pos: var(--bull-500);
+  --neg: var(--bear-500);
+  --neu: var(--neutral-500);
+
+  --bg-translucent:    rgba(251,238,221,0.78);
+  --accent-surface:    var(--peach-200);
+  --accent-surface-fg: var(--ink-1000);
+
+  --shadow-1: 0 1px 0 rgba(11,11,12,0.04), 0 1px 2px rgba(11,11,12,0.04);
+  --shadow-2: 0 2px 4px rgba(11,11,12,0.05), 0 8px 16px -8px rgba(11,11,12,0.08);
+  --shadow-3: 0 10px 30px -10px rgba(11,11,12,0.18);
+
+  color-scheme: light;
+}
+
+/* =====================================================================
+   GLOBAL RESET & BASE
+   ===================================================================== */
+html, body {
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg-1);
+  -webkit-font-smoothing: antialiased;
+}
+
+html[data-theme="light"] body {
+  background-image:
+    radial-gradient(circle at 0% 0%, rgba(11,11,12,0.025) 0, transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(255,107,44,0.04) 0, transparent 40%);
+}
+
+html[data-theme="dark"] body {
+  background-image:
+    radial-gradient(circle at 0% 0%, rgba(255,107,44,0.04) 0, transparent 50%),
+    radial-gradient(circle at 100% 0%, rgba(255,179,71,0.03) 0, transparent 40%);
+}
+
+a { color: inherit; }
+
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+button, a[role="button"] {
+  transition: transform 120ms var(--ease-out), background 160ms var(--ease-out);
+}
+button:active { transform: scale(0.98); }

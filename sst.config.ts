@@ -9,13 +9,15 @@ export default $config({
       home: "aws",
       providers: {
         cloudflare: {
-          version: "6.13.0",
+          version: "6.15.0",
           apiToken: process.env.CLOUDFLARE_API_TOKEN,
         },
       },
     };
   },
   async run() {
+    await import("./infra/router");
     await import("./infra/marketing");
+    await import("./infra/application");
   },
 });

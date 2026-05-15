@@ -1,21 +1,13 @@
-const isProd = $app.stage === "production";
-const domain = process.env.WEB_DOMAIN;
+import { router } from "./router";
 
-if (isProd && !domain) {
-    throw new Error(
-        "WEB_DOMAIN environment variable is required for the production stage.",
-    );
-}
+const domain = process.env.WEB_DOMAIN;
 
 export const web = new sst.aws.Nextjs("Marketing", {
     path: "packages/marketing",
-    domain: domain
+    router: domain
         ? {
-            name: domain,
-            dns: sst.cloudflare.dns({
-                proxy: true,
-            }),
-            redirects: isProd ? [`www.${domain}`] : undefined,
+            instance: router,
+            domain,
         }
         : undefined,
     environment: {

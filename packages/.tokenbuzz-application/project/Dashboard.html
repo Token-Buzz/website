@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>TokenBuzz · Today</title>
+<link rel="stylesheet" href="colors_and_type.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee+Inline&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" />
+<style>
+  html, body, #root { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg-1);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  @keyframes tb-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,44,0.55); }
+    50%      { box-shadow: 0 0 0 8px rgba(255,107,44,0); }
+  }
+  @keyframes tb-dot {
+    0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+    40%           { opacity: 1;   transform: scale(1.1); }
+  }
+  @keyframes tb-fade {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  /* density modes — applied via data attr on body */
+  body[data-density="compact"] { font-size: 13px; }
+  body[data-density="comfy"]   { font-size: 15px; }
+
+  /* warm scrollbar */
+  ::-webkit-scrollbar         { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb   { background: var(--border-strong); border-radius: 999px; border: 2px solid var(--bg); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--fg-4); }
+  ::-webkit-scrollbar-track   { background: transparent; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body data-screen-label="Today Dashboard">
+<div id="root"></div>
+
+<script type="text/babel" src="components/primitives.jsx"></script>
+<script type="text/babel" src="components/shell.jsx"></script>
+<script type="text/babel" src="components/watchlist.jsx"></script>
+<script type="text/babel" src="components/detail.jsx"></script>
+<script type="text/babel" src="components/hum.jsx"></script>
+<script type="text/babel" src="components/dashboard.jsx"></script>
+<script type="text/babel" src="components/tweaks-panel.jsx"></script>
+
+<script type="text/babel">
+const { Sidebar, TopBar } = window.TBShell;
+const { Dashboard }       = window.TBDashboard;
+const { WatchlistTable }  = window.TBWatchlist;
+const { TokenDetail }     = window.TBDetail;
+const { HumPanel }        = window.TBHum;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "dark",
+  "density": "regular",
+  "humOpen": true,
+  "showAccentPulse": true
+}/*EDITMODE-END*/;
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  const [active, setActive]       = React.useState("today");
+  const [watchlist, setWatchlist] = React.useState("memecoins");
+  const [tWindow, setWindow]      = React.useState("24H");
+  const [openToken, setOpenToken] = React.useState(null);
+  const [humPreset, setHumPreset] = React.useState(null);
+
+  // Apply theme + density to the document
+  React.useEffect(() => {
+    if (t.theme === "light") {
+      document.documentElement.setAttribute("data-theme", "light");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
+    document.body.setAttribute("data-density", t.density);
+  }, [t.theme, t.density]);
+
+  const askHum = (q) => {
+    setTweak("humOpen", true);
+    if (q) setHumPreset({ text: q, n: (humPreset?.n || 0) + 1 });
+  };
+
+  // What's in the main pane depends on the active nav item
+  const renderMain = () => {
+    if (active === "today") return <Dashboard />;
+    if (active === "watch") {
+      return (
+        <div style={{ display: "flex", height: "100%", minHeight: 0 }}>
+          <div style={{
+            flex: openToken ? "0 0 520px" : "1 1 auto",
+            overflowY: "auto",
+            borderRight: openToken ? "1px solid var(--border)" : "none",
+          }}>
+            <WatchlistTable onOpenToken={setOpenToken} selected={openToken} />
+          </div>
+          {openToken && (
+            <div style={{ flex: "1 1 auto", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              <TokenDetail token={openToken} onClose={() => setOpenToken(null)} onAskHum={askHum} />
+            </div>
+          )}
+        </div>
+      );
+    }
+    // Placeholder for nav items we haven't built
+    return (
+      <div style={{
+        padding: 48, display: "flex", flexDirection: "column", gap: 12,
+        maxWidth: 640, margin: "0 auto",
+      }}>
+        <div style={{ font: "600 11px var(--font-sans)", letterSpacing: "0.18em",
+          textTransform: "uppercase", color: "var(--fg-3)" }}>Coming up</div>
+        <div style={{ font: "600 28px/1.15 var(--font-sans)", letterSpacing: "-0.015em" }}>
+          {{movers: "Movers", feed: "Live feed", alerts: "Alerts" }[active] || "View"}
+        </div>
+        <div style={{ font: "400 14px/1.6 var(--font-sans)", color: "var(--fg-2)" }}>
+          This view isn't part of the dashboard you asked me to build. Open
+          {" "}<a onClick={() => setActive("today")} style={{ color: "var(--accent)", cursor: "pointer" }}>Today</a>
+          {" "}or{" "}<a onClick={() => setActive("watch")} style={{ color: "var(--accent)", cursor: "pointer" }}>Watchlist</a>
+          {" "}to see the design.
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+      <Sidebar active={active} setActive={setActive}
+               watchlist={watchlist} setWatchlist={setWatchlist} />
+      <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <TopBar window={tWindow} setWindow={setWindow}
+                onAskHum={() => setTweak("humOpen", !t.humOpen)}
+                humOpen={t.humOpen} />
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+          {renderMain()}
+        </div>
+      </main>
+      {t.humOpen && <HumPanel onClose={() => setTweak("humOpen", false)} presetQuestion={humPreset} />}
+
+      <TweaksPanel>
+        <TweakSection label="Theme" />
+        <TweakRadio label="Mode" value={t.theme}
+          options={["dark", "light"]}
+          onChange={(v) => setTweak("theme", v)} />
+        <TweakSection label="Layout" />
+        <TweakRadio label="Density" value={t.density}
+          options={["compact", "regular", "comfy"]}
+          onChange={(v) => setTweak("density", v)} />
+        <TweakToggle label="Hum rail open" value={t.humOpen}
+          onChange={(v) => setTweak("humOpen", v)} />
+        <TweakSection label="Navigation" />
+        <TweakRadio label="Active view" value={active}
+          options={["today", "watch"]}
+          onChange={(v) => { setActive(v); if (v === "today") setOpenToken(null); }} />
+      </TweaksPanel>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
