@@ -4,9 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4b183301-30ac-4a11-a352-95b5adc4d3da" name="Changes" comment="Infra deployed successfully, deploying application.">
+    <list default="true" id="4b183301-30ac-4a11-a352-95b5adc4d3da" name="Changes" comment="Pushing dev to ensure pipeline sync with infra state.">
+      <change beforePath="$PROJECT_DIR$/.gitlab-ci.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.gitlab-ci.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/infra/router.ts" beforeDir="false" afterPath="$PROJECT_DIR$/infra/router.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/packages/marketing/app/_components/Nav.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/packages/marketing/app/_components/Nav.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -86,8 +87,8 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="npm.dev:application" />
       <item itemvalue="npm.dev:marketing" />
+      <item itemvalue="npm.dev:application" />
     </list>
   </component>
   <component name="SharedIndexes">
@@ -110,6 +111,7 @@
       <workItem from="1778884777868" duration="65000" />
       <workItem from="1778884862585" duration="8089000" />
       <workItem from="1778902646969" duration="3675000" />
+      <workItem from="1778934758620" duration="3470000" />
     </task>
     <task id="LOCAL-00001" summary="Init.">
       <option name="closed" value="true" />
@@ -183,7 +185,15 @@
       <option name="project" value="LOCAL" />
       <updated>1778903638555</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="Pushing dev to ensure pipeline sync with infra state.">
+      <option name="closed" value="true" />
+      <created>1778934794754</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1778934794754</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -198,6 +208,7 @@
     <MESSAGE value="Wiped all infrastructure, cleared runner cache, changed vars from Gitlab to SSM and redeploying." />
     <MESSAGE value="Added CLOUDFLARE_API_TOKEN back to gitlab ci/cd vars." />
     <MESSAGE value="Infra deployed successfully, deploying application." />
-    <option name="LAST_COMMIT_MESSAGE" value="Infra deployed successfully, deploying application." />
+    <MESSAGE value="Pushing dev to ensure pipeline sync with infra state." />
+    <option name="LAST_COMMIT_MESSAGE" value="Pushing dev to ensure pipeline sync with infra state." />
   </component>
 </project>

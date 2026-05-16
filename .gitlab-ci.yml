@@ -5,11 +5,14 @@ default:
       files:
         - package-lock.json
     paths:
-      - ~/.npm
+      - .npm/
+      - node_modules/
+      - packages/*/node_modules/
       - .next/cache/
       - .sst/platform/
 
 stages:
+  - install
   - validate
   - deploy
   - teardown
@@ -34,12 +37,29 @@ variables:
       export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | awk '{print $1}')
       export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | awk '{print $2}')
       export AWS_SESSION_TOKEN=$(echo "$CREDS" | awk '{print $3}')
-    - npm ci
+
+install:
+  stage: install
+  script:
+    - npm ci --cache .npm
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_BRANCH == "dev"
+    - if: $CI_COMMIT_BRANCH == "master"
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
 
 validate:
   stage: validate
+  cache:
+    policy: pull
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - node_modules/
+      - packages/*/node_modules/
   script:
-    - npm ci
     - npm run lint
     - npm run typecheck
   rules:
@@ -50,6 +70,16 @@ validate:
 deploy:dev:
   stage: deploy
   extends: .aws_oidc
+  cache:
+    policy: pull
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+      - node_modules/
+      - packages/*/node_modules/
+      - .sst/platform/
   environment:
     name: dev
   script:
@@ -61,6 +91,16 @@ deploy:dev:
 destroy:dev:
   stage: teardown
   extends: .aws_oidc
+  cache:
+    policy: pull
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+      - node_modules/
+      - packages/*/node_modules/
+      - .sst/platform/
   environment:
     name: dev
     action: stop
@@ -83,6 +123,16 @@ destroy:dev:
 deploy:production:
   stage: deploy
   extends: .aws_oidc
+  cache:
+    policy: pull
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+      - node_modules/
+      - packages/*/node_modules/
+      - .sst/platform/
   environment:
     name: production
   script:
