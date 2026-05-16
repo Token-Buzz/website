@@ -1,5 +1,6 @@
 import { router } from "./router";
 import { webDomain, clerkPublishableKey, clerkSecretKey } from "./secrets";
+import { tweetsTable, aggregatesTable, tokensTable, userDataTable } from "./db";
 
 const isNamedStage = $app.stage === "production" || $app.stage === "dev";
 
@@ -19,4 +20,5 @@ export const app = new sst.aws.Nextjs("Application", {
         NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: "/dashboard",
         NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: "/dashboard",
     },
+    link: [tweetsTable, aggregatesTable, tokensTable, userDataTable],
 });
