@@ -23,5 +23,6 @@ export default $config({
     await import("./infra/router");
     await import("./infra/marketing");
     await import("./infra/application");
+    await import("./infra/clerk");
   },
 });

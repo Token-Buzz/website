@@ -4,10 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4b183301-30ac-4a11-a352-95b5adc4d3da" name="Changes" comment="Pushing dev to ensure pipeline sync with infra state.">
-      <change beforePath="$PROJECT_DIR$/.gitlab-ci.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.gitlab-ci.yml" afterDir="false" />
+    <list default="true" id="4b183301-30ac-4a11-a352-95b5adc4d3da" name="Changes" comment="Updating marketing page URLs to sign in and sign up.">
+      <change beforePath="$PROJECT_DIR$/.claude/settings.local.json" beforeDir="false" afterPath="$PROJECT_DIR$/.claude/settings.local.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/packages/marketing/app/_components/Nav.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/packages/marketing/app/_components/Nav.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sst.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/sst.config.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -111,7 +111,7 @@
       <workItem from="1778884777868" duration="65000" />
       <workItem from="1778884862585" duration="8089000" />
       <workItem from="1778902646969" duration="3675000" />
-      <workItem from="1778934758620" duration="3470000" />
+      <workItem from="1778934758620" duration="4121000" />
     </task>
     <task id="LOCAL-00001" summary="Init.">
       <option name="closed" value="true" />
@@ -193,7 +193,15 @@
       <option name="project" value="LOCAL" />
       <updated>1778934794754</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="Updating marketing page URLs to sign in and sign up.">
+      <option name="closed" value="true" />
+      <created>1778946625760</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1778946625760</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -209,6 +217,7 @@
     <MESSAGE value="Added CLOUDFLARE_API_TOKEN back to gitlab ci/cd vars." />
     <MESSAGE value="Infra deployed successfully, deploying application." />
     <MESSAGE value="Pushing dev to ensure pipeline sync with infra state." />
-    <option name="LAST_COMMIT_MESSAGE" value="Pushing dev to ensure pipeline sync with infra state." />
+    <MESSAGE value="Updating marketing page URLs to sign in and sign up." />
+    <option name="LAST_COMMIT_MESSAGE" value="Updating marketing page URLs to sign in and sign up." />
   </component>
 </project>
