@@ -13,13 +13,14 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "typecheck:marketing": "npm run typecheck -w packages/marketing",
     "typecheck:application": "npm run typecheck -w packages/application",
-    "set-gitlab-vars": "tsx scripts/set-gitlab-vars.ts"
+    "set-gitlab-vars": "tsx scripts/set-gitlab-vars.ts",
+    "set-sst-vars": "tsx scripts/set-sst-vars.ts"
   },
   "devDependencies": {
     "@tsconfig/node22": "^22",
     "typescript": "^5"
   },
   "dependencies": {
-    "sst": "^4"
+    "sst": "4.14.1"
   }
 }

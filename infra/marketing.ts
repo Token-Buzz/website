@@ -1,21 +1,30 @@
 import { router } from "./router";
+import {
+    webDomain,
+    turnstileSiteKey,
+    turnstileSecret,
+    resendApiKey,
+    contactToAddress,
+    contactFromAddress,
+    marketingDomain,
+} from "./secrets";
 
-const domain = process.env.WEB_DOMAIN;
+const isNamedStage = $app.stage === "production" || $app.stage === "dev";
 
 export const web = new sst.aws.Nextjs("Marketing", {
     path: "packages/marketing",
-    router: domain
+    router: isNamedStage
         ? {
-            instance: router,
-            domain,
-        }
+              instance: router,
+              domain: webDomain.value,
+          }
         : undefined,
     environment: {
-        NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "",
-        NEXT_PUBLIC_MARKETING_DOMAIN: process.env.MARKETING_DOMAIN ?? "",
-        TURNSTILE_SECRET: process.env.TURNSTILE_SECRET ?? "",
-        RESEND_API_KEY: process.env.RESEND_API_KEY ?? "",
-        CONTACT_TO_ADDRESS: process.env.CONTACT_TO_ADDRESS ?? "",
-        CONTACT_FROM_ADDRESS: process.env.CONTACT_FROM_ADDRESS ?? "",
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: turnstileSiteKey.value,
+        NEXT_PUBLIC_MARKETING_DOMAIN: marketingDomain.value,
+        TURNSTILE_SECRET: turnstileSecret.value,
+        RESEND_API_KEY: resendApiKey.value,
+        CONTACT_TO_ADDRESS: contactToAddress.value,
+        CONTACT_FROM_ADDRESS: contactFromAddress.value,
     },
 });

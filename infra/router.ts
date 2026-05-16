@@ -1,21 +1,17 @@
-const isProd = $app.stage === "production";
-const domain = process.env.WEB_DOMAIN;
+import { webDomain } from "./secrets";
 
-if (isProd && !domain) {
-    throw new Error(
-        "WEB_DOMAIN environment variable is required for the production stage.",
-    );
-}
+const isProd = $app.stage === "production";
+const isNamedStage = isProd || $app.stage === "dev";
 
 export const router = new sst.aws.Router("Router", {
-    domain: domain
+    domain: isNamedStage
         ? {
-            name: domain,
-            aliases: [`*.${domain}`],
-            dns: sst.cloudflare.dns({
-                proxy: true,
-            }),
-            redirects: isProd ? [`www.${domain}`] : undefined,
-        }
+              name: webDomain.value,
+              aliases: webDomain.value.apply(d => [`*.${d}`]),
+              dns: sst.cloudflare.dns({
+                  proxy: true,
+              }),
+              redirects: isProd ? webDomain.value.apply(d => [`www.${d}`]) : undefined,
+          }
         : undefined,
 });

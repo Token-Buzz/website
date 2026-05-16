@@ -4,34 +4,15 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4b183301-30ac-4a11-a352-95b5adc4d3da" name="Changes" comment="Fixed pipeline variables.">
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-application/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-application/project/Dashboard.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-application/project/colors_and_type.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-application/project/components/dashboard.jsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-application/project/components/detail.jsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-application/project/components/hum.jsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-application/project/components/primitives.jsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-application/project/components/shell.jsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-application/project/components/tweaks-panel.jsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-application/project/components/watchlist.jsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-auth/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-auth/project/Auth.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-auth/project/assets/logomark.svg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-auth/project/auth.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-auth/project/auth.jsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-auth/project/colors_and_type.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-auth/project/tweaks-panel.jsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-auth/project/uploads/sign-in-components.PNG" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/packages/.tokenbuzz-auth/project/uploads/sign-up-components.PNG" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.claude/settings.local.json" beforeDir="false" afterPath="$PROJECT_DIR$/.claude/settings.local.json" afterDir="false" />
+    <list default="true" id="4b183301-30ac-4a11-a352-95b5adc4d3da" name="Changes" comment="Added Clerk authentication and sign-in and sign-out routes as well as a placeholder Dashboard.">
+      <change afterPath="$PROJECT_DIR$/scripts/set-sst-vars.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gitlab-ci.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.gitlab-ci.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/ShadcnHelperSettings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/ShadcnHelperSettings.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/infra/application.ts" beforeDir="false" afterPath="$PROJECT_DIR$/infra/application.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/infra/marketing.ts" beforeDir="false" afterPath="$PROJECT_DIR$/infra/marketing.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/infra/router.ts" beforeDir="false" afterPath="$PROJECT_DIR$/infra/router.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/packages/marketing/tsconfig.tsbuildinfo" beforeDir="false" afterPath="$PROJECT_DIR$/packages/marketing/tsconfig.tsbuildinfo" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/sst.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/sst.config.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -40,12 +21,6 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="Git.Settings">
-    <option name="PUSH_TAGS">
-      <GitPushTagMode>
-        <option name="argument" value="--tags" />
-        <option name="title" value="All" />
-      </GitPushTagMode>
-    </option>
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
         <entry key="$PROJECT_DIR$" value="master" />
@@ -61,30 +36,31 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;javascript.preferred.runtime.type.id&quot;: &quot;node&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/Repositories/tokenbuzz/website/packages&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;pnpm&quot;,
-    &quot;npm.dev:application.executor&quot;: &quot;Run&quot;,
-    &quot;npm.dev:marketing.executor&quot;: &quot;Run&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;D:\\Repositories\\tokenbuzz\\website\\node_modules\\typescript\\lib&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "git-widget-placeholder": "dev",
+    "ignore.virus.scanning.warn.message": "true",
+    "javascript.preferred.runtime.type.id": "node",
+    "last_opened_file_path": "D:/Repositories/tokenbuzz/website/scripts",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "pnpm",
+    "npm.dev:application.executor": "Run",
+    "npm.dev:marketing.executor": "Run",
+    "ts.external.directory.path": "D:\\Repositories\\tokenbuzz\\website\\node_modules\\typescript\\lib",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\Repositories\tokenbuzz\website\scripts" />
       <recent name="D:\Repositories\tokenbuzz\website\packages" />
       <recent name="D:\Repositories\tokenbuzz\website" />
     </key>
@@ -138,6 +114,8 @@
       <workItem from="1778713062222" duration="3604000" />
       <workItem from="1778717926747" duration="7144000" />
       <workItem from="1778811111698" duration="9340000" />
+      <workItem from="1778884777868" duration="65000" />
+      <workItem from="1778884862585" duration="3473000" />
     </task>
     <task id="LOCAL-00001" summary="Init.">
       <option name="closed" value="true" />

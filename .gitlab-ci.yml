@@ -34,6 +34,12 @@ variables:
       export AWS_ACCESS_KEY_ID=$(echo "$CREDS" | awk '{print $1}')
       export AWS_SECRET_ACCESS_KEY=$(echo "$CREDS" | awk '{print $2}')
       export AWS_SESSION_TOKEN=$(echo "$CREDS" | awk '{print $3}')
+    - |
+      export CLOUDFLARE_API_TOKEN=$(aws ssm get-parameter \
+        --name "/sst/website/${CI_ENVIRONMENT_NAME}/Secret/CloudflareApiToken/value" \
+        --with-decryption \
+        --query 'Parameter.Value' \
+        --output text)
     - npm ci
 
 validate:
@@ -52,12 +58,6 @@ deploy:dev:
   extends: .aws_oidc
   environment:
     name: dev
-    url: https://${DOMAIN}
-  variables:
-    DOMAIN: ${DEV_DOMAIN_MARKETING}
-    WEB_DOMAIN: ${DEV_DOMAIN_MARKETING}
-    CLERK_PUBLISHABLE_KEY: ${DEV_CLERK_PUBLISHABLE_KEY}
-    CLERK_SECRET_KEY: ${DEV_CLERK_SECRET_KEY}
   script:
     - npx sst install --stage dev
     - npx sst deploy --stage dev
@@ -70,8 +70,6 @@ destroy:dev:
   environment:
     name: dev
     action: stop
-  variables:
-    DOMAIN: ${DEV_DOMAIN_MARKETING}
   script:
     - |
       LAST_COMMIT_TS=$(git log -1 --format="%ct")
@@ -93,12 +91,6 @@ deploy:production:
   extends: .aws_oidc
   environment:
     name: production
-    url: https://${DOMAIN}
-  variables:
-    DOMAIN: ${PROD_DOMAIN_MARKETING}
-    WEB_DOMAIN: ${PROD_DOMAIN_MARKETING}
-    CLERK_PUBLISHABLE_KEY: ${PROD_CLERK_PUBLISHABLE_KEY}
-    CLERK_SECRET_KEY: ${PROD_CLERK_SECRET_KEY}
   script:
     - npx sst install --stage production
     - npx sst deploy --stage production
@@ -106,4 +98,3 @@ deploy:production:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
       when: manual
       allow_failure: false
-

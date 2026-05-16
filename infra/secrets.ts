@@ -1,0 +1,9 @@
+export const webDomain = new sst.Secret("WebDomain");
+export const clerkPublishableKey = new sst.Secret("ClerkPublishableKey");
+export const clerkSecretKey = new sst.Secret("ClerkSecretKey");
+export const turnstileSiteKey = new sst.Secret("TurnstileSiteKey");
+export const turnstileSecret = new sst.Secret("TurnstileSecret");
+export const resendApiKey = new sst.Secret("ResendApiKey");
+export const contactToAddress = new sst.Secret("ContactToAddress");
+export const contactFromAddress = new sst.Secret("ContactFromAddress");
+export const marketingDomain = new sst.Secret("MarketingDomain");

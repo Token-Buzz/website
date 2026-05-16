@@ -1,19 +1,19 @@
 import { router } from "./router";
+import { webDomain, clerkPublishableKey, clerkSecretKey } from "./secrets";
 
-const baseDomain = process.env.WEB_DOMAIN;
-const appDomain = baseDomain ? `app.${baseDomain}` : undefined;
+const isNamedStage = $app.stage === "production" || $app.stage === "dev";
 
 export const app = new sst.aws.Nextjs("Application", {
     path: "packages/application",
-    router: appDomain
+    router: isNamedStage
         ? {
-            instance: router,
-            domain: appDomain,
-        }
+              instance: router,
+              domain: $interpolate`app.${webDomain.value}`,
+          }
         : undefined,
     environment: {
-        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.CLERK_PUBLISHABLE_KEY ?? "",
-        CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY ?? "",
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: clerkPublishableKey.value,
+        CLERK_SECRET_KEY: clerkSecretKey.value,
         NEXT_PUBLIC_CLERK_SIGN_IN_URL: "/sign-in",
         NEXT_PUBLIC_CLERK_SIGN_UP_URL: "/sign-up",
         NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: "/dashboard",
