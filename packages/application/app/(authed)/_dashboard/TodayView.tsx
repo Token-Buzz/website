@@ -284,11 +284,11 @@ function Brief() {
       <div style={{ minWidth: 0 }}>
         <Eyebrow style={{ marginBottom: 8 }}>Morning brief · 09:00 UTC</Eyebrow>
         <div style={{ font: '500 16px/1.5 var(--font-sans)', letterSpacing: '-0.005em', color: 'var(--fg-1)' }}>
-          <span style={{ color: 'var(--fg-2)' }}>Three things I'd watch tonight.</span>{' '}
+          <span style={{ color: 'var(--fg-2)' }}>Three things I&apos;d watch tonight.</span>{' '}
           $MOG just broke its 30-day mention high — four whale handles I tagged in March came back.{' '}
           $PEPE accumulation chatter is the loudest since May, but @degenspartan is loudly bearish.{' '}
           And the AI-agent narrative is back: $FET / $AGIX / $VIRTUAL co-mentions clustered inside a 90-minute window.{' '}
-          <span style={{ color: 'var(--fg-3)' }}>I'd front-run that one.</span>
+          <span style={{ color: 'var(--fg-3)' }}>I&apos;d front-run that one.</span>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
           {['@cobie','@hsaka','@hosseeb','@gainzy222','@CryptoKaleo','+ 38 more'].map((s) => (

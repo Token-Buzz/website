@@ -86,6 +86,7 @@ export function HumPanel({ onClose, presetQuestion }: HumPanelProps) {
       prevPreset.current = presetQuestion
       send(presetQuestion)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetQuestion])
 
   useEffect(() => {
@@ -159,7 +160,7 @@ export function HumPanel({ onClose, presetQuestion }: HumPanelProps) {
       setThinking(false)
       setMsgs((m) => [...m, {
         from: 'hum',
-        text: "Sorry, I'm having trouble connecting right now. Try again in a moment.",
+        text: "Sorry, I’m having trouble connecting right now. Try again in a moment.",
         time: new Date().toISOString().slice(11, 16) + ' UTC',
       }])
     }
@@ -172,7 +173,7 @@ export function HumPanel({ onClose, presetQuestion }: HumPanelProps) {
         <div style={{ background: 'var(--inv-bg)', color: 'var(--inv-fg)', fontFamily: 'var(--font-display)', fontSize: 14, padding: '4px 8px 2px', lineHeight: 1 }}>HUM.</div>
         <div style={{ flex: 1, lineHeight: 1.2 }}>
           <div style={{ font: '600 13px var(--font-sans)' }}>Research assistant</div>
-          <div style={{ font: '500 11px var(--font-mono)', color: 'var(--fg-3)' }}>reads X · reads chain · doesn't sleep</div>
+          <div style={{ font: '500 11px var(--font-mono)', color: 'var(--fg-3)' }}>reads X · reads chain · doesn&apos;t sleep</div>
         </div>
         <Icon name="close" size={16} style={{ color: 'var(--fg-3)', cursor: 'pointer' }} onClick={onClose} />
       </div>
