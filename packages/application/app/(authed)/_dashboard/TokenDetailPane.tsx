@@ -110,7 +110,7 @@ function MentionCard({ m }: { m: Mention }) {
 
 interface TokenDetailPaneProps {
   token: Token
-  onClose: () => void
+  onClose?: () => void
   onAskHum?: (question: string) => void
   mentions?: Mention[]
 }

@@ -20,7 +20,9 @@
       "Bash(Get-ChildItem -Recurse \"D:\\\\Repositories\\\\tokenbuzz\\\\website\\\\packages\\\\application\\\\app\\\\api\" -Filter \"route.ts\")",
       "Bash(Sort-Object FullName)",
       "Bash(Get-ChildItem -Path \"D:\\\\Repositories\\\\tokenbuzz\\\\website\" -Depth 1)",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "Bash(where.exe uvx *)",
+      "Bash(where.exe uv *)"
     ]
   }
 }

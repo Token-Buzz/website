@@ -30,16 +30,17 @@ interface IconProps {
   size?: number
   className?: string
   style?: React.CSSProperties
+  onClick?: () => void
 }
 
-export function Icon({ name, size = 20, className, style }: IconProps) {
+export function Icon({ name, size = 20, className, style, onClick }: IconProps) {
   const paths = ICONS[name]
   if (!paths) return null
   return (
     <svg
       width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-      strokeLinejoin="round" className={className} style={style}
+      strokeLinejoin="round" className={className} style={style} onClick={onClick}
     >
       {paths.map((d, i) => <path key={i} d={d} />)}
     </svg>
