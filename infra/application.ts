@@ -69,7 +69,9 @@ export const app = new sst.aws.Nextjs("Application", {
     router: isNamedStage
         ? {
               instance: router,
-              domain: $interpolate`app.${webDomain.value}`,
+              domain: $app.stage === "production"
+                  ? $interpolate`app.${webDomain.value}`
+                  : $interpolate`app-dev.${webDomain.value}`,
           }
         : undefined,
     environment: {

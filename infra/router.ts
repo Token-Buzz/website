@@ -7,7 +7,7 @@ export const router = new sst.aws.Router("Router", {
     domain: isNamedStage
         ? {
               name: webDomain.value,
-              aliases: webDomain.value.apply(d => [`app.${d}`]),
+              aliases: webDomain.value.apply(d => [isProd ? `app.${d}` : `app-dev.${d}`]),
               dns: sst.cloudflare.dns({
                   proxy: true,
               }),
