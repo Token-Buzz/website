@@ -15,7 +15,7 @@ import { readFileSync, readdirSync, statSync } from 'fs'
 import { resolve, join, relative } from 'path'
 import { spawnSync } from 'child_process'
 
-const SKIP_KEYS = new Set(['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_DEFAULT_REGION', 'AWS_ROLE_ARN'])
+const SKIP_KEYS = new Set(['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_DEFAULT_REGION', 'AWS_ROLE_ARN', 'CLOUDFLARE_API_TOKEN'])
 const IGNORE_DIRS = new Set(['node_modules', '.sst', '.git', '.next', 'dist', '.turbo'])
 
 // ---------------------------------------------------------------------------

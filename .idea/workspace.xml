@@ -4,16 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4b183301-30ac-4a11-a352-95b5adc4d3da" name="Changes" comment="Added Clerk authentication and sign-in and sign-out routes as well as a placeholder Dashboard.">
-      <change afterPath="$PROJECT_DIR$/scripts/set-sst-vars.ts" afterDir="false" />
+    <list default="true" id="4b183301-30ac-4a11-a352-95b5adc4d3da" name="Changes" comment="Wiped all infrastructure, cleared runner cache, changed vars from Gitlab to SSM and redeploying.">
       <change beforePath="$PROJECT_DIR$/.gitlab-ci.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.gitlab-ci.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/infra/application.ts" beforeDir="false" afterPath="$PROJECT_DIR$/infra/application.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/infra/marketing.ts" beforeDir="false" afterPath="$PROJECT_DIR$/infra/marketing.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/infra/router.ts" beforeDir="false" afterPath="$PROJECT_DIR$/infra/router.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sst.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/sst.config.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -115,7 +108,7 @@
       <workItem from="1778717926747" duration="7144000" />
       <workItem from="1778811111698" duration="9340000" />
       <workItem from="1778884777868" duration="65000" />
-      <workItem from="1778884862585" duration="3473000" />
+      <workItem from="1778884862585" duration="4572000" />
     </task>
     <task id="LOCAL-00001" summary="Init.">
       <option name="closed" value="true" />
@@ -165,7 +158,15 @@
       <option name="project" value="LOCAL" />
       <updated>1778796765217</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Wiped all infrastructure, cleared runner cache, changed vars from Gitlab to SSM and redeploying.">
+      <option name="closed" value="true" />
+      <created>1778894868409</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1778894868409</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -177,6 +178,7 @@
     <MESSAGE value="Running dev" />
     <MESSAGE value="Updated variable names." />
     <MESSAGE value="Fixed pipeline variables." />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed pipeline variables." />
+    <MESSAGE value="Wiped all infrastructure, cleared runner cache, changed vars from Gitlab to SSM and redeploying." />
+    <option name="LAST_COMMIT_MESSAGE" value="Wiped all infrastructure, cleared runner cache, changed vars from Gitlab to SSM and redeploying." />
   </component>
 </project>
