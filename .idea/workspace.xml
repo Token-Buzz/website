@@ -4,11 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4b183301-30ac-4a11-a352-95b5adc4d3da" name="Changes" comment="Updating marketing page URLs to sign in and sign up.">
-      <change beforePath="$PROJECT_DIR$/.claude/settings.local.json" beforeDir="false" afterPath="$PROJECT_DIR$/.claude/settings.local.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sst.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/sst.config.ts" afterDir="false" />
-    </list>
+    <list default="true" id="4b183301-30ac-4a11-a352-95b5adc4d3da" name="Changes" comment="Implementing Clerk DNS records." />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -111,7 +107,7 @@
       <workItem from="1778884777868" duration="65000" />
       <workItem from="1778884862585" duration="8089000" />
       <workItem from="1778902646969" duration="3675000" />
-      <workItem from="1778934758620" duration="4121000" />
+      <workItem from="1778934758620" duration="4829000" />
     </task>
     <task id="LOCAL-00001" summary="Init.">
       <option name="closed" value="true" />
@@ -201,7 +197,15 @@
       <option name="project" value="LOCAL" />
       <updated>1778946625760</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="Implementing Clerk DNS records.">
+      <option name="closed" value="true" />
+      <created>1778947378406</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1778947378406</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -218,6 +222,7 @@
     <MESSAGE value="Infra deployed successfully, deploying application." />
     <MESSAGE value="Pushing dev to ensure pipeline sync with infra state." />
     <MESSAGE value="Updating marketing page URLs to sign in and sign up." />
-    <option name="LAST_COMMIT_MESSAGE" value="Updating marketing page URLs to sign in and sign up." />
+    <MESSAGE value="Implementing Clerk DNS records." />
+    <option name="LAST_COMMIT_MESSAGE" value="Implementing Clerk DNS records." />
   </component>
 </project>
