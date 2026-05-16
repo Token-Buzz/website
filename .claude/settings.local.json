@@ -15,7 +15,10 @@
       "Bash(Get-ChildItem D:\\\\Repositories\\\\tokenbuzz\\\\website\\\\infra *)",
       "Bash(dir *)",
       "Bash(Get-ChildItem -Path \"D:\\\\Repositories\\\\tokenbuzz\\\\website\\\\.api-caller\" -Recurse -Directory)",
-      "Bash(Select-Object -First 30)"
+      "Bash(Select-Object -First 30)",
+      "Bash(Remove-Item *)",
+      "Bash(Get-ChildItem -Recurse \"D:\\\\Repositories\\\\tokenbuzz\\\\website\\\\packages\\\\application\\\\app\\\\api\" -Filter \"route.ts\")",
+      "Bash(Sort-Object FullName)"
     ]
   }
 }
