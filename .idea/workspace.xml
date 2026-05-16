@@ -4,13 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4b183301-30ac-4a11-a352-95b5adc4d3da" name="Changes" comment="Added CLOUDFLARE_API_TOKEN back to gitlab ci/cd vars.">
+    <list default="true" id="4b183301-30ac-4a11-a352-95b5adc4d3da" name="Changes" comment="Infra deployed successfully, deploying application.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/infra/marketing.ts" beforeDir="false" afterPath="$PROJECT_DIR$/infra/marketing.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/infra/secrets.ts" beforeDir="false" afterPath="$PROJECT_DIR$/infra/secrets.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/packages/application/next-env.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/packages/application/next-env.d.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/packages/marketing/next-env.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/packages/marketing/next-env.d.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sst-env.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/sst-env.d.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/infra/router.ts" beforeDir="false" afterPath="$PROJECT_DIR$/infra/router.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -90,8 +86,8 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="npm.dev:marketing" />
       <item itemvalue="npm.dev:application" />
+      <item itemvalue="npm.dev:marketing" />
     </list>
   </component>
   <component name="SharedIndexes">
@@ -113,7 +109,7 @@
       <workItem from="1778811111698" duration="9340000" />
       <workItem from="1778884777868" duration="65000" />
       <workItem from="1778884862585" duration="8089000" />
-      <workItem from="1778902646969" duration="977000" />
+      <workItem from="1778902646969" duration="3675000" />
     </task>
     <task id="LOCAL-00001" summary="Init.">
       <option name="closed" value="true" />
@@ -179,7 +175,15 @@
       <option name="project" value="LOCAL" />
       <updated>1778895984936</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="Infra deployed successfully, deploying application.">
+      <option name="closed" value="true" />
+      <created>1778903638555</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1778903638555</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -193,6 +197,7 @@
     <MESSAGE value="Fixed pipeline variables." />
     <MESSAGE value="Wiped all infrastructure, cleared runner cache, changed vars from Gitlab to SSM and redeploying." />
     <MESSAGE value="Added CLOUDFLARE_API_TOKEN back to gitlab ci/cd vars." />
-    <option name="LAST_COMMIT_MESSAGE" value="Added CLOUDFLARE_API_TOKEN back to gitlab ci/cd vars." />
+    <MESSAGE value="Infra deployed successfully, deploying application." />
+    <option name="LAST_COMMIT_MESSAGE" value="Infra deployed successfully, deploying application." />
   </component>
 </project>
