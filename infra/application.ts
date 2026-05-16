@@ -1,5 +1,5 @@
 import { router } from "./router";
-import { webDomain, clerkPublishableKey, clerkSecretKey } from "./secrets";
+import { webDomain, clerkPublishableKey, clerkSecretKey, devClerkPublishableKey, devClerkSecretKey } from "./secrets";
 
 const isNamedStage = $app.stage === "production" || $app.stage === "dev";
 
@@ -75,8 +75,12 @@ export const app = new sst.aws.Nextjs("Application", {
           }
         : undefined,
     environment: {
-        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: clerkPublishableKey.value,
-        CLERK_SECRET_KEY: clerkSecretKey.value,
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: $app.stage === "production"
+            ? clerkPublishableKey.value
+            : devClerkPublishableKey.value,
+        CLERK_SECRET_KEY: $app.stage === "production"
+            ? clerkSecretKey.value
+            : devClerkSecretKey.value,
         NEXT_PUBLIC_CLERK_SIGN_IN_URL: "/sign-in",
         NEXT_PUBLIC_CLERK_SIGN_UP_URL: "/sign-up",
         NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: "/dashboard",
