@@ -20,6 +20,19 @@ node_modules
 # misc
 .DS_Store
 
+# JetBrains IDE - user-local files (not for sharing)
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/dictionaries/
+.idea/shelf/
+.idea/httpRequests/
+.idea/dataSources/
+.idea/dataSources.local.xml
+.idea/sqlDataSources.xml
+.idea/dynamic.xml
+.idea/*.iws
+
 # separate repos
 packages/.api-caller
 
