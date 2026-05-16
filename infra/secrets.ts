@@ -1,9 +1,8 @@
-export const webDomain = new sst.Secret("WebDomain");
-export const clerkPublishableKey = new sst.Secret("ClerkPublishableKey");
-export const clerkSecretKey = new sst.Secret("ClerkSecretKey");
-export const turnstileSiteKey = new sst.Secret("TurnstileSiteKey");
-export const turnstileSecret = new sst.Secret("TurnstileSecret");
-export const resendApiKey = new sst.Secret("ResendApiKey");
-export const contactToAddress = new sst.Secret("ContactToAddress");
-export const contactFromAddress = new sst.Secret("ContactFromAddress");
-export const marketingDomain = new sst.Secret("MarketingDomain");
+export const webDomain = new sst.Secret("WEB_DOMAIN");
+export const clerkPublishableKey = new sst.Secret("CLERK_PUBLISHABLE_KEY");
+export const clerkSecretKey = new sst.Secret("CLERK_SECRET_KEY");
+export const turnstileSiteKey = new sst.Secret("NEXT_PUBLIC_TURNSTILE_SITE_KEY");
+export const turnstileSecret = new sst.Secret("TURNSTILE_SECRET");
+export const resendApiKey = new sst.Secret("RESEND_API_KEY");
+export const contactToAddress = new sst.Secret("CONTACT_TO_ADDRESS");
+export const contactFromAddress = new sst.Secret("CONTACT_FROM_ADDRESS");

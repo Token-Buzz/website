@@ -6,7 +6,6 @@ import {
     resendApiKey,
     contactToAddress,
     contactFromAddress,
-    marketingDomain,
 } from "./secrets";
 
 const isNamedStage = $app.stage === "production" || $app.stage === "dev";
@@ -21,7 +20,7 @@ export const web = new sst.aws.Nextjs("Marketing", {
         : undefined,
     environment: {
         NEXT_PUBLIC_TURNSTILE_SITE_KEY: turnstileSiteKey.value,
-        NEXT_PUBLIC_MARKETING_DOMAIN: marketingDomain.value,
+        NEXT_PUBLIC_MARKETING_DOMAIN: webDomain.value,
         TURNSTILE_SECRET: turnstileSecret.value,
         RESEND_API_KEY: resendApiKey.value,
         CONTACT_TO_ADDRESS: contactToAddress.value,

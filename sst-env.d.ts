@@ -6,6 +6,50 @@
 
 declare module "sst" {
   export interface Resource {
+    "Application": {
+      "type": "sst.aws.Nextjs"
+      "url": string
+    }
+    "CLERK_PUBLISHABLE_KEY": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "CLERK_SECRET_KEY": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "CONTACT_FROM_ADDRESS": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "CONTACT_TO_ADDRESS": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "Marketing": {
+      "type": "sst.aws.Nextjs"
+      "url": string
+    }
+    "NEXT_PUBLIC_TURNSTILE_SITE_KEY": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "RESEND_API_KEY": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "Router": {
+      "type": "sst.aws.Router"
+      "url": string
+    }
+    "TURNSTILE_SECRET": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "WEB_DOMAIN": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
   }
 }
 
