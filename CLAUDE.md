@@ -30,9 +30,6 @@ npx sst deploy --stage <stage>
 npx sst remove --stage <stage>
 npx sst shell --stage <stage> <cmd>   # any cmd with Resource/env bindings
 
-# Sync local .env.local files into SST secrets for a stage
-npm run set-sst-vars -- --stage dev
-npm run set-sst-vars -- --stage production --dry-run
 ```
 
 There is no root-level test command; only `packages/core` has tests.
@@ -41,13 +38,15 @@ There is no root-level test command; only `packages/core` has tests.
 
 ### Routing — one CloudFront in front of both Next.js apps
 
-`infra/router.ts` creates a single `sst.aws.Router` with the apex domain. `infra/marketing.ts` attaches the marketing Nextjs at the apex; `infra/application.ts` attaches the application Nextjs at `app.{webDomain}`. The router is only created with a custom domain when `$app.stage` is `production` or `dev` (`isNamedStage`); ephemeral PR stages get auto-generated URLs and no router domain. Don't add a second Router — both apps share this one.
+`infra/router.ts` creates a single `sst.aws.Router` with the apex domain. `infra/marketing.ts` attaches the marketing Next.js at the apex; `infra/application.ts` attaches the application Next.js at `app.{WEB_DOMAIN}`. Don't add a second Router — both production apps share this one.
+
+PR stages (`pr-<N>`): the application gets its own CloudFront distribution at `pr-<N>.{WEB_DOMAIN}` (e.g. `pr-5.staging.tokenbuzz.app`) with a **DNS-only (grey cloud) Cloudflare record** so ACM issues the cert directly — Cloudflare's free Universal SSL doesn't cover second-level wildcards. Marketing on PR stages uses an auto-generated CloudFront URL (no Clerk, no domain needed).
 
 ### Stages
 
-- `dev` and `production` are the only "named" stages with custom domains and Cloudflare DNS for Clerk (see `infra/clerk.ts`, which only runs in `production`).
-- Any other stage name is treated as ephemeral.
-- A scheduled `destroy:dev` GitLab job tears down the `dev` stage if no commits land within 4 hours (`.gitlab-ci.yml`).
+- `production` is the only named stage — it gets the custom domain and Cloudflare DNS for Clerk (see `infra/clerk.ts`).
+- All other stage names are ephemeral (`pr-<N>`); they get auto-generated URLs and use the PR Console env vars for Clerk and all other config.
+- CI/CD runs via SST Console Autodeploy (see `console.autodeploy` in `sst.config.ts`): push `master` to `production` branch to deploy production; opening a PR deploys to `pr-<number>` and closing it tears that stage down.
 
 ### Persistence — DynamoDB single-table design
 
@@ -63,28 +62,42 @@ GSI conventions:
 
 ### Auth — Clerk
 
-`packages/application/proxy.ts` is the Clerk middleware (not `middleware.ts`); `createRouteMatcher` protects `/dashboard`, `/watchlist`, `/analytics`, `/alerts`, `/account`. `packages/application/next.config.ts` remaps `DEV_CLERK_*` / `PROD_CLERK_*` env vars into the canonical `CLERK_SECRET_KEY` / `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` based on `NODE_ENV`. In SST, those canonical values come from `infra/secrets.ts`.
+`packages/application/proxy.ts` is the Clerk middleware (not `middleware.ts`); `createRouteMatcher` protects `/dashboard`, `/watchlist`, `/analytics`, `/alerts`, `/account`.
+
+Two Clerk instances, selected by the Console environment:
+- **Production** (`pk_live_…`): domain `app.tokenbuzz.app`. DNS wired in `infra/clerk.ts`.
+- **Staging** (`pk_test_…`): domain `staging.tokenbuzz.app`. PR previews use `pr-<N>.staging.tokenbuzz.app` — add each as an allowed subdomain in the Clerk staging dashboard when needed.
 
 Marketing has no Clerk and no DB. Its only server-side code is the contact form (`app/api/contact/route.ts`) which uses Cloudflare Turnstile + Resend; required envs are wired in `infra/marketing.ts`.
 
-### Secrets
+### Configuration — SST secrets + Console environments
 
-All runtime secrets are SST secrets, declared in `infra/secrets.ts` (file is access-restricted in this workspace) and surfaced to apps through `environment:` blocks in `infra/marketing.ts` / `infra/application.ts`. To seed a stage, drop values in `.env.local` (root and/or package) and run `npm run set-sst-vars -- --stage <stage>`. `AWS_*` and `CLOUDFLARE_API_TOKEN` are skipped by the script.
+Secrets are declared in `infra/secrets.ts` as `sst.Secret` and seeded via the SST Console. The same secret names are used for all stages; the Console's environment configuration supplies different values:
 
-## CI/CD (GitLab)
+- **`production` environment**: production values for all secrets.
+- **Fallback environment**: staging/dev values — automatically applies to all PR stages (`pr-<N>`).
 
-`.gitlab-ci.yml` stages: `install → validate (lint+typecheck) → deploy → teardown`.
+`CLOUDFLARE_API_TOKEN` is the exception: it is read as `process.env` in `app()` (before secrets load) and must be set as a Console **environment variable**, not a secret, in both environments.
 
-- MRs: install + validate only.
-- Push to `dev`: deploys via `sst deploy --stage dev` after assuming `AWS_ROLE_ARN` through GitLab OIDC.
-- Tag `vX.Y.Z` on `master`: manual production deploy.
-- Scheduled pipelines on `dev`: run the 4-hour-idle teardown check.
+Secrets to configure in Console (same names for both environments, different values):
+`WEB_DOMAIN`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `RESEND_API_KEY`, `CONTACT_TO_ADDRESS`, `CONTACT_FROM_ADDRESS`
 
-The OIDC role assumption is in the `.aws_oidc` template — extend it (not duplicate it) when adding new AWS-touching jobs.
+## CI/CD (SST Console Autodeploy)
+
+Deployments run via `console.autodeploy` in `sst.config.ts`, executed by AWS CodeBuild.
+
+- Push to `master` → deploys `production` stage.
+- Open/update a PR → deploys ephemeral `pr-<number>` stage (fallback Console environment).
+- Close a PR → removes `pr-<number>` stage (`sst unlock` first to clear any stuck lock, then `sst remove`).
+- Any other branch push → ignored (no deploy).
+
+Workflow: `n 22` (pin Node) → on remove: `sst unlock + sst remove`; otherwise: `npm ci → lint → typecheck → sst unlock + sst deploy`.
+
+`.gitlab-ci.yml` has been deleted — all CI/CD now runs through SST Console Autodeploy.
 
 ## Conventions
 
 - All cross-package imports go through workspace package names (`@monorepo-template/core/db`), not relative paths.
 - New DynamoDB access patterns: add the key builder in `packages/core/src/db/keys.ts` first; never inline `pk`/`sk` strings in route handlers.
-- New infra resources: create a module under `infra/` and import it from `sst.config.ts` in the right order (secrets must load before anything that reads them; router before the apps that attach to it).
-- Use `$app.stage === "production" || $app.stage === "dev"` (the `isNamedStage` pattern) to gate anything that should only run for the two real stages — don't hardcode against ephemeral stage names.
+- New infra resources: create a module under `infra/` and import it from `sst.config.ts` in the right order (secrets → router → apps that attach to it). New configuration values go in `infra/secrets.ts` as `sst.Secret` and get seeded via the Console.
+- Use `$app.stage === "production"` (the `isProd` pattern) to gate anything that should only run for the named stage — don't hardcode against ephemeral stage names.

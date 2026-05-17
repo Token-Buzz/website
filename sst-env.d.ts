@@ -30,14 +30,6 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
-    "DEV_CLERK_PUBLISHABLE_KEY": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "DEV_CLERK_SECRET_KEY": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
     "Marketing": {
       "type": "sst.aws.Nextjs"
       "url": string

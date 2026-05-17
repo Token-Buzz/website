@@ -8,11 +8,11 @@ import {
     contactFromAddress,
 } from "./secrets";
 
-const isNamedStage = $app.stage === "production" || $app.stage === "dev";
+const isProd = $app.stage === "production";
 
 export const web = new sst.aws.Nextjs("Marketing", {
     path: "packages/marketing",
-    router: isNamedStage
+    router: isProd
         ? {
               instance: router,
               domain: webDomain.value,

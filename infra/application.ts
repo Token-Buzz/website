@@ -1,7 +1,8 @@
 import { router } from "./router";
-import { webDomain, clerkPublishableKey, clerkSecretKey, devClerkPublishableKey, devClerkSecretKey } from "./secrets";
+import { webDomain, clerkPublishableKey, clerkSecretKey } from "./secrets";
 
-const isNamedStage = $app.stage === "production" || $app.stage === "dev";
+const isProd = $app.stage === "production";
+const isPR = $app.stage.startsWith("pr-");
 
 // ── DynamoDB tables ────────────────────────────────────────────────────────
 
@@ -66,21 +67,21 @@ export const userDataTable = new sst.aws.Dynamo("UserData", {
 
 export const app = new sst.aws.Nextjs("Application", {
     path: "packages/application",
-    router: isNamedStage
+    domain: isPR
+        ? {
+              name: $interpolate`${$app.stage}.${webDomain.value}`,
+              dns: sst.cloudflare.dns({ proxy: false }),
+          }
+        : undefined,
+    router: isProd
         ? {
               instance: router,
-              domain: $app.stage === "production"
-                  ? $interpolate`app.${webDomain.value}`
-                  : $interpolate`dev-app.${webDomain.value}`,
+              domain: $interpolate`app.${webDomain.value}`,
           }
         : undefined,
     environment: {
-        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: $app.stage === "production"
-            ? clerkPublishableKey.value
-            : devClerkPublishableKey.value,
-        CLERK_SECRET_KEY: $app.stage === "production"
-            ? clerkSecretKey.value
-            : devClerkSecretKey.value,
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: clerkPublishableKey.value,
+        CLERK_SECRET_KEY: clerkSecretKey.value,
         NEXT_PUBLIC_CLERK_SIGN_IN_URL: "/sign-in",
         NEXT_PUBLIC_CLERK_SIGN_UP_URL: "/sign-up",
         NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: "/dashboard",
