@@ -6,6 +6,10 @@
 
 declare module "sst" {
   export interface Resource {
+    "Aggregates": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
     "Application": {
       "type": "sst.aws.Nextjs"
       "url": string
@@ -23,6 +27,14 @@ declare module "sst" {
       "value": string
     }
     "CONTACT_TO_ADDRESS": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "DEV_CLERK_PUBLISHABLE_KEY": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "DEV_CLERK_SECRET_KEY": {
       "type": "sst.sst.Secret"
       "value": string
     }
@@ -45,6 +57,18 @@ declare module "sst" {
     "TURNSTILE_SECRET": {
       "type": "sst.sst.Secret"
       "value": string
+    }
+    "Tokens": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Tweets": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "UserData": {
+      "name": string
+      "type": "sst.aws.Dynamo"
     }
     "WEB_DOMAIN": {
       "type": "sst.sst.Secret"

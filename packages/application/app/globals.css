@@ -232,3 +232,12 @@ button, a[role="button"] {
   transition: transform 120ms var(--ease-out), background 160ms var(--ease-out);
 }
 button:active { transform: scale(0.98); }
+
+@keyframes tb-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.4; }
+}
+@keyframes tb-dot {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
