@@ -4,6 +4,9 @@ node_modules
 # sst
 .sst
 
+# claude code worktrees
+.claude/worktrees/
+
 # tmp files
 .#*
 
