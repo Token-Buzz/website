@@ -12,7 +12,7 @@ export interface Token {
   live?: boolean
 }
 
-export interface Spike {
+export interface LegacySpikeData {
   sym: string
   name: string
   dbuzz: number
@@ -87,9 +87,50 @@ export interface DashboardData {
   netSentiment: number
   sentimentDelta: number
   pulseSeries: number[]
-  spikes: Spike[]
+  spikes: LegacySpikeData[]
   sentimentTokens: SentimentToken[]
   narratives: Narrative[]
   stream: StreamPost[]
   alerts: AlertItem[]
 }
+
+// ── API response types for new dashboard components ────────────────────────
+
+export type PulsePoint = { bucket: string; count: number };
+
+export type Spike = {
+  symbol: string;
+  deltaScore: number;
+  currentMentions: number;
+  priorMentions: number;
+  computedAt: string;
+};
+
+export type SentimentEntry = {
+  symbol: string;
+  bullCount: number;
+  neutralCount: number;
+  bearCount: number;
+  avgScore: number;
+  tweetCount: number;
+};
+
+export type Tweet = {
+  tweetId: string;
+  query: string;
+  text: string;
+  authorUsername: string;
+  authorName: string;
+  authorFollowers: number;
+  createdAt: string;
+  likeCount: number;
+  retweetCount: number;
+  sentiment?: string;
+  sentimentScore?: number;
+};
+
+export type KPIs = {
+  mentions24h: number;
+  tokenCount: number;
+  netSentiment: number;
+};
