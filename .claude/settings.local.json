@@ -24,7 +24,8 @@
       "Bash(where.exe uvx *)",
       "Bash(where.exe uv *)",
       "mcp__plugin_context7_context7__resolve-library-id",
-      "Bash(Select-String -Pattern \"name|label|title|rename\" -Context 0,1)"
+      "Bash(Select-String -Pattern \"name|label|title|rename\" -Context 0,1)",
+      "Bash(Get-ChildItem \"D:\\\\Repositories\\\\tokenbuzz\\\\website\\\\packages\\\\application\\\\app\" -Recurse -Filter \"*.tsx\")"
     ]
   }
 }

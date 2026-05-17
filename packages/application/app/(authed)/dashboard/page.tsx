@@ -1,7 +1,7 @@
 import { currentUser } from '@clerk/nextjs/server'
-import { TodayView } from '../_dashboard/TodayView'
+import { DashboardShell } from '../../_dashboard/DashboardShell'
 
 export default async function DashboardPage() {
   const user = await currentUser()
-  return <TodayView firstName={user?.firstName} />
+  return <DashboardShell firstName={user?.firstName ?? null} />
 }
