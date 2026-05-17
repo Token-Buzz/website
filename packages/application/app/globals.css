@@ -47,6 +47,15 @@
   --data-teal:   #2E7F7B;
   --data-rose:   #B8527E;
 
+  /* Terminal / dark chart section */
+  --data-bg:    #0B0D0F;
+  --data-fg:    #E8EBF0;
+  --data-line:  rgba(255,255,255,0.1);
+  --data-pos:   #4ADE80;
+  --data-neg:   #F87171;
+  --data-amber: #FFB347;
+  --data-dim:   rgba(232,235,240,0.4);
+
   /* =====================================================================
      SEMANTIC — dark by default
      ===================================================================== */
