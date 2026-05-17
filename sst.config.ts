@@ -24,5 +24,6 @@ export default $config({
     await import("./infra/marketing");
     await import("./infra/application");
     await import("./infra/clerk");
+    await import("./infra/jobs");
   },
 });
