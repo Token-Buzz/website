@@ -6,6 +6,12 @@
     "test": "sst shell vitest"
   },
   "exports": {
+    "./db/aggregates": "./src/db/aggregates.ts",
+    "./db/client": "./src/db/client.ts",
+    "./db/keys": "./src/db/keys.ts",
+    "./db/tokens": "./src/db/tokens.ts",
+    "./db/tweets": "./src/db/tweets.ts",
+    "./db/users": "./src/db/users.ts",
     "./*": [
       "./src/*/index.ts",
       "./src/*.ts"
