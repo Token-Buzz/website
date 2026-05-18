@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { UserButton } from '@clerk/nextjs'
+import { UserButton, SignOutButton } from '@clerk/nextjs'
 import { Icon, Button, Eyebrow, BuzzDot, Avatar } from './primitives'
 import type { WatchlistGroup } from './types'
 
@@ -87,6 +87,85 @@ function WatchlistItem({
   )
 }
 
+// ── ProfileFooter ──────────────────────────────────────────────────────────
+
+function ProfileFooter() {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      {open && (
+        <div style={{
+          position: 'absolute', bottom: 'calc(100% + 6px)', left: 0, right: 0,
+          background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+          borderRadius: 8, overflow: 'hidden',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+        }}>
+          <button
+            onClick={() => setOpen(false)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+              padding: '10px 14px', border: 'none', background: 'transparent',
+              color: 'var(--fg-2)', font: '500 13px var(--font-sans)', cursor: 'pointer',
+              textAlign: 'left',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          >
+            <Icon name="settings" size={14} />
+            Settings
+          </button>
+          <div style={{ height: 1, background: 'var(--border)', margin: '0 10px' }} />
+          <SignOutButton>
+            <button
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                padding: '10px 14px', border: 'none', background: 'transparent',
+                color: 'var(--error, #e05252)', font: '500 13px var(--font-sans)', cursor: 'pointer',
+                textAlign: 'left',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            >
+              <Icon name="logout" size={14} />
+              Log out
+            </button>
+          </SignOutButton>
+        </div>
+      )}
+      <div
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10, padding: '10px',
+          borderRadius: 8, background: open ? 'var(--surface-active, var(--surface))' : 'var(--surface)',
+          border: '1px solid var(--border)', cursor: 'pointer',
+        }}
+      >
+        <UserButton />
+        <div style={{ flex: 1, lineHeight: 1.2 }}>
+          <div style={{ font: '600 12px var(--font-sans)' }}>My Account</div>
+          <div style={{ font: '500 11px var(--font-mono)', color: 'var(--fg-3)' }}>TokenBuzz Pro</div>
+        </div>
+        <Icon name="chevD" size={14} style={{
+          color: 'var(--fg-3)',
+          transform: open ? 'rotate(180deg)' : 'none',
+          transition: 'transform 150ms',
+        }} />
+      </div>
+    </div>
+  )
+}
+
 // ── Sidebar ────────────────────────────────────────────────────────────────
 
 function Sidebar({
@@ -163,17 +242,7 @@ function Sidebar({
       <div style={{ flex: 1 }} />
 
       {/* Profile footer */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 10, padding: '10px',
-        borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)',
-      }}>
-        <UserButton />
-        <div style={{ flex: 1, lineHeight: 1.2 }}>
-          <div style={{ font: '600 12px var(--font-sans)' }}>My Account</div>
-          <div style={{ font: '500 11px var(--font-mono)', color: 'var(--fg-3)' }}>TokenBuzz Pro</div>
-        </div>
-        <Icon name="settings" size={14} style={{ color: 'var(--fg-3)', cursor: 'pointer' }} />
-      </div>
+      <ProfileFooter />
     </aside>
   )
 }
