@@ -1,12 +1,13 @@
 import type { Handler } from "aws-lambda";
-import { getTrackedTokens } from "@monorepo-template/core/db/tokens";
+import { listTrackedTokens } from "@monorepo-template/core/db/tokens";
 import { searchTweets } from "./lib/twitter.js";
-import { putTweet, type Tweet } from "@monorepo-template/core/db/tweets";
+import { putTweet } from "@monorepo-template/core/db/tweets";
 
 export const handler: Handler = async () => {
   let tokens: string[];
   try {
-    tokens = await getTrackedTokens();
+    const trackedTokens = await listTrackedTokens();
+    tokens = trackedTokens.map((t) => t.sym);
   } catch {
     tokens = ["$PEPE", "$SOL", "$MOG", "$WIF", "$BONK"];
   }
@@ -28,6 +29,7 @@ export const handler: Handler = async () => {
           authorId: tweet.author.id,
           authorName: tweet.author.name,
           authorFollowers: tweet.author.followers,
+          authorProfilePicture: tweet.author.profilePicture,
           createdAt: tweet.createdAt,
           likeCount: tweet.likeCount ?? 0,
           retweetCount: tweet.retweetCount ?? 0,

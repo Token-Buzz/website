@@ -1,6 +1,6 @@
 import type { Handler } from "aws-lambda";
 import {
-  getTrackedTokens,
+  listTrackedTokens,
   writeSpike,
 } from "@monorepo-template/core/db/tokens";
 import { getPulse } from "@monorepo-template/core/db/aggregates";
@@ -8,7 +8,8 @@ import { getPulse } from "@monorepo-template/core/db/aggregates";
 export const handler: Handler = async () => {
   let tokens: string[];
   try {
-    tokens = await getTrackedTokens();
+    const trackedTokens = await listTrackedTokens();
+    tokens = trackedTokens.map((t) => t.sym);
   } catch {
     tokens = ["$PEPE", "$SOL", "$MOG", "$WIF", "$BONK", "$DOGE"];
   }
@@ -19,12 +20,12 @@ export const handler: Handler = async () => {
   for (const symbol of tokens) {
     try {
       // Get last 10 minutes of pulse data
-      const pulse = await getPulse(symbol, 10);
+      const pulse = await getPulse("1H");
       if (pulse.length < 2) continue;
 
       // Current window: most recent 5 min; prior window: prior 5 min
-      const current = pulse.slice(0, 5).reduce((s, p) => s + p.count, 0);
-      const prior = pulse.slice(5, 10).reduce((s, p) => s + p.count, 0);
+      const current = pulse.slice(0, 5).reduce((s: any, p: any) => s + (p.count || 0), 0);
+      const prior = pulse.slice(5, 10).reduce((s: any, p: any) => s + (p.count || 0), 0);
 
       const deltaScore =
         prior > 0

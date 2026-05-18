@@ -77,7 +77,7 @@ export async function searchTweets(
       throw new Error(`Twitter API error: ${response.status} ${response.statusText}`);
     }
 
-    const data: SearchResponse = await response.json();
+    const data = (await response.json()) as SearchResponse;
     allTweets.push(...data.tweets);
     pageCount++;
 
@@ -108,7 +108,7 @@ export async function lookupUser(username: string): Promise<TwitterAuthor | null
       return null;
     }
 
-    const user: TwitterAuthor = await response.json();
+    const user = (await response.json()) as TwitterAuthor;
     return user;
   } catch {
     return null;

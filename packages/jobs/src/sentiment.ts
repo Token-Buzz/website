@@ -18,10 +18,11 @@ export const handler: DynamoDBStreamHandler = async (event) => {
 
     try {
       const result = await classifySentiment(text, query);
-      await updateTweetSentiment(tweetId, query, result.sentiment, result.score);
+      const sentiment = result.sentiment === "neutral" ? "neu" : result.sentiment;
+      await updateTweetSentiment(tweetId, query, sentiment, result.score);
 
       const hourBucket = new Date(createdAt).toISOString().slice(0, 13);
-      await incrementHourlySentiment(query, hourBucket, result.sentiment, result.score);
+      await incrementHourlySentiment(query, hourBucket, sentiment, result.score);
     } catch (err) {
       console.error("Sentiment error for tweet", tweetId, err);
     }

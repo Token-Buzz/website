@@ -12,7 +12,7 @@ const BEDROCK_HAIKU_ARN = [
 // 1. Tweet ingestion poller — every 2 minutes
 new sst.aws.Cron("TweetPoller", {
   schedule: "rate(2 minutes)",
-  job: {
+  function: {
     handler: "packages/jobs/src/poller.handler",
     environment: { TWITTER_API_KEY: twitterApiKey.value },
     link: allTables,
@@ -22,32 +22,38 @@ new sst.aws.Cron("TweetPoller", {
 });
 
 // 2. DDB Streams aggregator — INSERT fan-out to Aggregates table
-tweetsTable.subscribe("Aggregator", {
-  handler: "packages/jobs/src/aggregator.handler",
-  link: [aggregatesTable],
-  filters: [{ eventName: ["INSERT"] }],
-  timeout: "60 seconds",
-});
+tweetsTable.subscribe(
+  "Aggregator",
+  {
+    handler: "packages/jobs/src/aggregator.handler",
+    link: [aggregatesTable],
+    timeout: "60 seconds",
+  },
+  { filters: [{ eventName: ["INSERT"] }] },
+);
 
 // 3. Sentiment dispatcher — separate stream consumer; Bedrock IAM scoped only here
-tweetsTable.subscribe("SentimentDispatcher", {
-  handler: "packages/jobs/src/sentiment.handler",
-  link: [tweetsTable, aggregatesTable],
-  filters: [{ eventName: ["INSERT"] }],
-  timeout: "120 seconds",
-  memory: "512 MB",
-  permissions: [
-    {
-      actions: ["bedrock:InvokeModel"],
-      resources: BEDROCK_HAIKU_ARN,
-    },
-  ],
-});
+tweetsTable.subscribe(
+  "SentimentDispatcher",
+  {
+    handler: "packages/jobs/src/sentiment.handler",
+    link: [tweetsTable, aggregatesTable],
+    timeout: "120 seconds",
+    memory: "512 MB",
+    permissions: [
+      {
+        actions: ["bedrock:InvokeModel"],
+        resources: BEDROCK_HAIKU_ARN,
+      },
+    ],
+  },
+  { filters: [{ eventName: ["INSERT"] }] },
+);
 
 // 4. Follower snapshot — daily at 02:00 UTC
 new sst.aws.Cron("FollowerSnapshot", {
   schedule: "cron(0 2 * * ? *)",
-  job: {
+  function: {
     handler: "packages/jobs/src/follower-snapshot.handler",
     environment: { TWITTER_API_KEY: twitterApiKey.value },
     link: allTables,
@@ -59,7 +65,7 @@ new sst.aws.Cron("FollowerSnapshot", {
 // 5. Engagement refresh — hourly
 new sst.aws.Cron("EngagementSnapshot", {
   schedule: "rate(1 hour)",
-  job: {
+  function: {
     handler: "packages/jobs/src/engagement-snapshot.handler",
     environment: { TWITTER_API_KEY: twitterApiKey.value },
     link: allTables,
@@ -71,7 +77,7 @@ new sst.aws.Cron("EngagementSnapshot", {
 // 6. Spike materializer — every 5 minutes
 new sst.aws.Cron("SpikeMaterializer", {
   schedule: "rate(5 minutes)",
-  job: {
+  function: {
     handler: "packages/jobs/src/spike-materializer.handler",
     link: [aggregatesTable, tokensTable],
     timeout: "60 seconds",
@@ -82,7 +88,7 @@ new sst.aws.Cron("SpikeMaterializer", {
 // 7. Daily rollup — 00:15 UTC
 new sst.aws.Cron("DailyRollup", {
   schedule: "cron(15 0 * * ? *)",
-  job: {
+  function: {
     handler: "packages/jobs/src/daily-rollup.handler",
     link: [aggregatesTable, tokensTable],
     timeout: "300 seconds",

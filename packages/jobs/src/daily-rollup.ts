@@ -1,14 +1,15 @@
 import type { Handler } from "aws-lambda";
-import { getTrackedTokens } from "@monorepo-template/core/db/tokens";
+import { listTrackedTokens } from "@monorepo-template/core/db/tokens";
 import {
-  getHourlySentiment,
+  getSentiment,
   writeDailyRollup,
 } from "@monorepo-template/core/db/aggregates";
 
 export const handler: Handler = async () => {
   let tokens: string[];
   try {
-    tokens = await getTrackedTokens();
+    const trackedTokens = await listTrackedTokens();
+    tokens = trackedTokens.map((t) => t.sym);
   } catch {
     tokens = ["$PEPE", "$SOL", "$MOG", "$WIF", "$BONK", "$DOGE"];
   }
@@ -19,37 +20,38 @@ export const handler: Handler = async () => {
 
   for (const symbol of tokens) {
     try {
-      const hourly = await getHourlySentiment(symbol, 48);
+      const hourly = await getSentiment(symbol, "24H");
       // Filter to yesterday's rows only
       const yesterdayRows = hourly.filter((h) =>
-        h.bucket.startsWith(dayBucket)
+        h.bucket?.startsWith(dayBucket)
       );
       if (yesterdayRows.length === 0) continue;
 
-      const totals = yesterdayRows.reduce(
-        (acc, h) => ({
-          bullCount: acc.bullCount + h.bullCount,
-          neutralCount: acc.neutralCount + h.neutralCount,
-          bearCount: acc.bearCount + h.bearCount,
-          totalScore: acc.totalScore + h.totalScore,
-          tweetCount: acc.tweetCount + h.tweetCount,
-        }),
-        {
-          bullCount: 0,
-          neutralCount: 0,
-          bearCount: 0,
-          totalScore: 0,
-          tweetCount: 0,
-        }
-      );
+      let bullCount = 0;
+      let neutralCount = 0;
+      let bearCount = 0;
+      let totalScore = 0;
+      let tweetCount = 0;
+
+      for (const h of yesterdayRows) {
+        bullCount += h.bull ?? 0;
+        neutralCount += h.neu ?? 0;
+        bearCount += h.bear ?? 0;
+        totalScore += h.score ?? 0;
+        tweetCount += h.count ?? 0;
+      }
 
       const avgScore =
-        totals.tweetCount > 0
-          ? Math.round(totals.totalScore / totals.tweetCount)
+        tweetCount > 0
+          ? Math.round(totalScore / tweetCount)
           : 0;
 
       await writeDailyRollup(symbol, dayBucket, {
-        ...totals,
+        bullCount,
+        neutralCount,
+        bearCount,
+        totalScore,
+        tweetCount,
         avgScore,
         hourlyCount: yesterdayRows.length,
       });

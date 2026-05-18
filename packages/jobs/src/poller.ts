@@ -5,15 +5,15 @@ import {
   getLatestTweetId,
   type Tweet,
 } from "@monorepo-template/core/db/tweets";
-import { getTrackedTokens } from "@monorepo-template/core/db/tokens";
-import { getAllTrackedQueries } from "@monorepo-template/core/db/user-data";
+import { listTrackedTokens } from "@monorepo-template/core/db/tokens";
 
 export const handler: Handler = async () => {
   // Get all queries to poll. Start with tracked tokens as queries.
   // Fall back to a default list if none configured.
   let queries: string[];
   try {
-    queries = await getTrackedTokens();
+    const trackedTokens = await listTrackedTokens();
+    queries = trackedTokens.map((t) => t.sym);
   } catch {
     queries = [];
   }
