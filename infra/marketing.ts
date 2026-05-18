@@ -9,9 +9,16 @@ import {
 } from "./secrets";
 
 const isProd = $app.stage === "production";
+const isPR = $app.stage.startsWith("pr-");
 
 export const web = new sst.aws.Nextjs("Marketing", {
     path: "packages/marketing",
+    domain: isPR
+        ? {
+              name: $interpolate`${$app.stage}.${webDomain.value}`,
+              dns: sst.cloudflare.dns({ proxy: false }),
+          }
+        : undefined,
     router: isProd
         ? {
               instance: router,
