@@ -15,6 +15,7 @@
     "@aws-sdk/client-dynamodb": "^3",
     "@aws-sdk/lib-dynamodb": "^3",
     "@clerk/nextjs": "latest",
+    "@monorepo-template/core": "*",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest"

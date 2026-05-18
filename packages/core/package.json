@@ -23,6 +23,9 @@
     "sst": "*"
   },
   "devDependencies": {
+    "@tsconfig/node22": "^22",
+    "@types/node": "^22",
+    "typescript": "^5",
     "vitest": "^2"
   }
 }

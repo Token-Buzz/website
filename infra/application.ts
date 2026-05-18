@@ -1,5 +1,6 @@
 import { router } from "./router";
 import { webDomain, clerkPublishableKey, clerkSecretKey } from "./secrets";
+import { tweetsTable, aggregatesTable, tokensTable, userDataTable } from "./db";
 
 const isProd = $app.stage === "production";
 const isPR = $app.stage.startsWith("pr-");

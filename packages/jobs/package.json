@@ -1,0 +1,22 @@
+{
+  "name": "@website/jobs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3",
+    "@aws-sdk/client-dynamodb": "^3",
+    "@aws-sdk/lib-dynamodb": "^3",
+    "@monorepo-template/core": "*",
+    "sst": "*"
+  },
+  "devDependencies": {
+    "@tsconfig/node22": "^22",
+    "@types/aws-lambda": "^8",
+    "@types/node": "^22",
+    "typescript": "^5"
+  }
+}
