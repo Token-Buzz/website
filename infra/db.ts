@@ -1,50 +1,56 @@
-// DynamoDB table definitions for TokenBuzz Phase 2.
-// Key design:
-//   Tweets    — PK=QUERY#<query>  SK=TWEET#<tweetId>  GSI1: by tweet ID; stream for aggregator + sentiment
-//   Aggregates — PK=QUERY#<query>  SK=AGG#<type>#<bucket>
-//   Tokens    — PK=TOKEN#<symbol> SK=<type>#<ts>      GSI1: spike leaderboard
-//   UserData  — PK=USER#<userId>  SK=<type>#<id>
-
 export const tweetsTable = new sst.aws.Dynamo("Tweets", {
   fields: {
-    pk:     "string",  // QUERY#<query>
-    sk:     "string",  // TWEET#<tweetId>
-    gsi1pk: "string",  // TWEET#<tweetId>  (reverse lookup)
-    gsi1sk: "string",  // <createdAt ISO>
+    pk:     "string",
+    sk:     "string",
+    gsi1pk: "string",
+    gsi1sk: "string",
+    gsi2pk: "string",
+    gsi2sk: "string",
+    gsi3pk: "string",
+    gsi3sk: "string",
   },
   primaryIndex: { hashKey: "pk", rangeKey: "sk" },
   globalIndexes: {
-    gsi1: { hashKey: "gsi1pk", rangeKey: "gsi1sk" },
+    QueryByQueryTime: { hashKey: "gsi1pk", rangeKey: "gsi1sk" },
+    QueryByAuthor:    { hashKey: "gsi2pk", rangeKey: "gsi2sk" },
+    ByConversation:   { hashKey: "gsi3pk", rangeKey: "gsi3sk" },
   },
-  stream: "new-image",
-  ttl: "ttl",
+  stream: "new-and-old-images",
 });
 
 export const aggregatesTable = new sst.aws.Dynamo("Aggregates", {
   fields: {
-    pk: "string",  // QUERY#<query>
-    sk: "string",  // AGG#<type>#<bucket>  e.g. AGG#PULSE#2025-05-16T09:14
+    pk:     "string",
+    sk:     "string",
+    gsi1pk: "string",
+    gsi1sk: "string",
   },
   primaryIndex: { hashKey: "pk", rangeKey: "sk" },
+  globalIndexes: {
+    TopK: { hashKey: "gsi1pk", rangeKey: "gsi1sk" },
+  },
 });
 
 export const tokensTable = new sst.aws.Dynamo("Tokens", {
   fields: {
-    pk:     "string",  // TOKEN#<symbol>
-    sk:     "string",  // META | SPIKE#<ts> | FOLLOWER#<ts> | ENGAGEMENT#<tweetId>#<ts>
-    gsi1pk: "string",  // SPIKE (constant) — all spikes in one partition for leaderboard
-    gsi1sk: "string",  // <deltaScore>#TOKEN#<symbol> — sortable spike rank
+    pk:     "string",
+    sk:     "string",
+    gsi1pk: "string",
+    gsi1sk: "string",
+    gsi2pk: "string",
+    gsi2sk: "string",
   },
   primaryIndex: { hashKey: "pk", rangeKey: "sk" },
   globalIndexes: {
-    gsi1: { hashKey: "gsi1pk", rangeKey: "gsi1sk" },
+    SpikingByDelta:      { hashKey: "gsi1pk", rangeKey: "gsi1sk" },
+    WatchlistByMentions: { hashKey: "gsi2pk", rangeKey: "gsi2sk" },
   },
 });
 
 export const userDataTable = new sst.aws.Dynamo("UserData", {
   fields: {
-    pk: "string",  // USER#<userId>
-    sk: "string",  // SETTINGS | WATCHLIST#<id> | ALERT#<ts>#<id>
+    pk: "string",
+    sk: "string",
   },
   primaryIndex: { hashKey: "pk", rangeKey: "sk" },
 });

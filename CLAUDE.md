@@ -10,7 +10,7 @@ npm workspaces monorepo under `packages/*`, deployed with **SST v3** on AWS.
 - `packages/application` — authed Next.js app (`@website/application`). Dev on port **3002**. Uses Clerk.
 - `packages/core` — shared library (`@monorepo-template/core`). DynamoDB client + key builders for the single-table design. Consumed by `application` via `sst.Resource` bindings — never imported by `marketing`.
 - `packages/scripts` — one-off SST-shell scripts (`sst shell tsx`).
-- `infra/` — SST resource definitions, loaded in order by `sst.config.ts`: `secrets → router → marketing → application → clerk`.
+- `infra/` — SST resource definitions, loaded in order by `sst.config.ts`: `secrets → router → marketing → application → clerk → jobs`. Table definitions live in `infra/db.ts` and are shared by `application` and `jobs`.
 - `scripts/` — repo-level Node/tsx utilities for managing SST secrets and GitLab CI variables.
 
 ## Common commands
@@ -40,7 +40,7 @@ There is no root-level test command; only `packages/core` has tests.
 
 `infra/router.ts` creates a single `sst.aws.Router` with the apex domain. `infra/marketing.ts` attaches the marketing Next.js at the apex; `infra/application.ts` attaches the application Next.js at `app.{WEB_DOMAIN}`. Don't add a second Router — both production apps share this one.
 
-PR stages (`pr-<N>`): the application gets its own CloudFront distribution at `pr-<N>.{WEB_DOMAIN}` (e.g. `pr-5.staging.tokenbuzz.app`) with a **DNS-only (grey cloud) Cloudflare record** so ACM issues the cert directly — Cloudflare's free Universal SSL doesn't cover second-level wildcards. Marketing on PR stages uses an auto-generated CloudFront URL (no Clerk, no domain needed).
+PR stages (`pr-<N>`): both the application and marketing get their own CloudFront distributions at `pr-<N>.{WEB_DOMAIN}` (e.g. `pr-5.staging.tokenbuzz.app`) with **DNS-only (grey cloud) Cloudflare records** so ACM issues the cert directly — Cloudflare's free Universal SSL doesn't cover second-level wildcards.
 
 ### Stages
 
@@ -50,7 +50,7 @@ PR stages (`pr-<N>`): the application gets its own CloudFront distribution at `p
 
 ### Persistence — DynamoDB single-table design
 
-Four tables defined in `infra/application.ts`: `Tweets`, `Aggregates`, `Tokens`, `UserData`. The application binds to all four via `link:`. Access them only through `packages/core/src/db`:
+Four tables defined in `infra/db.ts`: `Tweets`, `Aggregates`, `Tokens`, `UserData`. Both the application (`infra/application.ts`) and background jobs (`infra/jobs.ts`) import and link these tables. Access them only through `packages/core/src/db`:
 
 - `client.ts` — exports the `ddb` DocumentClient and `TableNames` map (reads `Resource.X.name`).
 - `keys.ts` — canonical PK/SK/GSI builders. Add new access patterns here rather than constructing keys inline so the table+GSI shape stays consistent.
