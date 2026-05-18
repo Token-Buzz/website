@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 450" width="980" height="450">
+  <defs>
+    <marker id="a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0,8 3,0 6" fill="#475569"/>
+    </marker>
+    <marker id="b" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0,8 3,0 6" fill="#6366f1"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="980" height="450" fill="#0f172a" rx="12"/>
+
+  <!-- Title -->
+  <text x="490" y="42" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="12" letter-spacing="4">SST DEPLOYMENT WORKFLOW LOOP</text>
+
+  <!-- ═══════════════ TOP ROW (y=60, h=72, cy=96) ═══════════════ -->
+
+  <!-- Step 1: Sync Master -->
+  <rect x="35" y="60" width="150" height="72" rx="7" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="110" y="79"  text-anchor="middle" fill="#475569" font-family="monospace" font-size="9">STEP 1</text>
+  <text x="110" y="95"  text-anchor="middle" fill="#f1f5f9" font-family="Arial,sans-serif" font-size="13" font-weight="bold">Sync Master</text>
+  <text x="110" y="111" text-anchor="middle" fill="#475569" font-family="monospace" font-size="9">git pull origin master</text>
+  <text x="110" y="124" text-anchor="middle" fill="#334155" font-family="monospace" font-size="9">ensure clean state</text>
+
+  <!-- Step 2: Create Branch -->
+  <rect x="225" y="60" width="150" height="72" rx="7" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="300" y="79"  text-anchor="middle" fill="#475569" font-family="monospace" font-size="9">STEP 2</text>
+  <text x="300" y="95"  text-anchor="middle" fill="#f1f5f9" font-family="Arial,sans-serif" font-size="13" font-weight="bold">Create Branch</text>
+  <text x="300" y="111" text-anchor="middle" fill="#475569" font-family="monospace" font-size="9">git checkout -b feat/x</text>
+  <text x="300" y="124" text-anchor="middle" fill="#334155" font-family="monospace" font-size="9">from clean master</text>
+
+  <!-- Step 3: Develop & Commit -->
+  <rect x="415" y="60" width="150" height="72" rx="7" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="490" y="79"  text-anchor="middle" fill="#475569" font-family="monospace" font-size="9">STEP 3</text>
+  <text x="490" y="95"  text-anchor="middle" fill="#f1f5f9" font-family="Arial,sans-serif" font-size="13" font-weight="bold">Develop &amp; Commit</text>
+  <text x="490" y="111" text-anchor="middle" fill="#475569" font-family="monospace" font-size="9">git add · git commit</text>
+  <text x="490" y="124" text-anchor="middle" fill="#334155" font-family="monospace" font-size="9">repeat as needed</text>
+
+  <!-- Step 4: Push Branch -->
+  <rect x="605" y="60" width="150" height="72" rx="7" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="680" y="79"  text-anchor="middle" fill="#475569" font-family="monospace" font-size="9">STEP 4</text>
+  <text x="680" y="95"  text-anchor="middle" fill="#f1f5f9" font-family="Arial,sans-serif" font-size="13" font-weight="bold">Push Branch</text>
+  <text x="680" y="111" text-anchor="middle" fill="#475569" font-family="monospace" font-size="9">git push -u origin</text>
+  <text x="680" y="124" text-anchor="middle" fill="#334155" font-family="monospace" font-size="9">to remote</text>
+
+  <!-- Step 5: Open PR -->
+  <rect x="795" y="60" width="150" height="72" rx="7" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="870" y="79"  text-anchor="middle" fill="#475569" font-family="monospace" font-size="9">STEP 5</text>
+  <text x="870" y="95"  text-anchor="middle" fill="#f1f5f9" font-family="Arial,sans-serif" font-size="13" font-weight="bold">Open PR</text>
+  <text x="870" y="111" text-anchor="middle" fill="#475569" font-family="monospace" font-size="9">GitHub → New PR</text>
+  <text x="870" y="124" text-anchor="middle" fill="#334155" font-family="monospace" font-size="9">base: master</text>
+
+  <!-- ═══════════════ BOTTOM ROW (y=308, h=72, cy=344) ═══════════════ -->
+
+  <!-- Step 6: PR Deploys — SST AUTO -->
+  <rect x="795" y="308" width="150" height="72" rx="7" fill="#1e1b4b" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="870" y="327" text-anchor="middle" fill="#818cf8" font-family="monospace" font-size="9">STEP 6 · SST AUTO</text>
+  <text x="870" y="343" text-anchor="middle" fill="#f1f5f9" font-family="Arial,sans-serif" font-size="13" font-weight="bold">PR Deploys</text>
+  <text x="870" y="359" text-anchor="middle" fill="#818cf8" font-family="monospace" font-size="9">pr-N.runtimedesigns.com</text>
+  <text x="870" y="372" text-anchor="middle" fill="#4338ca" font-family="monospace" font-size="9">triggered by PR open</text>
+
+  <!-- Step 7: Test Preview -->
+  <rect x="605" y="308" width="150" height="72" rx="7" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="680" y="327" text-anchor="middle" fill="#475569" font-family="monospace" font-size="9">STEP 7</text>
+  <text x="680" y="343" text-anchor="middle" fill="#f1f5f9" font-family="Arial,sans-serif" font-size="13" font-weight="bold">Test Preview</text>
+  <text x="680" y="359" text-anchor="middle" fill="#475569" font-family="monospace" font-size="9">visit PR URL in browser</text>
+  <text x="680" y="372" text-anchor="middle" fill="#334155" font-family="monospace" font-size="9">pr-N.runtimedesigns.com</text>
+
+  <!-- Step 8: Merge PR -->
+  <rect x="415" y="308" width="150" height="72" rx="7" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="490" y="327" text-anchor="middle" fill="#475569" font-family="monospace" font-size="9">STEP 8</text>
+  <text x="490" y="343" text-anchor="middle" fill="#f1f5f9" font-family="Arial,sans-serif" font-size="13" font-weight="bold">Merge PR</text>
+  <text x="490" y="359" text-anchor="middle" fill="#475569" font-family="monospace" font-size="9">GitHub → merge to master</text>
+  <text x="490" y="372" text-anchor="middle" fill="#334155" font-family="monospace" font-size="9">when satisfied</text>
+
+  <!-- Step 9: Production Live — SST AUTO -->
+  <rect x="225" y="308" width="150" height="72" rx="7" fill="#1e1b4b" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="300" y="327" text-anchor="middle" fill="#818cf8" font-family="monospace" font-size="9">STEP 9 · SST AUTO</text>
+  <text x="300" y="343" text-anchor="middle" fill="#f1f5f9" font-family="Arial,sans-serif" font-size="13" font-weight="bold">Production Live</text>
+  <text x="300" y="359" text-anchor="middle" fill="#818cf8" font-family="monospace" font-size="9">runtimedesigns.com</text>
+  <text x="300" y="372" text-anchor="middle" fill="#4338ca" font-family="monospace" font-size="9">PR env destroyed</text>
+
+  <!-- Step 10: Pull & Clean Up -->
+  <rect x="35" y="308" width="150" height="72" rx="7" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="110" y="327" text-anchor="middle" fill="#475569" font-family="monospace" font-size="9">STEP 10</text>
+  <text x="110" y="343" text-anchor="middle" fill="#f1f5f9" font-family="Arial,sans-serif" font-size="13" font-weight="bold">Pull &amp; Clean Up</text>
+  <text x="110" y="359" text-anchor="middle" fill="#475569" font-family="monospace" font-size="9">git pull origin master</text>
+  <text x="110" y="372" text-anchor="middle" fill="#334155" font-family="monospace" font-size="9">git branch -d feat/x</text>
+
+  <!-- ═══════════════ ARROWS ═══════════════ -->
+
+  <!-- Top row horizontal arrows (right, y=96) -->
+  <line x1="187" y1="96" x2="223" y2="96" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="377" y1="96" x2="413" y2="96" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="567" y1="96" x2="603" y2="96" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="757" y1="96" x2="793" y2="96" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Right connector: B5 bottom → B6 top (SST auto, dashed purple) -->
+  <line x1="870" y1="134" x2="870" y2="306" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#b)"/>
+
+  <!-- Bottom row horizontal arrows (left, y=344) -->
+  <line x1="793" y1="344" x2="757" y2="344" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="603" y1="344" x2="567" y2="344" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="413" y1="344" x2="377" y2="344" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="223" y1="344" x2="187" y2="344" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Left connector: B10 left → up → B1 left (loop back) -->
+  <path d="M 33,344 L 15,344 L 15,96 L 33,96" fill="none" stroke="#475569" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#a)"/>
+
+  <!-- Right connector label -->
+  <text x="878" y="224" fill="#6366f1" font-family="monospace" font-size="9" text-anchor="start">auto</text>
+
+  <!-- Left connector label -->
+  <text transform="translate(5,220) rotate(-90)" text-anchor="middle" fill="#334155" font-family="monospace" font-size="9">↺ loop</text>
+
+  <!-- ═══════════════ LEGEND ═══════════════ -->
+  <rect x="35" y="408" width="12" height="12" rx="2" fill="#1e1b4b" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="53" y="419" fill="#818cf8" font-family="monospace" font-size="10">SST Auto Deploy</text>
+
+  <rect x="200" y="408" width="12" height="12" rx="2" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>
+  <text x="218" y="419" fill="#64748b" font-family="monospace" font-size="10">Manual / Git Step</text>
+
+  <line x1="390" y1="414" x2="416" y2="414" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#b)"/>
+  <text x="424" y="419" fill="#64748b" font-family="monospace" font-size="10">SST Triggered</text>
+
+  <line x1="565" y1="414" x2="591" y2="414" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="599" y="419" fill="#64748b" font-family="monospace" font-size="10">Manual Step</text>
+</svg>
