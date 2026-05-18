@@ -30,7 +30,8 @@
       "Skill(frontend-design)",
       "Read(//c/Users/jasonp/.claude/**)",
       "mcp__gitlab__search_repositories",
-      "mcp__gitlab__get_repository_tree"
+      "mcp__gitlab__get_repository_tree",
+      "Bash(Get-ChildItem -Path \"D:/Repositories/tokenbuzz/website/.claude/worktrees/phase2-jobs/packages/application/app/\\(authed\\)\" -Recurse -File)"
     ]
   }
 }
