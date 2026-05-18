@@ -11,7 +11,7 @@ export const app = new sst.aws.Nextjs("Application", {
     path: "packages/application",
     domain: isPR
         ? {
-              name: $interpolate`${$app.stage}.${webDomain.value}`,
+              name: $interpolate`app.${$app.stage}.${webDomain.value}`,
               dns: sst.cloudflare.dns({ proxy: false }),
           }
         : undefined,
