@@ -1,6 +1,6 @@
 import { tweetsTable, aggregatesTable, tokensTable, userDataTable } from "./db";
+import { twitterApiKey } from "./secrets"
 
-const twitterApiKey = new sst.Secret("TwitterApiKey");
 
 const allTables = [tweetsTable, aggregatesTable, tokensTable, userDataTable];
 

@@ -80,7 +80,9 @@ Secrets are declared in `infra/secrets.ts` as `sst.Secret` and seeded via the SS
 `CLOUDFLARE_API_TOKEN` is the exception: it is read as `process.env` in `app()` (before secrets load) and must be set as a Console **environment variable**, not a secret, in both environments.
 
 Secrets to configure in Console (same names for both environments, different values):
-`WEB_DOMAIN`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `RESEND_API_KEY`, `CONTACT_TO_ADDRESS`, `CONTACT_FROM_ADDRESS`
+`WEB_DOMAIN`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `RESEND_API_KEY`, `CONTACT_TO_ADDRESS`, `CONTACT_FROM_ADDRESS`, `TWITTER_API_KEY`
+
+All `sst.Secret` names must use `SCREAMING_SNAKE_CASE` (e.g. `TWITTER_API_KEY`, not `TwitterApiKey`). This keeps secret names consistent with environment variable conventions and makes it obvious when a name needs updating.
 
 ## CI/CD (SST Console Autodeploy)
 

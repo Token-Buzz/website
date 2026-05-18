@@ -38,6 +38,7 @@ export default $config({
         await $`n 22`;
         if (event.action === "removed") {
           await $`npx sst unlock`.nothrow();
+          await $`npx sst refresh`.nothrow();
           await $`npx sst remove`;
         } else {
           await $`npm ci`;
