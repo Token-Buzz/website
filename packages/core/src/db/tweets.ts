@@ -22,6 +22,18 @@ export interface Tweet {
   hashtags: string[]
   mentions: string[]
   urls: string[]
+  // ── Analytics extension fields (all optional; populated at ingest time) ────
+  conversationId?: string
+  inReplyToId?: string
+  authorCreatedAt?: string
+  authorBioUrls?: string[]
+  authorIsBlueVerified?: boolean
+  authorVerifiedType?: string
+  authorIsAutomated?: boolean
+  authorLocationRaw?: string
+  authorLocationNormalized?: { country?: string; lat?: number; lng?: number }
+  botScore?: number
+  keywords?: string[]
 }
 
 export interface TweetRecord {
@@ -43,6 +55,18 @@ export interface TweetRecord {
   gsi2sk?: string
   gsi3pk?: string
   gsi3sk?: string
+  // ── Analytics extension fields (all optional; populated at ingest time) ────
+  conversationId?: string
+  inReplyToId?: string
+  authorCreatedAt?: string
+  authorBioUrls?: string[]
+  authorIsBlueVerified?: boolean
+  authorVerifiedType?: string
+  authorIsAutomated?: boolean
+  authorLocationRaw?: string
+  authorLocationNormalized?: { country?: string; lat?: number; lng?: number }
+  botScore?: number
+  keywords?: string[]
 }
 
 export async function getTweet(id: string): Promise<TweetRecord | null> {
@@ -70,6 +94,53 @@ export async function getTweetsByQuery(
     items: Items as TweetRecord[],
     cursor: LastEvaluatedKey ? Buffer.from(JSON.stringify(LastEvaluatedKey)).toString('base64') : undefined,
   }
+}
+
+const WINDOW_MS: Record<'1H' | '4H' | '24H' | '7D', number> = {
+  '1H':  1 * 60 * 60 * 1000,
+  '4H':  4 * 60 * 60 * 1000,
+  '24H': 24 * 60 * 60 * 1000,
+  '7D':  7 * 24 * 60 * 60 * 1000,
+}
+
+// Time-windowed live scan for analytics endpoints that can't roll up cleanly.
+// Uses the QueryByQueryTime GSI with gsi1sk BETWEEN <from> AND <to>.
+// Returns up to `cap` items (default 2000) and a truncated flag.
+export async function getTweetsByQueryWindow(
+  query: string,
+  opts: { window: '1H' | '4H' | '24H' | '7D'; cap?: number },
+): Promise<{ items: TweetRecord[]; truncated: boolean }> {
+  const cap = opts.cap ?? 2000
+  const now = new Date()
+  const from = new Date(now.getTime() - WINDOW_MS[opts.window]).toISOString()
+  const to = now.toISOString()
+
+  const collected: TweetRecord[] = []
+  let lastKey: Record<string, unknown> | undefined
+
+  do {
+    const { Items = [], LastEvaluatedKey } = await ddb.send(new QueryCommand({
+      TableName: TableNames.tweets,
+      IndexName: 'QueryByQueryTime',
+      KeyConditionExpression: 'gsi1pk = :pk AND gsi1sk BETWEEN :from AND :to',
+      ExpressionAttributeValues: {
+        ':pk': `QUERY#${query}`,
+        ':from': from,
+        ':to': to,
+      },
+      ScanIndexForward: false,
+      Limit: Math.min(cap - collected.length + 1, 100),
+      ExclusiveStartKey: lastKey,
+    }))
+    collected.push(...(Items as TweetRecord[]))
+    lastKey = LastEvaluatedKey as Record<string, unknown> | undefined
+
+    if (collected.length > cap) {
+      return { items: collected.slice(0, cap), truncated: true }
+    }
+  } while (lastKey)
+
+  return { items: collected, truncated: false }
 }
 
 export async function getTweetsByAuthor(
@@ -132,6 +203,18 @@ export async function putTweet(tweet: Tweet): Promise<void> {
       gsi1sk: timestamp,
       gsi2pk: `AUTHOR#${tweet.authorUsername}`,
       gsi2sk: timestamp,
+      // Analytics extension fields (undefined values are stripped by ddb marshaller)
+      conversationId: tweet.conversationId,
+      inReplyToId: tweet.inReplyToId,
+      authorCreatedAt: tweet.authorCreatedAt,
+      authorBioUrls: tweet.authorBioUrls,
+      authorIsBlueVerified: tweet.authorIsBlueVerified,
+      authorVerifiedType: tweet.authorVerifiedType,
+      authorIsAutomated: tweet.authorIsAutomated,
+      authorLocationRaw: tweet.authorLocationRaw,
+      authorLocationNormalized: tweet.authorLocationNormalized,
+      botScore: tweet.botScore,
+      keywords: tweet.keywords,
     },
   }))
 }
