@@ -71,6 +71,113 @@ export const alertKey = (userId: string, alertId: string) => ({
   sk: `ALERT#${alertId}`,
 })
 
+// ── Analytics aggregate key builders (13 new types + range helper) ──────────
+// Each builder returns the { pk, sk } key for one Aggregates row.
+// At-least-once delivery from DynamoDB Streams means counts may slightly
+// inflate on duplicate events; this is accepted in v1.
+
+export function hashtagAggKey(query: string, hourBucket: string, value: string) {
+  return {
+    pk: `AGG#HASHTAG#${query}`,
+    sk: `BUCKET#${hourBucket}#${value}`,
+  }
+}
+
+export function mentionAggKey(query: string, hourBucket: string, value: string) {
+  return {
+    pk: `AGG#MENTION#${query}`,
+    sk: `BUCKET#${hourBucket}#${value}`,
+  }
+}
+
+export function domainAggKey(query: string, hourBucket: string, value: string) {
+  return {
+    pk: `AGG#DOMAIN#${query}`,
+    sk: `BUCKET#${hourBucket}#${value}`,
+  }
+}
+
+export function bioDomainAggKey(query: string, hourBucket: string, value: string) {
+  return {
+    pk: `AGG#BIO_DOMAIN#${query}`,
+    sk: `BUCKET#${hourBucket}#${value}`,
+  }
+}
+
+export function langAggKey(query: string, hourBucket: string, value: string) {
+  return {
+    pk: `AGG#LANG#${query}`,
+    sk: `BUCKET#${hourBucket}#${value}`,
+  }
+}
+
+export function sourceAggKey(query: string, hourBucket: string, value: string) {
+  return {
+    pk: `AGG#SOURCE#${query}`,
+    sk: `BUCKET#${hourBucket}#${value}`,
+  }
+}
+
+export function verificationAggKey(query: string, hourBucket: string, value: string) {
+  return {
+    pk: `AGG#VERIFICATION#${query}`,
+    sk: `BUCKET#${hourBucket}#${value}`,
+  }
+}
+
+export function botAggKey(query: string, hourBucket: string, value: string) {
+  return {
+    pk: `AGG#BOT#${query}`,
+    sk: `BUCKET#${hourBucket}#${value}`,
+  }
+}
+
+export function heatmapAggKey(query: string, hourBucket: string, value: string) {
+  return {
+    pk: `AGG#HEATMAP#${query}`,
+    sk: `BUCKET#${hourBucket}#${value}`,
+  }
+}
+
+export function keywordAggKey(query: string, hourBucket: string, value: string) {
+  return {
+    pk: `AGG#KEYWORD#${query}`,
+    sk: `BUCKET#${hourBucket}#${value}`,
+  }
+}
+
+export function authorInfluenceAggKey(query: string, hourBucket: string, value: string) {
+  return {
+    pk: `AGG#AUTHOR_INFLUENCE#${query}`,
+    sk: `BUCKET#${hourBucket}#${value}`,
+  }
+}
+
+export function engagementAggKey(query: string, hourBucket: string) {
+  return {
+    pk: `AGG#ENGAGEMENT#${query}`,
+    sk: `BUCKET#${hourBucket}#engagement`,
+  }
+}
+
+export function sentimentByQueryAggKey(query: string, hourBucket: string, value: string) {
+  return {
+    pk: `AGG#SENTIMENT_BY_QUERY#${query}`,
+    sk: `BUCKET#${hourBucket}#${value}`,
+  }
+}
+
+/**
+ * Returns the pk and sk prefix for a range query on a given aggregate type.
+ * Used by Phase 4 route handlers to query all buckets in a time window.
+ */
+export function aggRangeKey(type: string, query: string) {
+  return {
+    pk: `AGG#${type}#${query}`,
+    skPrefix: 'BUCKET#',
+  }
+}
+
 // ── Time bucket helpers ─────────────────────────────────────────────────────
 
 export function hourBucket(ts: Date | string | number): string {
