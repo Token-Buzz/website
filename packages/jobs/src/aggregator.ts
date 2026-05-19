@@ -12,6 +12,7 @@ import {
   incrementHourlyMentions,
   incrementHourlyDomains,
 } from "@monorepo-template/core/db/aggregates";
+import { hourBucket as toHourBucket } from "@monorepo-template/core/db/keys";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -22,11 +23,6 @@ function extractDomain(url: string): string | null {
   } catch {
     return null;
   }
-}
-
-/** Formats an ISO hour bucket from a Date: "2026-05-17T14:00:00.000Z" */
-function toHourBucket(d: Date): string {
-  return d.toISOString().slice(0, 13) + ":00:00.000Z";
 }
 
 /** Returns the day-of-week abbreviation + zero-padded hour, e.g. "Mon-14" */
@@ -249,7 +245,7 @@ export const handler: DynamoDBStreamHandler = async (event) => {
 
     const ts = new Date(createdAt);
     const minuteBucket = ts.toISOString().slice(0, 16); // "2025-05-16T09:14"
-    const hourBucket = toHourBucket(ts);                // "2025-05-16T09:00:00.000Z"
+    const hourBucket = toHourBucket(ts);                // "2025-05-16T09:00:00Z"
 
     // ── Fields shared by multiple aggregate types ─────────────────────────
     const hashtags =
