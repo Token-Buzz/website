@@ -18,6 +18,7 @@ export type TwitterAuthor = {
   verifiedType?: string;
   mediaCount?: number;
   favouritesCount?: number;
+  location?: string;
 };
 
 export type RawTweet = {
@@ -32,6 +33,8 @@ export type RawTweet = {
   bookmarkCount: number;
   lang: string;
   isReply: boolean;
+  conversationId?: string;
+  inReplyToId?: string;
   author: TwitterAuthor;
   entities?: {
     hashtags?: Array<{ text: string }>;
