@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository layout
 
-npm workspaces monorepo under `packages/*`, deployed with **SST v3** on AWS.
+npm workspaces monorepo under `packages/*`, deployed with **SST v4** on AWS.
 
 - `packages/marketing` — public Next.js site (`@website/marketing`). Dev on port **3000**.
 - `packages/application` — authed Next.js app (`@website/application`). Dev on port **3002**. Uses Clerk.
@@ -103,3 +103,7 @@ Workflow: `n 22` (pin Node) → on remove: `sst unlock + sst remove`; otherwise:
 - New DynamoDB access patterns: add the key builder in `packages/core/src/db/keys.ts` first; never inline `pk`/`sk` strings in route handlers.
 - New infra resources: create a module under `infra/` and import it from `sst.config.ts` in the right order (secrets → router → apps that attach to it). New configuration values go in `infra/secrets.ts` as `sst.Secret` and get seeded via the Console.
 - Use `$app.stage === "production"` (the `isProd` pattern) to gate anything that should only run for the named stage — don't hardcode against ephemeral stage names.
+
+## Git Workflow
+
+- Provide a commit message to the user for any changes made to code.
