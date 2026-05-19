@@ -1,5 +1,5 @@
 import type { Handler } from "aws-lambda";
-import { searchTweets } from "./lib/twitter.js";
+import { searchTweets } from "@monorepo-template/core/lib/twitter";
 import {
   putTweet,
   getLatestTweetId,

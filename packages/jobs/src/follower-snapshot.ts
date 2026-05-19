@@ -1,6 +1,6 @@
 import type { Handler } from "aws-lambda";
 import { listTrackedTokens, writeFollowerSnapshot } from "@monorepo-template/core/db/tokens";
-import { lookupUser } from "./lib/twitter.js";
+import { lookupUser } from "@monorepo-template/core/lib/twitter";
 
 export const handler: Handler = async () => {
   const trackedTokens = await listTrackedTokens();
