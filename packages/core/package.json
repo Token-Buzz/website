@@ -7,8 +7,11 @@
   },
   "exports": {
     "./db/aggregates": "./src/db/aggregates.ts",
+    "./db/bot-heuristic": "./src/db/bot-heuristic.ts",
     "./db/client": "./src/db/client.ts",
+    "./db/geo": "./src/db/geo.ts",
     "./db/keys": "./src/db/keys.ts",
+    "./db/keywords": "./src/db/keywords.ts",
     "./db/tokens": "./src/db/tokens.ts",
     "./db/tweets": "./src/db/tweets.ts",
     "./db/users": "./src/db/users.ts",
@@ -20,6 +23,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3",
     "@aws-sdk/lib-dynamodb": "^3",
+    "node-rake": "^1.0.1",
     "sst": "*"
   },
   "devDependencies": {

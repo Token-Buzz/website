@@ -12,6 +12,12 @@ export type TwitterAuthor = {
   following: number;
   description?: string;
   statusesCount: number;
+  // Analytics extension fields: twitterapi.io may not always populate these
+  createdAt?: string;
+  isAutomated?: boolean;
+  verifiedType?: string;
+  mediaCount?: number;
+  favouritesCount?: number;
 };
 
 export type RawTweet = {

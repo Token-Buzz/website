@@ -54,3 +54,11 @@ export const userDataTable = new sst.aws.Dynamo("UserData", {
   },
   primaryIndex: { hashKey: "pk", rangeKey: "sk" },
 });
+
+export const authorLocationsTable = new sst.aws.Dynamo("AuthorLocations", {
+  fields: {
+    pk: "string",
+    sk: "string",
+  },
+  primaryIndex: { hashKey: "pk", rangeKey: "sk" },
+});

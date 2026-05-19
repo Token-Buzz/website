@@ -14,6 +14,10 @@ declare module "sst" {
       "type": "sst.aws.Nextjs"
       "url": string
     }
+    "AuthorLocations": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
     "CLERK_PUBLISHABLE_KEY": {
       "type": "sst.sst.Secret"
       "value": string
@@ -35,6 +39,10 @@ declare module "sst" {
       "url": string
     }
     "NEXT_PUBLIC_TURNSTILE_SITE_KEY": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "OPENCAGE_API_KEY": {
       "type": "sst.sst.Secret"
       "value": string
     }
