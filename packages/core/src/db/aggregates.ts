@@ -2,6 +2,112 @@ import { QueryCommand, UpdateCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from './client'
 import { bucketRange } from './keys'
 
+// ── Phase 3 read helpers ─────────────────────────────────────────────────────
+
+/**
+ * Top-K aggregate reader for counter-type rollups.
+ * Queries all BUCKET rows for a given type+query within [from, to] (ISO hour
+ * strings), merges counts by value across all hour buckets, and returns the
+ * top-k entries sorted descending by count.
+ *
+ * Covers: HASHTAG, MENTION, DOMAIN, BIO_DOMAIN, LANG, SOURCE, VERIFICATION,
+ *         BOT, HEATMAP, KEYWORD, AUTHOR_INFLUENCE, SENTIMENT_BY_QUERY
+ */
+export async function readAggregateTopK(opts: {
+  type:
+    | 'HASHTAG'
+    | 'MENTION'
+    | 'DOMAIN'
+    | 'BIO_DOMAIN'
+    | 'LANG'
+    | 'SOURCE'
+    | 'VERIFICATION'
+    | 'BOT'
+    | 'HEATMAP'
+    | 'KEYWORD'
+    | 'AUTHOR_INFLUENCE'
+    | 'SENTIMENT_BY_QUERY'
+  query: string
+  from: string // ISO hour, e.g. "2026-05-17T14:00:00.000Z"
+  to: string   // ISO hour, e.g. "2026-05-18T14:00:00.000Z"
+  k?: number   // default 10
+}): Promise<Array<{ value: string; count: number }>> {
+  const { type, query, from, to, k = 10 } = opts
+  const pk = `AGG#${type}#${query}`
+
+  const { Items = [] } = await ddb.send(new QueryCommand({
+    TableName: TableNames.aggregates,
+    KeyConditionExpression: 'pk = :pk AND sk BETWEEN :from AND :to',
+    ExpressionAttributeValues: {
+      ':pk': pk,
+      ':from': `BUCKET#${from}`,
+      ':to': `BUCKET#${to}~`,  // ~ sorts after any char in UTF-8, covers all values
+    },
+  }))
+
+  // Merge counts across hour buckets keyed by the value portion of sk
+  // sk format: BUCKET#<hour>#<value>
+  const totals = new Map<string, number>()
+  for (const item of Items as Array<{ sk: string; count?: number }>) {
+    const parts = item.sk.split('#')
+    // BUCKET # <hour> # <value> — value may itself contain #
+    if (parts.length < 3) continue
+    const value = parts.slice(2).join('#')
+    totals.set(value, (totals.get(value) ?? 0) + (item.count ?? 0))
+  }
+
+  return Array.from(totals.entries())
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, k)
+}
+
+/**
+ * Engagement time-series reader.
+ * Returns per-hour buckets of summed likes/retweets/replies/quotes, ordered
+ * ascending by bucket timestamp — suitable for charting over a time window.
+ *
+ * sk format: BUCKET#<hour>#engagement
+ */
+export async function readEngagementBuckets(opts: {
+  query: string
+  from: string // ISO hour
+  to: string   // ISO hour
+}): Promise<Array<{ bucket: string; likes: number; retweets: number; replies: number; quotes: number }>> {
+  const { query, from, to } = opts
+  const pk = `AGG#ENGAGEMENT#${query}`
+
+  const { Items = [] } = await ddb.send(new QueryCommand({
+    TableName: TableNames.aggregates,
+    KeyConditionExpression: 'pk = :pk AND sk BETWEEN :from AND :to',
+    ExpressionAttributeValues: {
+      ':pk': pk,
+      ':from': `BUCKET#${from}#engagement`,
+      ':to': `BUCKET#${to}#engagement`,
+    },
+    ScanIndexForward: true, // ascending by sk → ascending by time
+  }))
+
+  return (Items as Array<{
+    sk: string
+    likes?: number
+    retweets?: number
+    replies?: number
+    quotes?: number
+  }>).map((item) => {
+    const parts = item.sk.split('#')
+    // BUCKET # <hour> # engagement — hour is parts[1]
+    const bucket = parts[1] ?? ''
+    return {
+      bucket,
+      likes: item.likes ?? 0,
+      retweets: item.retweets ?? 0,
+      replies: item.replies ?? 0,
+      quotes: item.quotes ?? 0,
+    }
+  })
+}
+
 export interface AggregateRecord {
   pk: string
   sk: string
