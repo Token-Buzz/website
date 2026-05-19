@@ -23,6 +23,7 @@ const ICONS: Record<string, string[]> = {
   list:     ['M8 6h13', 'M8 12h13', 'M8 18h13', 'M3 6h.01', 'M3 12h.01', 'M3 18h.01'],
   activity: ['M3 12h4l3-9 4 18 3-9h4'],
   movers:   ['M2 16l4-8 4 4 4-6 4 6 4-8'],
+  logout:   ['M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4', 'M16 17l5-5-5-5', 'M21 12H9'],
 }
 
 interface IconProps {

@@ -50,6 +50,10 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
+    "TWITTER_API_KEY": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "Tokens": {
       "name": string
       "type": "sst.aws.Dynamo"

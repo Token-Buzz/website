@@ -38,6 +38,7 @@ export default $config({
         await $`n 22`;
         if (event.action === "removed") {
           await $`npx sst unlock`.nothrow();
+          await $`npx sst refresh`.nothrow();
           await $`npx sst remove`;
         } else {
           await $`npm ci`;
@@ -55,5 +56,6 @@ export default $config({
     await import("./infra/marketing");
     await import("./infra/application");
     await import("./infra/clerk");
+    await import("./infra/jobs");
   },
 });

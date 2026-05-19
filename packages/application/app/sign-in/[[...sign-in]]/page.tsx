@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useSignIn } from '@clerk/nextjs'
+import { useState, useEffect } from 'react'
+import { useSignIn, useAuth } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { AuthShell } from '../../_auth/AuthShell'
@@ -20,6 +20,7 @@ type OAuthStrategy = 'oauth_google' | 'oauth_github' | 'oauth_microsoft'
 
 export default function SignInPage() {
   const { signIn } = useSignIn()
+  const { isLoaded } = useAuth()
   const router = useRouter()
 
   const [email, setEmail] = useState('')
@@ -28,10 +29,21 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [clerkUnavailable, setClerkUnavailable] = useState(false)
+
+  useEffect(() => {
+    if (isLoaded) return
+    const timer = setTimeout(() => setClerkUnavailable(true), 10_000)
+    return () => clearTimeout(timer)
+  }, [isLoaded])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.trim() || !password || !signIn) return
+    if (!email.trim() || !password) return
+    if (!signIn) {
+      setError('Authentication service is unavailable. Please refresh and try again.')
+      return
+    }
     setLoading(true)
     setError(null)
 
@@ -72,7 +84,10 @@ export default function SignInPage() {
   }
 
   async function handleOAuth(strategy: OAuthStrategy) {
-    if (!signIn) return
+    if (!signIn) {
+      setError('Authentication service is unavailable. Please refresh and try again.')
+      return
+    }
     setError(null)
     const { error: ssoError } = await signIn.sso({
       strategy,
@@ -80,6 +95,28 @@ export default function SignInPage() {
       redirectCallbackUrl: SSO_CALLBACK_URL,
     })
     if (ssoError) setError(clerkErrorMessage(ssoError))
+  }
+
+  if (clerkUnavailable && !isLoaded) {
+    return (
+      <AuthShell>
+        <AuthCard>
+          <div className="tb-card-body">
+            <div className="tb-form">
+              <header className="tb-form-head">
+                <h1 className="tb-title">Service Unavailable</h1>
+                <p className="tb-subtitle">
+                  We&apos;re having trouble connecting to our authentication service. Please refresh the page or try again later.
+                </p>
+              </header>
+              <button className="tb-continue" type="button" onClick={() => window.location.reload()}>
+                Refresh page
+              </button>
+            </div>
+          </div>
+        </AuthCard>
+      </AuthShell>
+    )
   }
 
   return (

@@ -100,3 +100,34 @@ export async function upsertToken(token: Omit<TokenRecord, 'pk' | 'sk'>): Promis
     },
   }))
 }
+
+export async function writeSpike(data: {
+  symbol: string
+  deltaScore: number
+  currentMentions: number
+  priorMentions: number
+  computedAt: string
+}): Promise<void> {
+  const pk = `SPIKE#${data.symbol}`
+  const sk = `COMPUTED#${data.computedAt}`
+
+  await ddb.send(new PutCommand({
+    TableName: TableNames.tokens,
+    Item: {
+      pk,
+      sk,
+      symbol: data.symbol,
+      deltaScore: data.deltaScore,
+      currentMentions: data.currentMentions,
+      priorMentions: data.priorMentions,
+      computedAt: data.computedAt,
+    },
+  }))
+}
+
+export async function writeFollowerSnapshot(data: FollowerSnapshot): Promise<void> {
+  await ddb.send(new PutCommand({
+    TableName: TableNames.tokens,
+    Item: data,
+  }))
+}

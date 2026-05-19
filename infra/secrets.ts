@@ -6,3 +6,7 @@ export const turnstileSecret = new sst.Secret("TURNSTILE_SECRET");
 export const resendApiKey = new sst.Secret("RESEND_API_KEY");
 export const contactToAddress = new sst.Secret("CONTACT_TO_ADDRESS");
 export const contactFromAddress = new sst.Secret("CONTACT_FROM_ADDRESS");
+export const twitterApiKey = new sst.Secret("TWITTER_API_KEY");
+
+
+
