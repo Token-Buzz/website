@@ -20,8 +20,12 @@ type OAuthStrategy = 'oauth_google' | 'oauth_github' | 'oauth_microsoft'
 
 export default function SignInPage() {
   const { signIn } = useSignIn()
-  const { isLoaded } = useAuth()
+  const { isLoaded, isSignedIn } = useAuth()
   const router = useRouter()
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) router.replace(POST_AUTH_URL)
+  }, [isLoaded, isSignedIn, router])
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
