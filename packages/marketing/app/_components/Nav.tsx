@@ -48,10 +48,10 @@ export default function Nav() {
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <Button variant="link" size="md" style={{ padding: '10px 12px' }} href="https://app.tokenbuzz.app/sign-in">
+        <Button variant="link" size="md" style={{ padding: '10px 12px' }} href={`${process.env.NEXT_PUBLIC_APP_URL}/sign-in`}>
           Sign in
         </Button>
-        <Button variant="primary" size="md" iconRight="arrowR" href="https://app.tokenbuzz.app/sign-up">
+        <Button variant="primary" size="md" iconRight="arrowR" href={`${process.env.NEXT_PUBLIC_APP_URL}/sign-up`}>
           Get started
         </Button>
       </div>

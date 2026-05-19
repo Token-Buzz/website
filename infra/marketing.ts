@@ -26,6 +26,11 @@ export const web = new sst.aws.Nextjs("Marketing", {
           }
         : undefined,
     environment: {
+        NEXT_PUBLIC_APP_URL: isProd
+            ? $interpolate`https://app.${webDomain.value}`
+            : isPR
+            ? $interpolate`https://app.${$app.stage}.${webDomain.value}`
+            : "http://localhost:3002",
         NEXT_PUBLIC_TURNSTILE_SITE_KEY: turnstileSiteKey.value,
         NEXT_PUBLIC_MARKETING_DOMAIN: webDomain.value,
         TURNSTILE_SECRET: turnstileSecret.value,
