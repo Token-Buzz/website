@@ -43,16 +43,11 @@ export const metadata: Metadata = {
   description: 'Track real-time buzz, sentiment, and mentions across X for any token or keyword.',
 }
 
-const publishableKey =
-  process.env.NODE_ENV === 'production'
-    ? process.env.NEXT_PUBLIC_PROD_CLERK_PUBLISHABLE_KEY
-    : process.env.NEXT_PUBLIC_DEV_CLERK_PUBLISHABLE_KEY
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider
       appearance={clerkAppearance}
-      publishableKey={publishableKey}
+      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
       signInFallbackRedirectUrl="/dashboard"
