@@ -67,12 +67,13 @@ export async function searchTweets(
     const url = new URL(`${BASE_URL}/twitter/tweet/advanced_search`);
     url.searchParams.append("query", q);
     url.searchParams.append("queryType", queryType);
-    url.searchParams.append("apiKey", apiKey);
     if (cursor) {
       url.searchParams.append("cursor", cursor);
     }
 
-    const response = await fetch(url.toString());
+    const response = await fetch(url.toString(), {
+      headers: { "X-API-Key": apiKey },
+    });
     if (!response.ok) {
       throw new Error(`Twitter API error: ${response.status} ${response.statusText}`);
     }
@@ -100,10 +101,11 @@ export async function lookupUser(username: string): Promise<TwitterAuthor | null
 
   const url = new URL(`${BASE_URL}/twitter/user/info`);
   url.searchParams.append("username", username);
-  url.searchParams.append("apiKey", apiKey);
 
   try {
-    const response = await fetch(url.toString());
+    const response = await fetch(url.toString(), {
+      headers: { "X-API-Key": apiKey },
+    });
     if (!response.ok) {
       return null;
     }
