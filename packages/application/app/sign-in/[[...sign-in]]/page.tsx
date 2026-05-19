@@ -169,6 +169,8 @@ export default function SignInPage() {
               <Link href="/forgot-password">Forgot password?</Link>
             </p>
 
+            <div id="clerk-captcha" />
+
             <ContinueButton loading={loading} success={success} disabled={!email.trim() || !password} />
 
             <p className="tb-footer-link">
