@@ -1,5 +1,5 @@
 import { router } from "./router";
-import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey } from "./secrets";
+import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey, twitterApiKey } from "./secrets";
 import { tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable } from "./db";
 
 const isProd = $app.stage === "production";
@@ -29,6 +29,7 @@ export const app = new sst.aws.Nextjs("Application", {
         NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: "/dashboard",
         NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: "/dashboard",
         OPENCAGE_API_KEY: opencageApiKey.value,
+        TWITTER_API_KEY: twitterApiKey.value,
     },
     link: [tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable],
 });
