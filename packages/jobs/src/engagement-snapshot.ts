@@ -41,9 +41,9 @@ export const handler: Handler = async () => {
           isReply: tweet.isReply ?? false,
           hashtags: tweet.entities?.hashtags?.map((h) => h.text) ?? [],
           mentions:
-            tweet.entities?.userMentions?.map((m) => m.screenName) ?? [],
+            tweet.entities?.user_mentions?.map((m) => m.screen_name) ?? [],
           urls:
-            tweet.entities?.urls?.map((u) => u.expandedUrl).filter(Boolean) ??
+            tweet.entities?.urls?.map((u) => u.expanded_url).filter(Boolean) ??
             [],
         });
       }
