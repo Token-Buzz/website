@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, SectionHead, Eyebrow } from "../_dashboard/primitives";
 import { SearchBar } from "../_analytics/SearchBar";
@@ -108,6 +108,14 @@ function TweetResultsPlaceholder({ query }: { query: string }) {
 // ── Analytics page ─────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
+  return (
+    <Suspense fallback={null}>
+      <AnalyticsPageInner />
+    </Suspense>
+  );
+}
+
+function AnalyticsPageInner() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") ?? "";
 
