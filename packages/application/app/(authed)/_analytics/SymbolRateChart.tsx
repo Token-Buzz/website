@@ -42,7 +42,9 @@ export function SymbolRateChart({ query }: Props) {
     ? `/api/symbols/rate?query=${encodeURIComponent(query)}&timeframe=1d`
     : null;
 
-  const { data, loading, error } = useObjectPolling<ApiResponse>(url);
+  const { data, loading, error } = useObjectPolling<ApiResponse>(url, {
+    isPopulated: (d) => d.rate > 0 || d.sparkline.some((n) => n > 0),
+  });
 
   if (error)
     return (

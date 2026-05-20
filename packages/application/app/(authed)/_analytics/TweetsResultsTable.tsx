@@ -65,7 +65,9 @@ export function TweetsResultsTable({ query }: Props) {
     ? `/api/tweets?query=${encodeURIComponent(query)}&limit=20`
     : null;
 
-  const { data, loading, error } = useObjectPolling<ApiResponse>(url);
+  const { data, loading, error } = useObjectPolling<ApiResponse>(url, {
+    isPopulated: (d) => d.tweets.length > 0,
+  });
 
   if (error)
     return (

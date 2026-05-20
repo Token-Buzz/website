@@ -24,7 +24,9 @@ export function VerificationBreakdownChart({ query }: Props) {
     ? `/api/analytics/verification-breakdown?query=${encodeURIComponent(query)}&window=24H`
     : null;
 
-  const { data, loading, error } = useObjectPolling<ApiResponse>(url);
+  const { data, loading, error } = useObjectPolling<ApiResponse>(url, {
+    isPopulated: (d) => d.blue + d.business + d.government + d.unverified > 0,
+  });
 
   if (error)
     return (

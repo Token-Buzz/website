@@ -17,7 +17,9 @@ export function BotRatioChart({ query }: Props) {
     ? `/api/analytics/bot-ratio?query=${encodeURIComponent(query)}&window=24H`
     : null;
 
-  const { data, loading, error } = useObjectPolling<ApiResponse>(url);
+  const { data, loading, error } = useObjectPolling<ApiResponse>(url, {
+    isPopulated: (d) => d.automated + d.notAutomated > 0,
+  });
 
   if (error)
     return (

@@ -20,7 +20,9 @@ export function ConversationDepthChart({ query }: Props) {
     ? `/api/analytics/conversation-threads?query=${encodeURIComponent(query)}&window=24H`
     : null;
 
-  const { data, loading, error } = useObjectPolling<ApiResponse>(url);
+  const { data, loading, error } = useObjectPolling<ApiResponse>(url, {
+    isPopulated: (d) => d.threads.length > 0,
+  });
 
   if (error)
     return (

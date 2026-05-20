@@ -19,7 +19,9 @@ export function AuthorInfluenceScatterChart({ query }: Props) {
     ? `/api/analytics/author-influence?query=${encodeURIComponent(query)}&window=7D`
     : null;
 
-  const { data, loading, error } = useObjectPolling<ApiResponse>(url);
+  const { data, loading, error } = useObjectPolling<ApiResponse>(url, {
+    isPopulated: (d) => d.low + d.mid + d.high > 0,
+  });
 
   if (error)
     return (

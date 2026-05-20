@@ -11,7 +11,11 @@ const DEFAULT_SCHEDULE_MS = [1_000, 2_000, 4_000, 8_000, 8_000, 8_000];
 
 export function useObjectPolling<T extends object>(
   url: string | null,
-  opts?: { timeoutMs?: number; schedule?: number[] },
+  opts?: {
+    timeoutMs?: number;
+    schedule?: number[];
+    isPopulated?: (data: T) => boolean;
+  },
 ): { data: T | null; loading: boolean; error: string | null } {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,6 +33,7 @@ export function useObjectPolling<T extends object>(
     let cancelled = false;
     const timeoutMs = opts?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const schedule = opts?.schedule ?? DEFAULT_SCHEDULE_MS;
+    const isPopulated = opts?.isPopulated ?? (() => true);
     const deadline = Date.now() + timeoutMs;
 
     setLoading(true);
@@ -36,6 +41,7 @@ export function useObjectPolling<T extends object>(
     setData(null);
 
     let attemptIndex = 0;
+    let lastSeen: T | null = null;
 
     async function poll(): Promise<void> {
       if (cancelled) return;
@@ -54,9 +60,12 @@ export function useObjectPolling<T extends object>(
         if (cancelled) return;
 
         if (json && typeof json === "object" && !Array.isArray(json)) {
-          setData(json);
-          setLoading(false);
-          return;
+          lastSeen = json;
+          if (isPopulated(json)) {
+            setData(json);
+            setLoading(false);
+            return;
+          }
         }
       } catch {
         // swallow network errors; retry on schedule
@@ -65,6 +74,7 @@ export function useObjectPolling<T extends object>(
       if (cancelled) return;
 
       if (Date.now() >= deadline) {
+        if (lastSeen) setData(lastSeen);
         setLoading(false);
         return;
       }
@@ -79,6 +89,7 @@ export function useObjectPolling<T extends object>(
       if (Date.now() < deadline) {
         void poll();
       } else {
+        if (lastSeen) setData(lastSeen);
         setLoading(false);
       }
     }
