@@ -15,6 +15,7 @@ export function useAggregatePolling<T>(
 
   useEffect(() => {
     if (!url) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setItems([]);
       setLoading(false);
       setError(null);
