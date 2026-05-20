@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback } from "react";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, SectionHead, Eyebrow } from "../_dashboard/primitives";
 import { SearchBar } from "../_analytics/SearchBar";
@@ -10,12 +10,15 @@ import { DomainDistributionChart } from "../_analytics/DomainDistributionChart";
 import { BioDomainsChart } from "../_analytics/BioDomainsChart";
 import { LanguageDistributionChart } from "../_analytics/LanguageDistributionChart";
 import { SourceDistributionChart } from "../_analytics/SourceDistributionChart";
-import { AnalyzingIndicator } from "../_analytics/AnalyzingIndicator";
-
-// ── Sentiment polling config ───────────────────────────────────────────────
-
-const SENTIMENT_TIMEOUT_MS = 30_000;
-const BACKOFF_SCHEDULE_MS = [1_000, 2_000, 4_000, 8_000, 8_000, 8_000];
+import { TweetsResultsTable } from "../_analytics/TweetsResultsTable";
+import { SymbolRateChart } from "../_analytics/SymbolRateChart";
+import { EngagementTimeSeriesChart } from "../_analytics/EngagementTimeSeriesChart";
+import { SentimentTimelineChart } from "../_analytics/SentimentTimelineChart";
+import { ConversationDepthChart } from "../_analytics/ConversationDepthChart";
+import { VerificationBreakdownChart } from "../_analytics/VerificationBreakdownChart";
+import { BotRatioChart } from "../_analytics/BotRatioChart";
+import { KeywordWordCloudChart } from "../_analytics/KeywordWordCloudChart";
+import { AuthorInfluenceScatterChart } from "../_analytics/AuthorInfluenceScatterChart";
 
 // ── Coming-soon placeholder ────────────────────────────────────────────────
 
@@ -37,43 +40,18 @@ function ComingSoon() {
   );
 }
 
-// ── Grid chart card ────────────────────────────────────────────────────────
+// ── Grid chart card (coming-soon only) ────────────────────────────────────
 
 interface ChartCardProps {
   eyebrow: string;
   meta?: string;
-  sentimentPending?: boolean;
 }
 
-function ChartCard({ eyebrow, meta, sentimentPending }: ChartCardProps) {
+function ChartCard({ eyebrow, meta }: ChartCardProps) {
   return (
     <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
       <SectionHead eyebrow={eyebrow} meta={meta} />
-      {sentimentPending ? <AnalyzingIndicator label="Analyzing sentiment…" /> : <ComingSoon />}
-    </Card>
-  );
-}
-
-// ── Tweet results placeholder ──────────────────────────────────────────────
-
-function TweetResultsPlaceholder({ query }: { query: string }) {
-  if (!query) return null;
-  return (
-    <Card padding={20}>
-      <SectionHead eyebrow="Tweet results" meta={`query: ${query}`} />
-      <div
-        style={{
-          marginTop: 12,
-          padding: "20px",
-          textAlign: "center",
-          font: "500 11px var(--font-mono)",
-          color: "var(--fg-4)",
-          border: "1px dashed var(--border)",
-          borderRadius: 6,
-        }}
-      >
-        Tweet results table — Coming in v1.1
-      </div>
+      <ComingSoon />
     </Card>
   );
 }
@@ -91,63 +69,6 @@ export default function AnalyticsPage() {
 function AnalyticsPageInner() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") ?? "";
-
-  // Sentiment polling state
-  const [sentimentWaitUntil, setSentimentWaitUntil] = useState<number | null>(null);
-  const sentimentPending = sentimentWaitUntil !== null;
-
-  // Start sentiment polling after a successful ingest
-  const handleIngested = useCallback((q: string) => {
-    const deadline = Date.now() + SENTIMENT_TIMEOUT_MS;
-    setSentimentWaitUntil(deadline);
-
-    let attemptIndex = 0;
-
-    async function poll() {
-      if (Date.now() > deadline) {
-        // Timed out — give up
-        setSentimentWaitUntil(null);
-        return;
-      }
-
-      const delay = BACKOFF_SCHEDULE_MS[attemptIndex] ?? 8_000;
-      attemptIndex++;
-
-      await new Promise<void>((resolve) => setTimeout(resolve, delay));
-
-      // Check deadline again after the delay
-      if (Date.now() > deadline) {
-        setSentimentWaitUntil(null);
-        return;
-      }
-
-      try {
-        const res = await fetch(
-          `/api/analytics/sentiment-by-query?query=${encodeURIComponent(q)}&window=7D`,
-        );
-        if (res.ok) {
-          const data = await res.json();
-          const items = Array.isArray(data) ? data : [];
-          if (items.length > 0) {
-            // Sentiment data is ready — stop polling
-            setSentimentWaitUntil(null);
-            return;
-          }
-        }
-      } catch {
-        // swallow — will retry on schedule
-      }
-
-      // Still no data; schedule next attempt if we still have time
-      if (Date.now() < deadline) {
-        void poll();
-      } else {
-        setSentimentWaitUntil(null);
-      }
-    }
-
-    void poll();
-  }, []);
 
   return (
     <div
@@ -175,11 +96,16 @@ function AnalyticsPageInner() {
         </h1>
 
         {/* Search bar */}
-        <SearchBar onIngested={handleIngested} />
+        <SearchBar onIngested={() => {}} />
       </div>
 
-      {/* ── Tweet results (Phase 6) ──────────────────────────────────────── */}
-      {query && <TweetResultsPlaceholder query={query} />}
+      {/* ── Tweet results ───────────────────────────────────────────────── */}
+      {query && (
+        <Card padding={20}>
+          <SectionHead eyebrow="Tweet results" meta={`query: ${query}`} />
+          <TweetsResultsTable query={query} />
+        </Card>
+      )}
 
       {/* ── Chart grid ──────────────────────────────────────────────────── */}
       <div
@@ -210,24 +136,31 @@ function AnalyticsPageInner() {
         </Card>
 
         {/* Row 3 */}
-        <ChartCard eyebrow="Symbol rate" meta="tweets / hour" />
-        <ChartCard eyebrow="Engagement timeseries" meta="likes · RT · replies · quotes" />
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Symbol rate" meta="tweets / hour" />
+          <SymbolRateChart query={query} />
+        </Card>
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Engagement timeseries" meta="likes · RT · replies · quotes" />
+          <EngagementTimeSeriesChart query={query} />
+        </Card>
 
-        {/* Row 4 — sentiment cards */}
-        <ChartCard
-          eyebrow="Sentiment gauge"
-          meta="avg score"
-          sentimentPending={sentimentPending}
-        />
-        <ChartCard
-          eyebrow="Sentiment timeline"
-          meta="% bull / bear / mixed"
-          sentimentPending={sentimentPending}
-        />
+        {/* Row 4 — sentiment */}
+        <ChartCard eyebrow="Sentiment gauge" meta="avg score" />
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Sentiment timeline" meta="% bull / bear / mixed" />
+          <SentimentTimelineChart query={query} />
+        </Card>
 
         {/* Row 5 */}
-        <ChartCard eyebrow="Keyword word cloud" meta="top extracted terms" />
-        <ChartCard eyebrow="Conversation depth" meta="thread reply depth" />
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Keyword word cloud" meta="top extracted terms" />
+          <KeywordWordCloudChart query={query} />
+        </Card>
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Conversation depth" meta="thread reply depth" />
+          <ConversationDepthChart query={query} />
+        </Card>
 
         {/* Row 6 */}
         <ChartCard eyebrow="Geographic distribution" meta="author locations" />
@@ -241,10 +174,16 @@ function AnalyticsPageInner() {
           <SectionHead eyebrow="Source distribution" meta="Twitter client" />
           <SourceDistributionChart query={query} />
         </Card>
-        <ChartCard eyebrow="Verification breakdown" meta="blue · business · government" />
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Verification breakdown" meta="blue · business · government" />
+          <VerificationBreakdownChart query={query} />
+        </Card>
 
         {/* Row 8 */}
-        <ChartCard eyebrow="Bot ratio" meta="automated vs human" />
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Bot ratio" meta="automated vs human" />
+          <BotRatioChart query={query} />
+        </Card>
         <ChartCard eyebrow="Posting heatmap" meta="day × hour" />
 
         {/* Row 9 */}
@@ -252,10 +191,10 @@ function AnalyticsPageInner() {
           eyebrow="Content length × engagement"
           meta="text length vs engagement score"
         />
-        <ChartCard
-          eyebrow="Author influence"
-          meta="followers vs engagement rate"
-        />
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Author influence" meta="followers vs engagement rate" />
+          <AuthorInfluenceScatterChart query={query} />
+        </Card>
       </div>
 
       {/* ── Footer ──────────────────────────────────────────────────────── */}
