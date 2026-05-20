@@ -1,8 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { searchTweets } from "@monorepo-template/core/lib/twitter";
-import { putTweet, type Tweet } from "@monorepo-template/core/db/tweets";
+import { enrichRawTweet } from "@monorepo-template/core/lib/enrich";
+import { putTweet } from "@monorepo-template/core/db/tweets";
 import { computeBotScore } from "@monorepo-template/core/db/bot-heuristic";
-import { extractKeywords } from "@monorepo-template/core/db/keywords";
 import { lookupLocation, type City, type GeoResult } from "@monorepo-template/core/db/geo";
 import citiesData from "@/lib/geo/cities5000.json";
 
@@ -10,14 +10,6 @@ import citiesData from "@/lib/geo/cities5000.json";
 // cities5000.json is a placeholder [] until the dataset is bundled;
 // the geo lookup degrades gracefully (skips offline layer, falls through to OpenCage).
 const offlineCities = citiesData as unknown as City[];
-
-// ── URL regex ─────────────────────────────────────────────────────────────────
-const URL_REGEX = /https?:\/\/[\w./?=&%+#-]+/g;
-
-function extractUrls(text: string | undefined): string[] {
-  if (!text) return [];
-  return Array.from(new Set(text.match(URL_REGEX) ?? []));
-}
 
 // ── Hand-rolled concurrency limiter ──────────────────────────────────────────
 // Keeps at most `concurrency` geo lookups in-flight at once.
@@ -156,57 +148,7 @@ export async function POST(req: Request) {
       const rawLocation = author.location?.trim();
       const geoResult = rawLocation ? geoCache.get(rawLocation) ?? null : null;
 
-      // Keywords
-      const keywords = extractKeywords(raw.text, { max: 10 });
-
-      // URLs from tweet text
-      const tweetUrls =
-        raw.entities?.urls?.map((u) => u.expandedUrl).filter(Boolean) ??
-        extractUrls(raw.text);
-
-      // Bio URLs from author description
-      const authorBioUrls = extractUrls(author.description);
-
-      const tweet: Tweet = {
-        tweetId: raw.id,
-        query,
-        text: raw.text,
-        authorUsername: author.userName,
-        authorId: author.id,
-        authorName: author.name,
-        authorFollowers: author.followers,
-        authorProfilePicture: author.profilePicture,
-        createdAt: raw.createdAt,
-        likeCount: raw.likeCount ?? 0,
-        retweetCount: raw.retweetCount ?? 0,
-        replyCount: raw.replyCount ?? 0,
-        quoteCount: raw.quoteCount ?? 0,
-        viewCount: raw.viewCount ?? 0,
-        bookmarkCount: raw.bookmarkCount ?? 0,
-        lang: raw.lang ?? "en",
-        isReply: raw.isReply ?? false,
-        hashtags: raw.entities?.hashtags?.map((h) => h.text) ?? [],
-        mentions: raw.entities?.userMentions?.map((m) => m.screenName) ?? [],
-        urls: tweetUrls,
-        // ── Analytics extension fields ───────────────────────────────────────
-        conversationId: raw.conversationId,
-        inReplyToId: raw.inReplyToId,
-        authorCreatedAt: author.createdAt,
-        authorBioUrls,
-        authorIsBlueVerified: author.isBlueVerified,
-        authorVerifiedType: author.verifiedType,
-        authorIsAutomated: author.isAutomated,
-        authorLocationRaw: rawLocation ?? undefined,
-        authorLocationNormalized: geoResult
-          ? {
-              country: geoResult.country,
-              lat: geoResult.lat,
-              lng: geoResult.lng,
-            }
-          : undefined,
-        botScore,
-        keywords,
-      };
+      const tweet = enrichRawTweet(raw, query, { geoResult, botScore });
 
       await putTweet(tweet);
     }),

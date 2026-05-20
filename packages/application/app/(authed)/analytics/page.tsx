@@ -4,6 +4,13 @@ import { Suspense, useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, SectionHead, Eyebrow } from "../_dashboard/primitives";
 import { SearchBar } from "../_analytics/SearchBar";
+import { TopHashtagsChart } from "../_analytics/TopHashtagsChart";
+import { TopMentionsChart } from "../_analytics/TopMentionsChart";
+import { DomainDistributionChart } from "../_analytics/DomainDistributionChart";
+import { BioDomainsChart } from "../_analytics/BioDomainsChart";
+import { LanguageDistributionChart } from "../_analytics/LanguageDistributionChart";
+import { SourceDistributionChart } from "../_analytics/SourceDistributionChart";
+import { AnalyzingIndicator } from "../_analytics/AnalyzingIndicator";
 
 // ── Sentiment polling config ───────────────────────────────────────────────
 
@@ -30,40 +37,6 @@ function ComingSoon() {
   );
 }
 
-// ── Analyzing-sentiment indicator ─────────────────────────────────────────
-
-function AnalyzingSentiment() {
-  return (
-    <div
-      style={{
-        marginTop: 16,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        padding: "20px 0",
-        font: "500 12px var(--font-mono)",
-        color: "var(--fg-3)",
-      }}
-    >
-      {/* Animated dot */}
-      <span
-        style={{
-          width: 7,
-          height: 7,
-          borderRadius: "50%",
-          background: "var(--buzz-500)",
-          display: "inline-block",
-          animation: "tb-pulse 1.8s cubic-bezier(0.3,1.4,0.4,1) infinite",
-          boxShadow: "0 0 0 3px rgba(255,107,44,0.22)",
-          flexShrink: 0,
-        }}
-      />
-      Analyzing sentiment…
-    </div>
-  );
-}
-
 // ── Grid chart card ────────────────────────────────────────────────────────
 
 interface ChartCardProps {
@@ -76,7 +49,7 @@ function ChartCard({ eyebrow, meta, sentimentPending }: ChartCardProps) {
   return (
     <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
       <SectionHead eyebrow={eyebrow} meta={meta} />
-      {sentimentPending ? <AnalyzingSentiment /> : <ComingSoon />}
+      {sentimentPending ? <AnalyzingIndicator label="Analyzing sentiment…" /> : <ComingSoon />}
     </Card>
   );
 }
@@ -217,12 +190,24 @@ function AnalyticsPageInner() {
         }}
       >
         {/* Row 1 */}
-        <ChartCard eyebrow="Top hashtags" meta="last 24h" />
-        <ChartCard eyebrow="Top mentions" meta="last 24h · by reach" />
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Top hashtags" meta="last 24h" />
+          <TopHashtagsChart query={query} />
+        </Card>
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Top mentions" meta="last 24h · by reach" />
+          <TopMentionsChart query={query} />
+        </Card>
 
         {/* Row 2 */}
-        <ChartCard eyebrow="Domain distribution" meta="tweet URLs" />
-        <ChartCard eyebrow="Bio domains" meta="author bio links" />
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Domain distribution" meta="tweet URLs" />
+          <DomainDistributionChart query={query} />
+        </Card>
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Bio domains" meta="author bio links" />
+          <BioDomainsChart query={query} />
+        </Card>
 
         {/* Row 3 */}
         <ChartCard eyebrow="Symbol rate" meta="tweets / hour" />
@@ -246,10 +231,16 @@ function AnalyticsPageInner() {
 
         {/* Row 6 */}
         <ChartCard eyebrow="Geographic distribution" meta="author locations" />
-        <ChartCard eyebrow="Language distribution" meta="tweet language" />
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Language distribution" meta="tweet language" />
+          <LanguageDistributionChart query={query} />
+        </Card>
 
         {/* Row 7 */}
-        <ChartCard eyebrow="Source distribution" meta="Twitter client" />
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Source distribution" meta="Twitter client" />
+          <SourceDistributionChart query={query} />
+        </Card>
         <ChartCard eyebrow="Verification breakdown" meta="blue · business · government" />
 
         {/* Row 8 */}
