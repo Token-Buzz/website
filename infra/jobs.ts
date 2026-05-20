@@ -21,12 +21,14 @@ new sst.aws.Cron("TweetPoller", {
   },
 });
 
-// 2. DDB Streams aggregator — INSERT fan-out to Aggregates table
+// 2. DDB Streams aggregator — INSERT fan-out to Aggregates table.
+// All four tables are linked because the shared db client (packages/core/src/db/client.ts)
+// eagerly reads Resource.<Table>.name at module load; missing any link crashes init.
 tweetsTable.subscribe(
   "Aggregator",
   {
     handler: "packages/jobs/src/aggregator.handler",
-    link: [aggregatesTable],
+    link: allTables,
     timeout: "60 seconds",
   },
   { filters: [{ eventName: ["INSERT"] }] },
@@ -79,7 +81,7 @@ new sst.aws.Cron("SpikeMaterializer", {
   schedule: "rate(5 minutes)",
   function: {
     handler: "packages/jobs/src/spike-materializer.handler",
-    link: [aggregatesTable, tokensTable],
+    link: allTables,
     timeout: "60 seconds",
     memory: "256 MB",
   },
@@ -90,7 +92,7 @@ new sst.aws.Cron("DailyRollup", {
   schedule: "cron(15 0 * * ? *)",
   function: {
     handler: "packages/jobs/src/daily-rollup.handler",
-    link: [aggregatesTable, tokensTable],
+    link: allTables,
     timeout: "300 seconds",
     memory: "256 MB",
   },
