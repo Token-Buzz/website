@@ -1,6 +1,7 @@
 "use client";
 
 import { fmtCount } from "../_dashboard/primitives";
+import { AnalyzingIndicator } from "./AnalyzingIndicator";
 
 export interface BarListItem {
   rank?: number;
@@ -14,73 +15,7 @@ interface BarListProps {
   maxItems?: number;
   emptyState?: React.ReactNode;
   loading?: boolean;
-}
-
-// Skeleton row for loading state
-function SkeletonRow({ index }: { index: number }) {
-  const widths = ["72%", "55%", "46%", "38%", "30%", "24%", "19%", "15%", "12%", "10%"];
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "5px 0",
-        animation: "tb-skeleton-pulse 1.4s ease-in-out infinite",
-        animationDelay: `${index * 60}ms`,
-      }}
-    >
-      {/* Rank placeholder */}
-      <div
-        style={{
-          width: 16,
-          height: 10,
-          borderRadius: 3,
-          background: "var(--bg-sunken)",
-          flexShrink: 0,
-        }}
-      />
-      {/* Label placeholder */}
-      <div
-        style={{
-          width: 80,
-          height: 10,
-          borderRadius: 3,
-          background: "var(--bg-sunken)",
-          flexShrink: 0,
-        }}
-      />
-      {/* Bar placeholder */}
-      <div
-        style={{
-          flex: 1,
-          height: 6,
-          borderRadius: 3,
-          background: "var(--bg-sunken)",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            width: widths[index % widths.length],
-            height: "100%",
-            borderRadius: 3,
-            background: "var(--border)",
-          }}
-        />
-      </div>
-      {/* Value placeholder */}
-      <div
-        style={{
-          width: 40,
-          height: 10,
-          borderRadius: 3,
-          background: "var(--bg-sunken)",
-          flexShrink: 0,
-        }}
-      />
-    </div>
-  );
+  loadingLabel?: string;
 }
 
 export function BarList({
@@ -88,15 +23,10 @@ export function BarList({
   maxItems = 10,
   emptyState = "No data",
   loading = false,
+  loadingLabel,
 }: BarListProps) {
-  if (loading) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {Array.from({ length: Math.min(maxItems, 5) }).map((_, i) => (
-          <SkeletonRow key={i} index={i} />
-        ))}
-      </div>
-    );
+  if (loading && items.length === 0) {
+    return <AnalyzingIndicator label={loadingLabel} />;
   }
 
   const sliced = items.slice(0, maxItems);
