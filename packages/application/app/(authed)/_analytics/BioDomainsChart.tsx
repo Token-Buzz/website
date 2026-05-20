@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { BarList } from "./BarList";
+import { useAggregatePolling } from "./useAggregatePolling";
 
 type Props = { query: string };
 
@@ -11,41 +11,12 @@ interface ApiItem {
 }
 
 export function BioDomainsChart({ query }: Props) {
-  const [items, setItems] = useState<{ label: string; value: number }[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const url = query
+    ? `/api/analytics/bio-domains?query=${encodeURIComponent(query)}&window=7D`
+    : null;
 
-  useEffect(() => {
-    if (!query) return;
-
-    let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
-    setError(null);
-
-    fetch(
-      `/api/analytics/bio-domains?query=${encodeURIComponent(query)}&window=7D`
-    )
-      .then((r) => {
-        if (!r.ok) throw new Error(`${r.status}`);
-        return r.json();
-      })
-      .then((data: ApiItem[]) => {
-        if (cancelled) return;
-        setItems(data.map((d) => ({ label: d.domain, value: d.count })));
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return;
-        setError(String(e));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [query]);
+  const { items: rawItems, loading, error } = useAggregatePolling<ApiItem>(url);
+  const items = rawItems.map((d) => ({ label: d.domain, value: d.count }));
 
   if (error)
     return (
