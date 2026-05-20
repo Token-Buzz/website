@@ -5,6 +5,97 @@ import { useState, useEffect } from "react";
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_SCHEDULE_MS = [1_000, 2_000, 4_000, 8_000, 8_000, 8_000];
 
+// ── useObjectPolling ───────────────────────────────────────────────────────
+// Like useAggregatePolling but for endpoints that return a single JSON object
+// rather than an array. Polls until a non-null result is returned or deadline.
+
+export function useObjectPolling<T extends object>(
+  url: string | null,
+  opts?: { timeoutMs?: number; schedule?: number[] },
+): { data: T | null; loading: boolean; error: string | null } {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!url) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setData(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    let cancelled = false;
+    const timeoutMs = opts?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    const schedule = opts?.schedule ?? DEFAULT_SCHEDULE_MS;
+    const deadline = Date.now() + timeoutMs;
+
+    setLoading(true);
+    setError(null);
+    setData(null);
+
+    let attemptIndex = 0;
+
+    async function poll(): Promise<void> {
+      if (cancelled) return;
+
+      try {
+        const res = await fetch(url!);
+        if (cancelled) return;
+
+        if (!res.ok) {
+          setError(String(res.status));
+          setLoading(false);
+          return;
+        }
+
+        const json = (await res.json()) as T;
+        if (cancelled) return;
+
+        if (json && typeof json === "object" && !Array.isArray(json)) {
+          setData(json);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // swallow network errors; retry on schedule
+      }
+
+      if (cancelled) return;
+
+      if (Date.now() >= deadline) {
+        setLoading(false);
+        return;
+      }
+
+      const delay = schedule[attemptIndex] ?? 8_000;
+      attemptIndex++;
+
+      await new Promise<void>((resolve) => setTimeout(resolve, delay));
+
+      if (cancelled) return;
+
+      if (Date.now() < deadline) {
+        void poll();
+      } else {
+        setLoading(false);
+      }
+    }
+
+    void poll();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url]);
+
+  return { data, loading, error };
+}
+
+// ── useAggregatePolling ────────────────────────────────────────────────────
+
 export function useAggregatePolling<T>(
   url: string | null,
   opts?: { timeoutMs?: number; schedule?: number[] },
