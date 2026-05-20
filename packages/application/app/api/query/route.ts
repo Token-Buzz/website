@@ -161,7 +161,7 @@ export async function POST(req: Request) {
 
       // URLs from tweet text
       const tweetUrls =
-        raw.entities?.urls?.map((u) => u.expandedUrl).filter(Boolean) ??
+        raw.entities?.urls?.map((u) => u.expanded_url).filter(Boolean) ??
         extractUrls(raw.text);
 
       // Bio URLs from author description
@@ -186,7 +186,7 @@ export async function POST(req: Request) {
         lang: raw.lang ?? "en",
         isReply: raw.isReply ?? false,
         hashtags: raw.entities?.hashtags?.map((h) => h.text) ?? [],
-        mentions: raw.entities?.userMentions?.map((m) => m.screenName) ?? [],
+        mentions: raw.entities?.user_mentions?.map((m) => m.screen_name) ?? [],
         urls: tweetUrls,
         // ── Analytics extension fields ───────────────────────────────────────
         conversationId: raw.conversationId,

@@ -38,8 +38,9 @@ export type RawTweet = {
   author: TwitterAuthor;
   entities?: {
     hashtags?: Array<{ text: string }>;
-    userMentions?: Array<{ screenName: string }>;
-    urls?: Array<{ expandedUrl: string }>;
+    // twitterapi.io returns snake_case inside entities
+    user_mentions?: Array<{ screen_name: string }>;
+    urls?: Array<{ expanded_url: string }>;
   };
 };
 

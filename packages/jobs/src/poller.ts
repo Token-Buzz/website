@@ -46,9 +46,9 @@ export const handler: Handler = async () => {
           isReply: raw.isReply ?? false,
           hashtags: raw.entities?.hashtags?.map((h) => h.text) ?? [],
           mentions:
-            raw.entities?.userMentions?.map((m) => m.screenName) ?? [],
+            raw.entities?.user_mentions?.map((m) => m.screen_name) ?? [],
           urls:
-            raw.entities?.urls?.map((u) => u.expandedUrl).filter(Boolean) ??
+            raw.entities?.urls?.map((u) => u.expanded_url).filter(Boolean) ??
             [],
         };
         await putTweet(tweet);
