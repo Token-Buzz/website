@@ -1,6 +1,7 @@
 import type { Handler } from "aws-lambda";
 import { listTrackedTokens } from "@monorepo-template/core/db/tokens";
 import { searchTweets } from "@monorepo-template/core/lib/twitter";
+import { enrichRawTweet } from "@monorepo-template/core/lib/enrich";
 import { putTweet } from "@monorepo-template/core/db/tweets";
 
 export const handler: Handler = async () => {
@@ -21,31 +22,7 @@ export const handler: Handler = async () => {
       const raw = await searchTweets(symbol, { maxPages: 2 });
       const recent = raw.filter((t) => t.createdAt > oneDayAgo);
       for (const tweet of recent) {
-        await putTweet({
-          tweetId: tweet.id,
-          query: symbol,
-          text: tweet.text,
-          authorUsername: tweet.author.userName,
-          authorId: tweet.author.id,
-          authorName: tweet.author.name,
-          authorFollowers: tweet.author.followers,
-          authorProfilePicture: tweet.author.profilePicture,
-          createdAt: tweet.createdAt,
-          likeCount: tweet.likeCount ?? 0,
-          retweetCount: tweet.retweetCount ?? 0,
-          replyCount: tweet.replyCount ?? 0,
-          quoteCount: tweet.quoteCount ?? 0,
-          viewCount: tweet.viewCount ?? 0,
-          bookmarkCount: tweet.bookmarkCount ?? 0,
-          lang: tweet.lang ?? "en",
-          isReply: tweet.isReply ?? false,
-          hashtags: tweet.entities?.hashtags?.map((h) => h.text) ?? [],
-          mentions:
-            tweet.entities?.user_mentions?.map((m) => m.screen_name) ?? [],
-          urls:
-            tweet.entities?.urls?.map((u) => u.expanded_url).filter(Boolean) ??
-            [],
-        });
+        await putTweet(enrichRawTweet(tweet, symbol));
       }
     } catch (err) {
       console.error(`Engagement snapshot failed for ${symbol}:`, err);
