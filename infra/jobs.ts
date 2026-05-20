@@ -34,12 +34,14 @@ tweetsTable.subscribe(
   { filters: [{ eventName: ["INSERT"] }] },
 );
 
-// 3. Sentiment dispatcher — separate stream consumer; Bedrock IAM scoped only here
+// 3. Sentiment dispatcher — separate stream consumer; Bedrock IAM scoped only here.
+// All four tables are linked because core/db/client.ts eagerly reads Resource.<Table>.name
+// for all four tables at module load; missing any one crashes init with "X is not linked".
 tweetsTable.subscribe(
   "SentimentDispatcher",
   {
     handler: "packages/jobs/src/sentiment.handler",
-    link: [tweetsTable, aggregatesTable],
+    link: allTables,
     timeout: "120 seconds",
     memory: "512 MB",
     permissions: [
