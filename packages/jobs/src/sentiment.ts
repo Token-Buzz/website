@@ -1,7 +1,11 @@
 import type { DynamoDBStreamHandler } from "aws-lambda";
 import { classifySentiment } from "./lib/bedrock.js";
 import { updateTweetSentiment } from "@monorepo-template/core/db/tweets";
-import { incrementHourlySentiment } from "@monorepo-template/core/db/aggregates";
+import {
+  incrementHourlySentiment,
+  incrementSentimentByQuery,
+} from "@monorepo-template/core/db/aggregates";
+import { hourBucket as toHourBucket } from "@monorepo-template/core/db/keys";
 
 export const handler: DynamoDBStreamHandler = async (event) => {
   for (const record of event.Records) {
@@ -21,8 +25,9 @@ export const handler: DynamoDBStreamHandler = async (event) => {
       const sentiment = result.sentiment === "neutral" ? "neu" : result.sentiment;
       await updateTweetSentiment(tweetId, query, sentiment, result.score);
 
-      const hourBucket = new Date(createdAt).toISOString().slice(0, 13);
+      const hourBucket = toHourBucket(new Date(createdAt));
       await incrementHourlySentiment(query, hourBucket, sentiment, result.score);
+      await incrementSentimentByQuery(query, hourBucket, sentiment);
     } catch (err) {
       console.error("Sentiment error for tweet", tweetId, err);
     }

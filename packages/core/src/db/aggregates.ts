@@ -359,6 +359,29 @@ export async function incrementHourlySentiment(
   }))
 }
 
+export async function incrementSentimentByQuery(
+  query: string,
+  hourBucket: string,
+  sentiment: 'bull' | 'bear' | 'neu' | 'positive' | 'negative' | 'neutral',
+): Promise<void> {
+  const label =
+    sentiment === 'bull' || sentiment === 'positive'
+      ? 'positive'
+      : sentiment === 'bear' || sentiment === 'negative'
+        ? 'negative'
+        : 'neutral'
+  await ddb.send(new UpdateCommand({
+    TableName: TableNames.aggregates,
+    Key: {
+      pk: `AGG#SENTIMENT_BY_QUERY#${query}`,
+      sk: `BUCKET#${hourBucket}#${label}`,
+    },
+    UpdateExpression: 'ADD #c :one',
+    ExpressionAttributeNames: { '#c': 'count' },
+    ExpressionAttributeValues: { ':one': 1 },
+  }))
+}
+
 export async function writeDailyRollup(
   symbol: string,
   dayBucket: string,
