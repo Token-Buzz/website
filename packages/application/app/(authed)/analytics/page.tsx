@@ -1,170 +1,275 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Card, SectionHead, Eyebrow, Button, Delta, Ticker, fmtCount } from '../_dashboard/primitives'
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
+import { Card, SectionHead, Eyebrow } from "../_dashboard/primitives";
+import { SearchBar } from "../_analytics/SearchBar";
 
-// ── Sample analytics data ──────────────────────────────────────────────────
+// ── Sentiment polling config ───────────────────────────────────────────────
 
-const HASHTAGS = [
-  { tag: '#pepe',   count: 18420, pct: 100 },
-  { tag: '#mog',    count: 12840,  pct: 69  },
-  { tag: '#solana', count: 9140,   pct: 50  },
-  { tag: '#crypto', count: 8720,   pct: 47  },
-  { tag: '#bonk',   count: 7600,   pct: 41  },
-  { tag: '#ai',     count: 6480,   pct: 35  },
-  { tag: '#defi',   count: 5240,   pct: 28  },
-  { tag: '#wif',    count: 4820,   pct: 26  },
-  { tag: '#eth',    count: 4200,   pct: 23  },
-  { tag: '#turbo',  count: 3640,   pct: 20  },
-]
+const SENTIMENT_TIMEOUT_MS = 30_000;
+const BACKOFF_SCHEDULE_MS = [1_000, 2_000, 4_000, 8_000, 8_000, 8_000];
 
-const TOP_HANDLES = [
-  { handle: '@cobie',        followers: '812k', mentions: 48, engagement: 9.2 },
-  { handle: '@hsaka',        followers: '210k', mentions: 31, engagement: 7.4 },
-  { handle: '@CryptoKaleo',  followers: '1.2M', mentions: 28, engagement: 11.3 },
-  { handle: '@aeyakovenko',  followers: '440k', mentions: 22, engagement: 6.8 },
-  { handle: '@degenspartan', followers: '320k', mentions: 19, engagement: 8.1 },
-  { handle: '@hosseeb',      followers: '168k', mentions: 16, engagement: 5.9 },
-  { handle: '@gainzy222',    followers:  '98k', mentions: 14, engagement: 12.4 },
-]
+// ── Coming-soon placeholder ────────────────────────────────────────────────
 
-const SENTIMENT_HOURS = [
-  { hour: '00', bull: 58, neu: 22, bear: 20 },
-  { hour: '02', bull: 55, neu: 24, bear: 21 },
-  { hour: '04', bull: 52, neu: 26, bear: 22 },
-  { hour: '06', bull: 57, neu: 23, bear: 20 },
-  { hour: '08', bull: 63, neu: 20, bear: 17 },
-  { hour: '10', bull: 68, neu: 18, bear: 14 },
-  { hour: '12', bull: 65, neu: 19, bear: 16 },
-  { hour: '14', bull: 61, neu: 21, bear: 18 },
-  { hour: '16', bull: 66, neu: 19, bear: 15 },
-  { hour: '18', bull: 70, neu: 17, bear: 13 },
-  { hour: '20', bull: 67, neu: 18, bear: 15 },
-  { hour: '22', bull: 62, neu: 20, bear: 18 },
-]
-
-// ── Hashtag leaderboard ────────────────────────────────────────────────────
-
-function HashtagLeaderboard() {
+function ComingSoon() {
   return (
-    <Card padding={20} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <SectionHead eyebrow="Top hashtags" meta="last 24h" />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {HASHTAGS.map((h, i) => (
-          <div key={h.tag} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ font: '500 11px var(--font-mono)', color: 'var(--fg-4)', width: 16, textAlign: 'right' }}>{i + 1}</span>
-            <span style={{ font: '600 13px var(--font-mono)', color: 'var(--fg-2)', width: 100, flexShrink: 0 }}>{h.tag}</span>
-            <div style={{ flex: 1, height: 6, background: 'var(--bg-sunken)', borderRadius: 3, overflow: 'hidden' }}>
-              <div style={{ width: `${h.pct}%`, height: '100%', background: 'var(--accent)', borderRadius: 3, opacity: 0.7 }} />
-            </div>
-            <span style={{ font: '600 12px var(--font-mono)', color: 'var(--fg-1)', width: 60, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtCount(h.count)}</span>
-          </div>
-        ))}
-      </div>
-    </Card>
-  )
+    <div
+      style={{
+        marginTop: 16,
+        padding: "24px 0",
+        textAlign: "center",
+        font: "500 11px var(--font-mono)",
+        color: "var(--fg-4)",
+        border: "1px dashed var(--border)",
+        borderRadius: 6,
+      }}
+    >
+      Coming in v1.1
+    </div>
+  );
 }
 
-// ── Top handles ────────────────────────────────────────────────────────────
+// ── Analyzing-sentiment indicator ─────────────────────────────────────────
 
-function TopHandles() {
+function AnalyzingSentiment() {
   return (
-    <Card padding={20} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <SectionHead eyebrow="Top mentioned handles" meta="last 24h · by reach" />
-      <div>
-        {TOP_HANDLES.map((h, i) => (
-          <div key={h.handle} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: i < TOP_HANDLES.length - 1 ? '1px solid var(--border-hairline)' : 'none' }}>
-            <span style={{ font: '500 11px var(--font-mono)', color: 'var(--fg-4)', width: 16, textAlign: 'right' }}>{i + 1}</span>
-            <span style={{ font: '600 13px var(--font-sans)', color: 'var(--fg-1)', flex: 1 }}>{h.handle}</span>
-            <span style={{ font: '500 11px var(--font-mono)', color: 'var(--fg-3)', width: 48 }}>{h.followers}</span>
-            <span style={{ font: '600 12px var(--font-mono)', color: 'var(--fg-2)', width: 40, textAlign: 'right' }}>{h.mentions}</span>
-            <span style={{ font: '500 11px var(--font-mono)', color: 'var(--fg-3)', width: 32, textAlign: 'right' }}>{h.engagement}%</span>
-          </div>
-        ))}
-      </div>
-    </Card>
-  )
+    <div
+      style={{
+        marginTop: 16,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        padding: "20px 0",
+        font: "500 12px var(--font-mono)",
+        color: "var(--fg-3)",
+      }}
+    >
+      {/* Animated dot */}
+      <span
+        style={{
+          width: 7,
+          height: 7,
+          borderRadius: "50%",
+          background: "var(--buzz-500)",
+          display: "inline-block",
+          animation: "tb-pulse 1.8s cubic-bezier(0.3,1.4,0.4,1) infinite",
+          boxShadow: "0 0 0 3px rgba(255,107,44,0.22)",
+          flexShrink: 0,
+        }}
+      />
+      Analyzing sentiment…
+    </div>
+  );
 }
 
-// ── Sentiment over time chart ──────────────────────────────────────────────
+// ── Grid chart card ────────────────────────────────────────────────────────
 
-function SentimentTimeline() {
-  const w = 800, h = 160
-  const maxBull = Math.max(...SENTIMENT_HOURS.map((d) => d.bull))
+interface ChartCardProps {
+  eyebrow: string;
+  meta?: string;
+  sentimentPending?: boolean;
+}
 
+function ChartCard({ eyebrow, meta, sentimentPending }: ChartCardProps) {
   return (
-    <Card padding={20} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <SectionHead eyebrow="Sentiment over time" meta="last 24h · % bull / bear / mixed" />
-      <div style={{ position: 'relative' }}>
-        <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} preserveAspectRatio="none" style={{ display: 'block' }}>
-          {SENTIMENT_HOURS.map((d, i) => {
-            const x = (i / (SENTIMENT_HOURS.length - 1)) * w
-            const bullH = (d.bull / 100) * h
-            const bearH = (d.bear / 100) * h
-            const barW = w / SENTIMENT_HOURS.length - 4
-            return (
-              <g key={d.hour} transform={`translate(${x - barW / 2}, 0)`}>
-                <rect x={0} y={h - bullH} width={barW} height={bullH} fill="var(--pos)" opacity="0.6" rx="2" />
-                <rect x={0} y={h - bullH - bearH} width={barW} height={bearH} fill="var(--neg)" opacity="0.5" rx="2" />
-              </g>
-            )
-          })}
-          {[25, 50, 75].map((pct) => (
-            <line key={pct} x1={0} x2={w} y1={h - (pct / 100) * h} y2={h - (pct / 100) * h} stroke="var(--border)" strokeWidth="1" strokeDasharray="2,4" />
-          ))}
-        </svg>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, font: '500 10px var(--font-mono)', color: 'var(--fg-4)' }}>
-          {SENTIMENT_HOURS.map((d) => <span key={d.hour}>{d.hour}h</span>)}
-        </div>
-        <div style={{ display: 'flex', gap: 16, marginTop: 12, font: '500 11px var(--font-mono)' }}>
-          <span><span style={{ display: 'inline-block', width: 10, height: 10, background: 'var(--pos)', borderRadius: 2, marginRight: 6, opacity: 0.6 }} />Bull avg {Math.round(SENTIMENT_HOURS.reduce((a, b) => a + b.bull, 0) / SENTIMENT_HOURS.length)}%</span>
-          <span><span style={{ display: 'inline-block', width: 10, height: 10, background: 'var(--neg)', borderRadius: 2, marginRight: 6, opacity: 0.5 }} />Bear avg {Math.round(SENTIMENT_HOURS.reduce((a, b) => a + b.bear, 0) / SENTIMENT_HOURS.length)}%</span>
-        </div>
+    <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+      <SectionHead eyebrow={eyebrow} meta={meta} />
+      {sentimentPending ? <AnalyzingSentiment /> : <ComingSoon />}
+    </Card>
+  );
+}
+
+// ── Tweet results placeholder ──────────────────────────────────────────────
+
+function TweetResultsPlaceholder({ query }: { query: string }) {
+  if (!query) return null;
+  return (
+    <Card padding={20}>
+      <SectionHead eyebrow="Tweet results" meta={`query: ${query}`} />
+      <div
+        style={{
+          marginTop: 12,
+          padding: "20px",
+          textAlign: "center",
+          font: "500 11px var(--font-mono)",
+          color: "var(--fg-4)",
+          border: "1px dashed var(--border)",
+          borderRadius: 6,
+        }}
+      >
+        Tweet results table — Coming in v1.1
       </div>
     </Card>
-  )
+  );
 }
 
 // ── Analytics page ─────────────────────────────────────────────────────────
 
-const TIME_WINDOWS = ['1H', '4H', '24H', '7D'] as const
-
 export default function AnalyticsPage() {
-  const [window, setWindow] = useState<'1H' | '4H' | '24H' | '7D'>('24H')
+  const searchParams = useSearchParams();
+  const query = searchParams.get("q") ?? "";
+
+  // Sentiment polling state
+  const [sentimentWaitUntil, setSentimentWaitUntil] = useState<number | null>(null);
+  const sentimentPending = sentimentWaitUntil !== null;
+
+  // Start sentiment polling after a successful ingest
+  const handleIngested = useCallback((q: string) => {
+    const deadline = Date.now() + SENTIMENT_TIMEOUT_MS;
+    setSentimentWaitUntil(deadline);
+
+    let attemptIndex = 0;
+
+    async function poll() {
+      if (Date.now() > deadline) {
+        // Timed out — give up
+        setSentimentWaitUntil(null);
+        return;
+      }
+
+      const delay = BACKOFF_SCHEDULE_MS[attemptIndex] ?? 8_000;
+      attemptIndex++;
+
+      await new Promise<void>((resolve) => setTimeout(resolve, delay));
+
+      // Check deadline again after the delay
+      if (Date.now() > deadline) {
+        setSentimentWaitUntil(null);
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `/api/analytics/sentiment-by-query?query=${encodeURIComponent(q)}&window=7D`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const items = Array.isArray(data) ? data : [];
+          if (items.length > 0) {
+            // Sentiment data is ready — stop polling
+            setSentimentWaitUntil(null);
+            return;
+          }
+        }
+      } catch {
+        // swallow — will retry on schedule
+      }
+
+      // Still no data; schedule next attempt if we still have time
+      if (Date.now() < deadline) {
+        void poll();
+      } else {
+        setSentimentWaitUntil(null);
+      }
+    }
+
+    void poll();
+  }, []);
 
   return (
-    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1480, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-        <div>
-          <Eyebrow style={{ marginBottom: 8 }}>Analytics</Eyebrow>
-          <h1 style={{ font: '600 28px/1.15 var(--font-sans)', letterSpacing: '-0.015em', color: 'var(--fg-1)', margin: 0 }}>Social analytics</h1>
-        </div>
-        <div style={{ display: 'inline-flex', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 999, padding: 3, gap: 2 }}>
-          {TIME_WINDOWS.map((w) => (
-            <button
-              key={w}
-              onClick={() => setWindow(w)}
-              style={{
-                border: 'none', padding: '5px 11px', borderRadius: 999, cursor: 'pointer',
-                font: '600 11px var(--font-sans)',
-                background: window === w ? 'var(--bg-elevated)' : 'transparent',
-                color: window === w ? 'var(--fg-1)' : 'var(--fg-2)',
-              }}
-            >{w}</button>
-          ))}
-        </div>
+    <div
+      style={{
+        padding: "24px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 24,
+        maxWidth: 1480,
+        margin: "0 auto",
+      }}
+    >
+      {/* ── Page header ─────────────────────────────────────────────────── */}
+      <div>
+        <Eyebrow style={{ marginBottom: 8 }}>Analytics</Eyebrow>
+        <h1
+          style={{
+            font: "600 28px/1.15 var(--font-sans)",
+            letterSpacing: "-0.015em",
+            color: "var(--fg-1)",
+            margin: "0 0 20px",
+          }}
+        >
+          Social analytics
+        </h1>
+
+        {/* Search bar */}
+        <SearchBar onIngested={handleIngested} />
       </div>
 
-      <SentimentTimeline />
+      {/* ── Tweet results (Phase 6) ──────────────────────────────────────── */}
+      {query && <TweetResultsPlaceholder query={query} />}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <HashtagLeaderboard />
-        <TopHandles />
+      {/* ── Chart grid ──────────────────────────────────────────────────── */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 16,
+        }}
+      >
+        {/* Row 1 */}
+        <ChartCard eyebrow="Top hashtags" meta="last 24h" />
+        <ChartCard eyebrow="Top mentions" meta="last 24h · by reach" />
+
+        {/* Row 2 */}
+        <ChartCard eyebrow="Domain distribution" meta="tweet URLs" />
+        <ChartCard eyebrow="Bio domains" meta="author bio links" />
+
+        {/* Row 3 */}
+        <ChartCard eyebrow="Symbol rate" meta="tweets / hour" />
+        <ChartCard eyebrow="Engagement timeseries" meta="likes · RT · replies · quotes" />
+
+        {/* Row 4 — sentiment cards */}
+        <ChartCard
+          eyebrow="Sentiment gauge"
+          meta="avg score"
+          sentimentPending={sentimentPending}
+        />
+        <ChartCard
+          eyebrow="Sentiment timeline"
+          meta="% bull / bear / mixed"
+          sentimentPending={sentimentPending}
+        />
+
+        {/* Row 5 */}
+        <ChartCard eyebrow="Keyword word cloud" meta="top extracted terms" />
+        <ChartCard eyebrow="Conversation depth" meta="thread reply depth" />
+
+        {/* Row 6 */}
+        <ChartCard eyebrow="Geographic distribution" meta="author locations" />
+        <ChartCard eyebrow="Language distribution" meta="tweet language" />
+
+        {/* Row 7 */}
+        <ChartCard eyebrow="Source distribution" meta="Twitter client" />
+        <ChartCard eyebrow="Verification breakdown" meta="blue · business · government" />
+
+        {/* Row 8 */}
+        <ChartCard eyebrow="Bot ratio" meta="automated vs human" />
+        <ChartCard eyebrow="Posting heatmap" meta="day × hour" />
+
+        {/* Row 9 */}
+        <ChartCard
+          eyebrow="Content length × engagement"
+          meta="text length vs engagement score"
+        />
+        <ChartCard
+          eyebrow="Author influence"
+          meta="followers vs engagement rate"
+        />
       </div>
 
-      <div style={{ textAlign: 'center', font: '500 11px var(--font-mono)', color: 'var(--fg-4)', letterSpacing: '0.04em' }}>
-        Analytics data refreshes every 5 minutes · powered by TokenBuzz social intelligence
+      {/* ── Footer ──────────────────────────────────────────────────────── */}
+      <div
+        style={{
+          textAlign: "center",
+          font: "500 11px var(--font-mono)",
+          color: "var(--fg-4)",
+          letterSpacing: "0.04em",
+        }}
+      >
+        Analytics powered by TokenBuzz · charts load after you submit a query
       </div>
     </div>
-  )
+  );
 }
