@@ -6,21 +6,23 @@ export async function GET(req: Request) {
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const query = searchParams.get("query") ?? "PEPE";
+  const query = searchParams.get("query");
+  if (!query) return Response.json({ error: "query required" }, { status: 400 });
+
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "20", 10), 100);
 
   const { items } = await getTweetsByQuery(query, { limit });
-  const tweets = items.map(t => ({
-    tweetId: t.id,
-    query: t.symbol,
+  const tweets = items.map((t) => ({
+    tweetId: t.tweetId,
+    query: t.query,
     text: t.text,
-    authorUsername: t.handle,
-    authorName: t.handle,
-    authorFollowers: t.followers,
-    createdAt: t.timestamp,
-    likeCount: t.likes,
-    retweetCount: t.retweets,
-    sentiment: t.sent,
+    authorUsername: t.authorUsername,
+    authorName: t.authorName,
+    authorFollowers: t.authorFollowers,
+    createdAt: t.createdAt,
+    likeCount: t.likeCount,
+    retweetCount: t.retweetCount,
+    sentiment: t.sentiment,
   }));
   return Response.json({ tweets, query });
 }

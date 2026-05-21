@@ -21,7 +21,8 @@ interface ApiResponse {
   query: string;
 }
 
-function fmtTime(iso: string): string {
+function fmtTime(iso: string | undefined): string {
+  if (!iso) return "—";
   try {
     const d = new Date(iso);
     return new Intl.DateTimeFormat("en", {
