@@ -51,20 +51,24 @@ export function useObjectPolling<T extends object>(
         if (cancelled) return;
 
         if (!res.ok) {
-          setError(String(res.status));
-          setLoading(false);
-          return;
-        }
-
-        const json = (await res.json()) as T;
-        if (cancelled) return;
-
-        if (json && typeof json === "object" && !Array.isArray(json)) {
-          lastSeen = json;
-          if (isPopulated(json)) {
-            setData(json);
+          // 429 (Lambda concurrency throttle) and 5xx are transient — retry on the
+          // backoff schedule rather than surfacing a hard error.
+          if (res.status !== 429 && res.status < 500) {
+            setError(String(res.status));
             setLoading(false);
             return;
+          }
+        } else {
+          const json = (await res.json()) as T;
+          if (cancelled) return;
+
+          if (json && typeof json === "object" && !Array.isArray(json)) {
+            lastSeen = json;
+            if (isPopulated(json)) {
+              setData(json);
+              setLoading(false);
+              return;
+            }
           }
         }
       } catch {
@@ -143,18 +147,22 @@ export function useAggregatePolling<T>(
         if (cancelled) return;
 
         if (!res.ok) {
-          setError(String(res.status));
-          setLoading(false);
-          return;
-        }
+          // 429 (Lambda concurrency throttle) and 5xx are transient — retry on the
+          // backoff schedule rather than surfacing a hard error.
+          if (res.status !== 429 && res.status < 500) {
+            setError(String(res.status));
+            setLoading(false);
+            return;
+          }
+        } else {
+          const data = (await res.json()) as T[];
+          if (cancelled) return;
 
-        const data = (await res.json()) as T[];
-        if (cancelled) return;
-
-        if (Array.isArray(data) && data.length > 0) {
-          setItems(data);
-          setLoading(false);
-          return;
+          if (Array.isArray(data) && data.length > 0) {
+            setItems(data);
+            setLoading(false);
+            return;
+          }
         }
       } catch {
         // swallow network errors; retry on schedule
