@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { getTweetsByQuery } from "@monorepo-template/core/db/tweets";
+import { getTweetsByQuery, type Tweet } from "@monorepo-template/core/db/tweets";
 
 export async function GET(req: Request) {
   const { userId } = await auth();
@@ -12,7 +12,9 @@ export async function GET(req: Request) {
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "20", 10), 100);
 
   const { items } = await getTweetsByQuery(query, { limit });
-  const tweets = items.map((t) => ({
+  // putTweet writes the Tweet shape; TweetRecord is a stale type the read
+  // helper still returns — cast through unknown to access the real fields.
+  const tweets = (items as unknown as Tweet[]).map((t) => ({
     tweetId: t.tweetId,
     query: t.query,
     text: t.text,
@@ -22,7 +24,6 @@ export async function GET(req: Request) {
     createdAt: t.createdAt,
     likeCount: t.likeCount,
     retweetCount: t.retweetCount,
-    sentiment: t.sentiment,
   }));
   return Response.json({ tweets, query });
 }

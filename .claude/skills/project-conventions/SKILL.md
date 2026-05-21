@@ -12,7 +12,7 @@ description: Working in this repo. Loads on any non-trivial task — captures wo
 - **Never commit or push directly to `master`.** Always work on a feature branch. If somehow checked out on `master`, branch off before staging anything.
 - **Push only at the end** of a logical unit of work, not after every micro-commit. Avoids redeploy churn on stages with auto-deploy.
 - **Don't open PRs from Claude.** The human opens PRs manually after reviewing the branch. Do not run `gh pr create`, `mcp__github__create_pull_request`, or equivalents unless the user has just typed "open the PR".
-- **Static checks must pass before every commit.** Run `npm run typecheck` and `npm run lint` from the repo root; both must exit 0. If they don't, fix it before staging — never use `--no-verify` to bypass hooks.
+- **Always run `npm run typecheck` and `npm run lint` from the repo root before every commit AND before the final push to the remote branch.** Both must exit 0. If they don't, fix it before staging — never use `--no-verify` to bypass hooks. The remote CI runs the same checks; a push that breaks them blocks the deploy.
 - **Discard build cache files before staging.** `git checkout -- packages/*/tsconfig.tsbuildinfo` (or equivalent for your toolchain). These are local-only artifacts that pollute diffs.
 - **Best practices over cleverness.** Match the patterns already in the codebase. Don't invent abstractions for hypothetical reuse. Don't add comments that just restate the code — only document non-obvious WHY.
 
