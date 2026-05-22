@@ -50,27 +50,9 @@ Parallel agents when work is independent. Use `run_in_background: true` to keep 
 | SST | 4.14.1 |
 | Cloudflare provider (Pulumi) | 6.15.0 |
 | Deployment | AWS via SST, with Cloudflare DNS for some domains |
-| CI/CD | SST Console Autodeploy (no `.gitlab-ci.yml`, no `.github/workflows/` for deploy) |
+| CI/CD | GitHub Actions (`.github/workflows/deploy.yml` + `teardown.yml`); SST is the deploy tool |
 
-## Architecture overview
-
-<!-- FILL IN: replace this block with a short description of how the packages relate.
-     Keep it under 10 lines — deep links go in CLAUDE.md, not here.
-     Example questions to answer:
-       - Which package depends on which?
-       - Which package owns the data layer?
-       - Which package is public-facing vs internal?
-       - Where does the deployment infrastructure live? -->
-
-## Development environment
-
-<!-- FILL IN: the commands a fresh session needs to actually run things.
-     Examples:
-       - `npm run dev:application`  → run the authed app locally on :3002
-       - `npm run dev:marketing`    → run the public marketing site on :3000
-       - `npx sst deploy --stage <stage>`  → deploy a specific SST stage
-       - `npx sst shell --stage <stage> tsx <script>`  → run a one-off with SST env
-     Include the port numbers and any setup steps (e.g. "must have CLOUDFLARE_API_TOKEN in env"). -->
+> Architecture, package layout, and dev commands live in `CLAUDE.md` — don't duplicate them here.
 
 ## Debugging recipes
 

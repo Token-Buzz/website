@@ -116,3 +116,7 @@ SST application secrets (`sst.Secret` entries in `infra/secrets.ts`: `WEB_DOMAIN
 ## Git Workflow
 
 - Provide a commit message to the user for any changes made to code.
+- Never commit or push directly to `master`. Always work on a feature branch; if checked out on `master`, branch off before staging.
+- Run `npm run typecheck` and `npm run lint` from the repo root before every commit and before the final push. Both must exit 0. Never use `--no-verify` to bypass hooks — the same checks run in CI.
+- Discard build cache files before staging: `git checkout -- packages/*/tsconfig.tsbuildinfo`. They're local-only artifacts that pollute diffs.
+- Don't open PRs unless the user explicitly asks ("open the PR"). The human opens PRs manually after reviewing the branch.
