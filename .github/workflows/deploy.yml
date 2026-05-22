@@ -25,6 +25,12 @@ permissions:
   # for short-lived credentials via configure-aws-credentials.
   id-token: write
 
+env:
+  # Run the JS GitHub Actions themselves on Node 24. Node 20 is deprecated
+  # for action runtimes (forced June 2026, removed Sept 2026). Doesn't
+  # affect the Node version setup-node provisions for npm/tsc/next.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
