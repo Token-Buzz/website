@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, SectionHead, Eyebrow } from "../_dashboard/primitives";
 import { SearchBar } from "../_analytics/SearchBar";
+import { ChartErrorBoundary } from "../_analytics/ChartErrorBoundary";
 import { TopHashtagsChart } from "../_analytics/TopHashtagsChart";
 import { TopMentionsChart } from "../_analytics/TopMentionsChart";
 import { DomainDistributionChart } from "../_analytics/DomainDistributionChart";
@@ -71,7 +72,9 @@ function AnalyticsPageInner() {
       {query && (
         <Card padding={20}>
           <SectionHead eyebrow="Tweet results" meta={`query: ${query}`} />
-          <TweetsResultsTable query={query} />
+          <ChartErrorBoundary chartName="Tweet results">
+            <TweetsResultsTable query={query} />
+          </ChartErrorBoundary>
         </Card>
       )}
 
@@ -86,91 +89,127 @@ function AnalyticsPageInner() {
         {/* Row 1 */}
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Top hashtags" meta="last 24h" />
-          <TopHashtagsChart query={query} />
+          <ChartErrorBoundary chartName="Top hashtags">
+            <TopHashtagsChart query={query} />
+          </ChartErrorBoundary>
         </Card>
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Top mentions" meta="last 24h · by reach" />
-          <TopMentionsChart query={query} />
+          <ChartErrorBoundary chartName="Top mentions">
+            <TopMentionsChart query={query} />
+          </ChartErrorBoundary>
         </Card>
 
         {/* Row 2 */}
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Domain distribution" meta="tweet URLs" />
-          <DomainDistributionChart query={query} />
+          <ChartErrorBoundary chartName="Domain distribution">
+            <DomainDistributionChart query={query} />
+          </ChartErrorBoundary>
         </Card>
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Bio domains" meta="author bio links" />
-          <BioDomainsChart query={query} />
+          <ChartErrorBoundary chartName="Bio domains">
+            <BioDomainsChart query={query} />
+          </ChartErrorBoundary>
         </Card>
 
         {/* Row 3 */}
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Symbol rate" meta="tweets / hour" />
-          <SymbolRateChart query={query} />
+          <ChartErrorBoundary chartName="Symbol rate">
+            <SymbolRateChart query={query} />
+          </ChartErrorBoundary>
         </Card>
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Engagement timeseries" meta="likes · RT · replies · quotes" />
-          <EngagementTimeSeriesChart query={query} />
+          <ChartErrorBoundary chartName="Engagement timeseries">
+            <EngagementTimeSeriesChart query={query} />
+          </ChartErrorBoundary>
         </Card>
 
         {/* Row 4 — sentiment */}
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Sentiment gauge" meta="avg score · 7D" />
-          <SentimentGaugeChart query={query} />
+          <ChartErrorBoundary chartName="Sentiment gauge">
+            <SentimentGaugeChart query={query} />
+          </ChartErrorBoundary>
         </Card>
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Sentiment timeline" meta="% bull / bear / mixed" />
-          <SentimentTimelineChart query={query} />
+          <ChartErrorBoundary chartName="Sentiment timeline">
+            <SentimentTimelineChart query={query} />
+          </ChartErrorBoundary>
         </Card>
 
         {/* Row 5 */}
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Keyword word cloud" meta="top extracted terms" />
-          <KeywordWordCloudChart query={query} />
+          <ChartErrorBoundary chartName="Keyword word cloud">
+            <KeywordWordCloudChart query={query} />
+          </ChartErrorBoundary>
         </Card>
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Conversation depth" meta="thread reply depth" />
-          <ConversationDepthChart query={query} />
+          <ChartErrorBoundary chartName="Conversation depth">
+            <ConversationDepthChart query={query} />
+          </ChartErrorBoundary>
         </Card>
 
         {/* Row 6 */}
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Geographic distribution" meta="author locations · top 15" />
-          <GeographicDistributionMapChart query={query} />
+          <ChartErrorBoundary chartName="Geographic distribution">
+            <GeographicDistributionMapChart query={query} />
+          </ChartErrorBoundary>
         </Card>
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Language distribution" meta="tweet language" />
-          <LanguageDistributionChart query={query} />
+          <ChartErrorBoundary chartName="Language distribution">
+            <LanguageDistributionChart query={query} />
+          </ChartErrorBoundary>
         </Card>
 
         {/* Row 7 */}
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Source distribution" meta="Twitter client" />
-          <SourceDistributionChart query={query} />
+          <ChartErrorBoundary chartName="Source distribution">
+            <SourceDistributionChart query={query} />
+          </ChartErrorBoundary>
         </Card>
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Verification breakdown" meta="blue · business · government" />
-          <VerificationBreakdownChart query={query} />
+          <ChartErrorBoundary chartName="Verification breakdown">
+            <VerificationBreakdownChart query={query} />
+          </ChartErrorBoundary>
         </Card>
 
         {/* Row 8 */}
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Bot ratio" meta="automated vs human" />
-          <BotRatioChart query={query} />
+          <ChartErrorBoundary chartName="Bot ratio">
+            <BotRatioChart query={query} />
+          </ChartErrorBoundary>
         </Card>
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Posting heatmap" meta="day × hour · 7D" />
-          <PostingHeatmapChart query={query} />
+          <ChartErrorBoundary chartName="Posting heatmap">
+            <PostingHeatmapChart query={query} />
+          </ChartErrorBoundary>
         </Card>
 
         {/* Row 9 */}
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Content length × engagement" meta="text length vs engagement score" />
-          <ContentLengthEngagementChart query={query} />
+          <ChartErrorBoundary chartName="Content length × engagement">
+            <ContentLengthEngagementChart query={query} />
+          </ChartErrorBoundary>
         </Card>
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Author influence" meta="followers vs engagement rate" />
-          <AuthorInfluenceScatterChart query={query} />
+          <ChartErrorBoundary chartName="Author influence">
+            <AuthorInfluenceScatterChart query={query} />
+          </ChartErrorBoundary>
         </Card>
       </div>
 

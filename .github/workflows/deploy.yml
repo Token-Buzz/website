@@ -97,7 +97,17 @@ jobs:
             sed 's/\x1b\[[0-9;]*m//g' /tmp/sst-deploy.log \
               | awk '
                   /^---$|✓[[:space:]]+Complete/ { capture = 1; next }
-                  capture && /^[[:space:]]+[A-Za-z][A-Za-z0-9_]*:[[:space:]]/ { print }
+                  capture && /^[[:space:]]+[A-Za-z][A-Za-z0-9_]*:[[:space:]]/ {
+                    # SST prints each URL twice — once from each component'\''s
+                    # auto-published .url property (Capitalised label) and once
+                    # from the run() return in sst.config.ts (lowercase). Dedupe
+                    # by URL value; first occurrence (capitalised) wins.
+                    pos = index($0, ": ")
+                    if (pos > 0) {
+                      url = substr($0, pos + 2)
+                      if (!seen[url]++) print
+                    }
+                  }
                 '
           )
 
