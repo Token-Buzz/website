@@ -19,42 +19,10 @@ import { VerificationBreakdownChart } from "../_analytics/VerificationBreakdownC
 import { BotRatioChart } from "../_analytics/BotRatioChart";
 import { KeywordWordCloudChart } from "../_analytics/KeywordWordCloudChart";
 import { AuthorInfluenceScatterChart } from "../_analytics/AuthorInfluenceScatterChart";
-
-// ── Coming-soon placeholder ────────────────────────────────────────────────
-
-function ComingSoon() {
-  return (
-    <div
-      style={{
-        marginTop: 16,
-        padding: "24px 0",
-        textAlign: "center",
-        font: "500 11px var(--font-mono)",
-        color: "var(--fg-4)",
-        border: "1px dashed var(--border)",
-        borderRadius: 6,
-      }}
-    >
-      Coming in v1.1
-    </div>
-  );
-}
-
-// ── Grid chart card (coming-soon only) ────────────────────────────────────
-
-interface ChartCardProps {
-  eyebrow: string;
-  meta?: string;
-}
-
-function ChartCard({ eyebrow, meta }: ChartCardProps) {
-  return (
-    <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-      <SectionHead eyebrow={eyebrow} meta={meta} />
-      <ComingSoon />
-    </Card>
-  );
-}
+import { SentimentGaugeChart } from "../_analytics/SentimentGaugeChart";
+import { PostingHeatmapChart } from "../_analytics/PostingHeatmapChart";
+import { GeographicDistributionMapChart } from "../_analytics/GeographicDistributionMapChart";
+import { ContentLengthEngagementChart } from "../_analytics/ContentLengthEngagementChart";
 
 // ── Analytics page ─────────────────────────────────────────────────────────
 
@@ -146,7 +114,10 @@ function AnalyticsPageInner() {
         </Card>
 
         {/* Row 4 — sentiment */}
-        <ChartCard eyebrow="Sentiment gauge" meta="avg score" />
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Sentiment gauge" meta="avg score · 7D" />
+          <SentimentGaugeChart query={query} />
+        </Card>
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Sentiment timeline" meta="% bull / bear / mixed" />
           <SentimentTimelineChart query={query} />
@@ -163,7 +134,10 @@ function AnalyticsPageInner() {
         </Card>
 
         {/* Row 6 */}
-        <ChartCard eyebrow="Geographic distribution" meta="author locations" />
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Geographic distribution" meta="author locations · top 15" />
+          <GeographicDistributionMapChart query={query} />
+        </Card>
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Language distribution" meta="tweet language" />
           <LanguageDistributionChart query={query} />
@@ -184,13 +158,16 @@ function AnalyticsPageInner() {
           <SectionHead eyebrow="Bot ratio" meta="automated vs human" />
           <BotRatioChart query={query} />
         </Card>
-        <ChartCard eyebrow="Posting heatmap" meta="day × hour" />
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Posting heatmap" meta="day × hour · 7D" />
+          <PostingHeatmapChart query={query} />
+        </Card>
 
         {/* Row 9 */}
-        <ChartCard
-          eyebrow="Content length × engagement"
-          meta="text length vs engagement score"
-        />
+        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
+          <SectionHead eyebrow="Content length × engagement" meta="text length vs engagement score" />
+          <ContentLengthEngagementChart query={query} />
+        </Card>
         <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
           <SectionHead eyebrow="Author influence" meta="followers vs engagement rate" />
           <AuthorInfluenceScatterChart query={query} />

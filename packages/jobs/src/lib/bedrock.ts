@@ -11,7 +11,8 @@ export type SentimentResult = {
   score: number;  // -100 to +100
 };
 
-// Classifies tweet sentiment. Returns neutral/0 on any error.
+// Classifies tweet sentiment. Returns neutral/0 on any error; logs the
+// underlying cause so silent fallbacks are debuggable.
 export async function classifySentiment(tweetText: string, tokenSymbol: string): Promise<SentimentResult> {
   try {
     const response = await client.send(new ConverseCommand({
@@ -24,14 +25,38 @@ export async function classifySentiment(tweetText: string, tokenSymbol: string):
     // Bedrock ConverseCommand response: output.message.content[].text
     const content = response.output?.message?.content ?? [];
     const textBlock = content.find((c): c is { text: string } => "text" in c);
-    if (!textBlock) return { sentiment: "neutral", score: 0 };
+    if (!textBlock) {
+      console.warn("[sentiment] empty response content");
+      return { sentiment: "neutral", score: 0 };
+    }
 
-    const parsed = JSON.parse(textBlock.text);
+    // Strip markdown code fences if Claude wrapped the JSON in ``` blocks
+    const raw = textBlock.text.trim();
+    const cleaned = raw
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+
+    let parsed: { sentiment?: unknown; score?: unknown };
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch (parseErr) {
+      console.warn(
+        "[sentiment] JSON parse failed; raw response:",
+        raw.slice(0, 200),
+        "err:",
+        parseErr,
+      );
+      return { sentiment: "neutral", score: 0 };
+    }
+
     if (typeof parsed.sentiment === "string" && typeof parsed.score === "number") {
       return { sentiment: parsed.sentiment as "bull" | "bear" | "neutral", score: parsed.score };
     }
+    console.warn("[sentiment] unexpected JSON shape:", parsed);
     return { sentiment: "neutral", score: 0 };
-  } catch {
+  } catch (err) {
+    console.error("[sentiment] Bedrock call failed:", err);
     return { sentiment: "neutral", score: 0 };
   }
 }

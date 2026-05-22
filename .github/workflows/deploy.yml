@@ -86,7 +86,7 @@ jobs:
           npx sst deploy --stage ${{ steps.stage.outputs.name }} \
             2>&1 | tee /tmp/sst-deploy.log
 
-      - name: Write deployment URLs to job summary
+      - name: Surface deployment URLs
         if: success()
         run: |
           stage="${{ steps.stage.outputs.name }}"
@@ -100,6 +100,32 @@ jobs:
                   capture && /^[[:space:]]+[A-Za-z][A-Za-z0-9_]*:[[:space:]]/ { print }
                 '
           )
+
+          # 1. Plain stdout — visible in the step log on mobile and desktop
+          echo ""
+          echo "================================================================"
+          echo "  Deployment URLs — stage: ${stage}"
+          echo "================================================================"
+          if [ -n "$outputs" ]; then
+            echo "$outputs"
+          else
+            echo "  (no outputs found in deploy log — check the SST deploy step)"
+          fi
+          echo "================================================================"
+          echo ""
+
+          # 2. GitHub Actions ::notice:: — surfaces in the run-page header
+          # banner on every device including mobile. One notice per URL.
+          if [ -n "$outputs" ]; then
+            while IFS= read -r line; do
+              # Trim leading whitespace
+              trimmed="${line#"${line%%[![:space:]]*}"}"
+              [ -z "$trimmed" ] && continue
+              echo "::notice title=Deployed ${stage}::${trimmed}"
+            done <<< "$outputs"
+          fi
+
+          # 3. Job summary — still nice on desktop
           {
             echo "## Deployment URLs — \`${stage}\`"
             echo ""
