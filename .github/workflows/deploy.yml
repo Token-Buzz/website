@@ -10,8 +10,18 @@ name: Deploy
 on:
   push:
     branches: [master]
+    paths-ignore:
+      - '**.md'
+      - '.claude/**'
+      - '.gitignore'
+      - 'LICENSE'
   pull_request:
     types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**.md'
+      - '.claude/**'
+      - '.gitignore'
+      - 'LICENSE'
 
 # One deploy per stage at a time. Newer pushes cancel in-flight runs so we
 # don't waste minutes deploying a commit that's already been superseded.
