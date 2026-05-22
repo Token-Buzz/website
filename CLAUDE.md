@@ -95,14 +95,11 @@ Deployments run from `.github/workflows/deploy.yml` and `.github/workflows/teard
 
 Steps for a deploy run: checkout → setup Node 22 → `npm ci` → `npm run lint` → `npm run typecheck` → `aws-actions/configure-aws-credentials` → `npx sst unlock` (best-effort) → `npx sst deploy --stage <stage>`.
 
-### Required GitHub repository configuration
+### Required GitHub repository secrets
 
-Set under **Settings → Secrets and variables → Actions** before the first run:
+Set under **Settings → Secrets and variables → Actions → Secrets** before the first run:
 
-**Variables** (Variables tab — not sensitive):
 - `AWS_ROLE_ARN` — ARN of the IAM role the workflows assume via GitHub OIDC, e.g. `arn:aws:iam::421219980711:role/github-actions-deploy`. The role's trust policy must allow `token.actions.githubusercontent.com` for this repo; the role itself needs permissions to deploy this SST app.
-
-**Secrets** (Secrets tab — sensitive):
 - `CLOUDFLARE_API_TOKEN` — same token previously held as a Console env var (used by Cloudflare DNS records).
 
 The workflows authenticate to AWS via OIDC (`aws-actions/configure-aws-credentials@v4` with `role-to-assume`), so no long-lived AWS access keys are stored in GitHub.
