@@ -80,16 +80,34 @@ jobs:
         continue-on-error: true
 
       - name: SST deploy
-        run: npx sst deploy --stage ${{ steps.stage.outputs.name }}
+        id: sst_deploy
+        run: |
+          set -o pipefail
+          npx sst deploy --stage ${{ steps.stage.outputs.name }} \
+            2>&1 | tee /tmp/sst-deploy.log
 
       - name: Write deployment URLs to job summary
         if: success()
         run: |
           stage="${{ steps.stage.outputs.name }}"
+          # SST prints stack outputs after a "✓  Complete" or "---" line in
+          # the form "   <key>: <value>". Strip ANSI, then grab the trailing
+          # key:value block.
+          outputs=$(
+            sed 's/\x1b\[[0-9;]*m//g' /tmp/sst-deploy.log \
+              | awk '
+                  /^---$|✓[[:space:]]+Complete/ { capture = 1; next }
+                  capture && /^[[:space:]]+[A-Za-z][A-Za-z0-9_]*:[[:space:]]/ { print }
+                '
+          )
           {
             echo "## Deployment URLs — \`${stage}\`"
             echo ""
             echo '```'
-            npx sst outputs --stage "$stage" || echo "(could not read outputs)"
+            if [ -n "$outputs" ]; then
+              echo "$outputs"
+            else
+              echo "(no outputs found in deploy log — check the SST deploy step)"
+            fi
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
