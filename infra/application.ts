@@ -9,6 +9,11 @@ const isPR = $app.stage.startsWith("pr-");
 
 export const app = new sst.aws.Nextjs("Application", {
     path: "packages/application",
+    server: {
+        // POST /api/query fetches up to 5 pages from twitterapi.io plus geo
+        // lookups, which can exceed the 20s default.
+        timeout: "60 seconds",
+    },
     domain: isPR
         ? {
               name: $interpolate`app.${$app.stage}.${webDomain.value}`,

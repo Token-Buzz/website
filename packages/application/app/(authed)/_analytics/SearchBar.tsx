@@ -32,14 +32,24 @@ export function SearchBar({ onIngested }: SearchBarProps) {
     // Using replace() so hitting back doesn't cycle through every keystroke.
     router.replace(`?q=${encodeURIComponent(trimmed)}`);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 55_000);
+
     try {
       const res = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: trimmed, maxPages: 5 }),
+        signal: controller.signal,
       });
 
       if (!res.ok) {
+        if (res.status === 429) {
+          throw new Error("Server is busy — please try again in a moment.");
+        }
+        if (res.status === 504 || res.status === 502) {
+          throw new Error("Search timed out — try again or pick a less broad query.");
+        }
         const body = await res.json().catch(() => ({}));
         throw new Error(
           (body as { error?: string }).error ??
@@ -49,8 +59,15 @@ export function SearchBar({ onIngested }: SearchBarProps) {
 
       onIngested?.(trimmed);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setError("Search timed out — try again or pick a less broad query.");
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Something went wrong");
+      }
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   }
