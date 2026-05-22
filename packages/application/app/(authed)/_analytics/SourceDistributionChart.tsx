@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useAggregatePolling } from "./useAggregatePolling";
 import { BarList } from "./BarList";
 
 type Props = { query: string };
@@ -11,48 +11,18 @@ interface ApiItem {
 }
 
 export function SourceDistributionChart({ query }: Props) {
-  const [items, setItems] = useState<{ label: string; value: number }[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const url = query
+    ? `/api/analytics/source-distribution?query=${encodeURIComponent(query)}&window=7D`
+    : null;
 
-  useEffect(() => {
-    if (!query) return;
-
-    let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
-    setError(null);
-
-    fetch(
-      `/api/analytics/source-distribution?query=${encodeURIComponent(query)}&window=7D`
-    )
-      .then((r) => {
-        if (!r.ok) throw new Error(`${r.status}`);
-        return r.json();
-      })
-      .then((data: ApiItem[]) => {
-        if (cancelled) return;
-        setItems(data.map((d) => ({ label: d.source, value: d.count })));
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return;
-        setError(String(e));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [query]);
+  const { items: rawItems, loading, error } = useAggregatePolling<ApiItem>(url);
 
   if (error)
     return (
-      <div style={{ color: "#dc2626", fontSize: 13 }}>
-        Failed to load: {error}
-      </div>
+      <div style={{ color: "#dc2626", fontSize: 13 }}>Failed to load: {error}</div>
     );
+
+  const items = rawItems.map((d) => ({ label: d.source, value: d.count }));
 
   return (
     <BarList
