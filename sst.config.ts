@@ -20,10 +20,16 @@ export default $config({
   },
   async run() {
     await import("./infra/secrets");
-    await import("./infra/router");
-    await import("./infra/marketing");
-    await import("./infra/application");
+    const { router } = await import("./infra/router");
+    const { web: marketing } = await import("./infra/marketing");
+    const { app: application } = await import("./infra/application");
     await import("./infra/clerk");
     await import("./infra/jobs");
+
+    return {
+      router: router.url,
+      marketing: marketing.url,
+      application: application.url,
+    };
   },
 });

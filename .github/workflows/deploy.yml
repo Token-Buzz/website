@@ -81,3 +81,15 @@ jobs:
 
       - name: SST deploy
         run: npx sst deploy --stage ${{ steps.stage.outputs.name }}
+
+      - name: Write deployment URLs to job summary
+        if: success()
+        run: |
+          stage="${{ steps.stage.outputs.name }}"
+          {
+            echo "## Deployment URLs — \`${stage}\`"
+            echo ""
+            echo '```'
+            npx sst outputs --stage "$stage" || echo "(could not read outputs)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
