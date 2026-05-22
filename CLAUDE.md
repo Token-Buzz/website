@@ -46,7 +46,7 @@ PR stages (`pr-<N>`): both the application and marketing get their own CloudFron
 
 - `production` is the only named stage — it gets the custom domain and Cloudflare DNS for Clerk (see `infra/clerk.ts`).
 - All other stage names are ephemeral (`pr-<N>`); they get auto-generated URLs and use the PR Console env vars for Clerk and all other config.
-- CI/CD runs via SST Console Autodeploy (see `console.autodeploy` in `sst.config.ts`): push `master` to `production` branch to deploy production; opening a PR deploys to `pr-<number>` and closing it tears that stage down.
+- CI/CD runs via GitHub Actions (`.github/workflows/deploy.yml` + `.github/workflows/teardown.yml`): push to `master` deploys `production`; opening / updating a PR deploys `pr-<number>`; closing the PR tears that stage down.
 
 ### Persistence — DynamoDB single-table design
 
@@ -84,18 +84,26 @@ Secrets to configure in Console (same names for both environments, different val
 
 All `sst.Secret` names must use `SCREAMING_SNAKE_CASE` (e.g. `TWITTER_API_KEY`, not `TwitterApiKey`). This keeps secret names consistent with environment variable conventions and makes it obvious when a name needs updating.
 
-## CI/CD (SST Console Autodeploy)
+## CI/CD (GitHub Actions)
 
-Deployments run via `console.autodeploy` in `sst.config.ts`, executed by AWS CodeBuild.
+Deployments run from `.github/workflows/deploy.yml` and `.github/workflows/teardown.yml`. SST is still the deploy tool — only the pipeline trigger moved off SST Console.
 
 - Push to `master` → deploys `production` stage.
-- Open/update a PR → deploys ephemeral `pr-<number>` stage (fallback Console environment).
-- Close a PR → removes `pr-<number>` stage (`sst unlock` first to clear any stuck lock, then `sst remove`).
-- Any other branch push → ignored (no deploy).
+- Open / update / reopen a PR → deploys ephemeral `pr-<number>` stage.
+- Close a PR → removes `pr-<number>` stage (`sst unlock` → `sst refresh` → `sst remove`).
+- Concurrency group per stage; in-progress runs are cancelled when a newer commit lands.
 
-Workflow: `n 22` (pin Node) → on remove: `sst unlock + sst remove`; otherwise: `npm ci → lint → typecheck → sst unlock + sst deploy`.
+Steps for a deploy run: checkout → setup Node 22 → `npm ci` → `npm run lint` → `npm run typecheck` → `aws-actions/configure-aws-credentials` → `npx sst unlock` (best-effort) → `npx sst deploy --stage <stage>`.
 
-`.gitlab-ci.yml` has been deleted — all CI/CD now runs through SST Console Autodeploy.
+### Required GitHub repository secrets
+
+Set under **Settings → Secrets and variables → Actions** before the first run:
+
+- `AWS_ACCESS_KEY_ID` — IAM user / role with permission to deploy this SST app
+- `AWS_SECRET_ACCESS_KEY` — paired secret for the above
+- `CLOUDFLARE_API_TOKEN` — same token previously held as a Console env var (used by Cloudflare DNS records)
+
+SST application secrets (`sst.Secret` entries in `infra/secrets.ts`: `WEB_DOMAIN`, `CLERK_*`, `TURNSTILE_*`, `RESEND_API_KEY`, `CONTACT_*`, `TWITTER_API_KEY`, `OPENCAGE_API_KEY`) are stored in AWS SSM Parameter Store, not in GitHub. Seed them per stage with `npx sst secret set <NAME> <value> --stage <stage>` (or use the `npm run set-sst-vars` script with a `.env.local`).
 
 ## Conventions
 
