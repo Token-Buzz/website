@@ -2,14 +2,21 @@
 
 ## Where things stand
 - **Repo:** `token-buzz/website` (npm-workspaces monorepo, SST v4 on AWS). Working branch: `claude/token-buzz-clickup-tasks-fAcQ5`.
-- **PR #16** is open → `master`: https://github.com/Token-Buzz/website/pull/16. Commits: roadmap docs, a settings-permission chore, the movers fix, and the movers unit test.
-- typecheck + lint + the new unit test pass locally; the movers change is **not** verified against live DynamoDB.
+- **PR #16** is open → `master`: https://github.com/Token-Buzz/website/pull/16. Branch commits now include: roadmap docs, a settings-permission chore, the movers fix + unit test, the **CI unit-test wiring** (`cacea3c`), and a **workflow-tooling commit** (test convention + `/check-tests` skill + delegate-reminder hook, `56336f8`).
+- typecheck + lint + the 6 unit tests pass locally **and now in CI**. The movers change is still **not** verified against live DynamoDB.
 
-## What happened this session
-1. **ClickUp reorg.** Consolidated 26 original tasks (list `901416380123`) into 9 milestones (M1–M9) as top-level tasks, and archived the 26 originals as subtasks under an umbrella task "OLD TASKS 05-22-2026" (`86ba31j7d`). MCP server is the `clickup_*` toolset.
-2. **Roadmap docs** committed: `docs/ROADMAP.md` (index + dependency graph; M1 unblocks M2/M3/M6/M8/M9; M5 orthogonal; M9 is v2) and `docs/milestones/M1..M9.md` (locked decisions, schema, phases). Each ClickUp milestone description points at its doc.
-3. **First implementation slice — M1 movers.** Took M1 Phase 1 into "grounded plan mode," which revealed the movers pipeline was **wired but dead**. Fixed it (see below).
-4. **Extracted + unit-tested** the delta math locally.
+## This session (testing infra + workflow tooling)
+Context driving this work: the user works from a **mobile phone and cannot hand-test APIs/JSON endpoints**. The goal was to make correctness *automatic* (read a green check) instead of manual.
+1. **Unit tests now run in CI.** `.github/workflows/deploy.yml` has a **Unit tests** step (after Typecheck, before AWS credentials, so it gates the deploy without needing AWS). Wiring: root `npm run test:unit` → `npm run test:unit --workspaces --if-present` → `packages/core`'s `test:unit` = `vitest run` (plain, **no SST stage**). The existing `npm test -w packages/core` (`sst shell vitest`) is left untouched for future DB-bound integration tests.
+2. **CLAUDE.md convention added:** *"Any new pure logic (calculations, parsers, data transforms, DB key builders) ships with unit tests in the same change. CI runs these via `npm run test:unit`."*
+3. **`/check-tests` skill** (`.claude/skills/check-tests/SKILL.md`): on-demand audit — diffs the branch vs `master`, flags new/changed **pure logic** lacking tests, runs `npm run test:unit`, reports gaps + pass/fail. **Advisory** (offers to write missing tests, doesn't auto-write).
+4. **Delegate-reminder hook** (`.claude/hooks/remind-delegate.sh` + a `PreToolUse` entry in `.claude/settings.json`): a **non-blocking** reminder nudging the MAIN agent to dispatch a subagent for code edits. Stays **silent** for subagent edits (detected via `agent_id` in the hook stdin) and for docs/config (`*.md`, `.claude/`). **NEXT LEAD (you):** when you try to edit code directly you'll get this nudge in-context — heed it and dispatch a Sonnet/Haiku subagent. It won't block you; it's a guardrail for the CLAUDE.md orchestration rule.
+
+## Verification model going forward (important — the user is on mobile)
+- **Do NOT ask the user to curl/Postman/hand-test endpoints.** `/api/movers` is Clerk-auth-gated and a fresh stage has empty DynamoDB, so manual hits are both impractical and uninformative.
+- **Pure logic →** CI green check (the Unit tests step). That's the verification surface.
+- **Product features →** the **UI is the acceptance test**. Build the page, then the user taps-and-looks on mobile, and the next Claude can drive a headless browser locally to screenshot it before the user even opens it.
+- **Live-DB round-trip →** still needs an **integration-test layer** (`sst shell vitest` against a deployed stage). **Not built yet.** This is the cleanest way to close the "movers not verified against live DynamoDB" gap without hand-testing.
 
 ## The movers fix — important technical context
 The `SpikeMaterializer` cron already existed in `infra/jobs.ts` (every 5 min → `packages/jobs/src/spike-materializer.handler`) but was non-functional:
@@ -29,13 +36,16 @@ The fix:
 - `packages/application/app/api/movers/route.ts` — `GET /api/movers?limit=`.
 
 ## Open items / next steps
-- **Runtime verification still owed.** Needs a deployed stage (`sst shell`) to confirm the materializer writes rows that `/api/movers` ranks. No local DynamoDB mock exists in the repo.
+- **Runtime verification still owed.** Needs a deployed stage (`sst shell`) to confirm the materializer writes rows that `/api/movers` ranks. No local DynamoDB mock exists in the repo. Recommended path: build the **integration-test layer** described above rather than hand-testing.
+- **M1 Phase 2 (Movers UI) is the natural next slice.** It gives the user a tappable mobile acceptance test, and the next Claude can screenshot it from a local dev server before the user opens it. (The `/movers` page currently 404s.)
 - **Adjacent bug, deliberately out of scope:** `getPulse` reads `AGG#PULSE#all` but `incrementPulse` writes `PULSE#<query>` → `/api/analytics/pulse` also returns nothing. Separate fix.
 - **M1 remaining phases:** live-feed endpoint (reuse `tweetQueryGsi` / `QueryByQueryTime`, fan out over the user's watchlist), alerts CRUD (`alertKey` exists; needs a trigger-history key + `/api/alerts`). Movers UI, live-feed UI, alerts UI are Phases 2–4.
 
 ## Conventions & workflow the user expects (follow these)
-- **Local loop, no AWS:** branch → code → local `npm run lint` + `npm run typecheck` + `test` → commit → push → open PR → review. Lint/typecheck/pure-unit-tests need **no** AWS. Only live-DB integration needs a stage (the repo's `ddb` client eagerly reads `Resource.X.name` at import, so anything importing it crashes outside `sst shell` — extract pure logic to keep it testable).
+- **Lead is the orchestrator.** Dispatch Sonnet/Haiku subagents for coding work (Sonnet = judgment/feature/refactor; Haiku = small mechanical edits); review the real diff before reporting done. A non-blocking hook will remind you if you edit code directly. Docs/config (`*.md`, `.claude/`) you may edit directly.
+- **New pure logic ships with unit tests in the same change** — now a CI gate (`npm run test:unit`).
+- **Local loop, no AWS:** branch → code → local `npm run lint` + `npm run typecheck` + `npm run test:unit` → commit → push → open PR → review. Lint/typecheck/pure-unit-tests need **no** AWS. Only live-DB integration needs a stage (the repo's `ddb` client eagerly reads `Resource.X.name` at import, so anything importing it crashes outside `sst shell` — extract pure logic to keep it testable).
 - Add DB key builders in `packages/core/src/db/keys.ts`; never inline pk/sk. Cross-package imports via workspace names (`@monorepo-template/core/...`).
-- Never commit/push to `master`; work on the feature branch. Discard `packages/*/tsconfig.tsbuildinfo` before staging. Never `--no-verify`.
+- Never commit/push to `master`; work on the feature branch. Discard `packages/*/tsconfig.tsbuildinfo` before staging (a Stop hook flags a dirty tree; these regenerate on every typecheck and must not be committed). Never `--no-verify`.
 - **Open PRs only when explicitly asked.**
 - The user prefers the **per-milestone, one-phase-per-session plan-mode** approach: ground each milestone doc against real code before implementing, because the docs were written from the brainstorm and overstate net-new work (M1 proved this).
