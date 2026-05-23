@@ -129,6 +129,13 @@ The workflows authenticate to AWS via OIDC (`aws-actions/configure-aws-credentia
 
 SST application secrets (`sst.Secret` entries in `infra/secrets.ts`: `WEB_DOMAIN`, `CLERK_*`, `TURNSTILE_*`, `RESEND_API_KEY`, `CONTACT_*`, `TWITTER_API_KEY`, `OPENCAGE_API_KEY`) are stored in AWS SSM Parameter Store, not in GitHub. Seed them per stage with `npx sst secret set <NAME> <value> --stage <stage>` (or use the `npm run set-sst-vars` script with a `.env.local`).
 
+## GitHub tooling
+
+Two ways to reach GitHub are available; use the right one for the job:
+
+- **GitHub Projects (v2)**: use the `gh` CLI (`gh project ...`). The GitHub MCP server has no Projects tool, so `gh` is the only option. Authenticated as `jasonp2323`.
+- **Everything else** (PRs, issues, comments, CI status, reviews, branches, releases, code search): use the GitHub MCP tools (`mcp__github__*`), not `gh`. They integrate with the PR-activity webhook subscriptions used to watch/autofix PRs.
+
 ## Conventions
 
 - All cross-package imports go through workspace package names (`@monorepo-template/core/db`), not relative paths.
