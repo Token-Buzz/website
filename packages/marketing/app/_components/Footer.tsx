@@ -7,11 +7,22 @@ const SOCIAL = [
   { icon: 'discord' as const,  label: 'Discord' },
 ]
 
-const LINK_COLS = [
-  { h: 'Product',   l: ['Watchlist', 'Live feed', 'Ask Hum', 'Mobile apps'] },
-  { h: 'Company',   l: ['About', 'Blog', 'Press', 'Careers', 'Brand'] },
-  { h: 'Resources', l: ['Docs', 'Pricing', 'Status', 'Security', 'Changelog'] },
-  { h: 'Legal',     l: ['Terms', 'Privacy', 'Disclosures', 'Contact'] },
+type FooterLink = { label: string; href: string }
+type FooterCol  = { h: string; l: FooterLink[] }
+
+function cs(label: string): FooterLink { return { label, href: '/coming-soon' } }
+
+const LINK_COLS: FooterCol[] = [
+  { h: 'Product',   l: [cs('Watchlist'), cs('Live feed'), cs('Ask Hum'), cs('Mobile apps')] },
+  { h: 'Company',   l: [cs('About'), cs('Blog'), cs('Press'), cs('Careers'), cs('Brand')] },
+  {
+    h: 'Resources',
+    l: [cs('Docs'), cs('Pricing'), cs('Status'), cs('Security'), { label: 'Changelog', href: '/changelog' }],
+  },
+  {
+    h: 'Legal',
+    l: [cs('Terms'), cs('Privacy'), cs('Disclosures'), { label: 'Contact', href: '/contact' }],
+  },
 ]
 
 export default function Footer() {
@@ -95,16 +106,16 @@ export default function Footer() {
                 }}
               >
                 {col.l.map(item => (
-                  <li key={item}>
+                  <li key={item.label}>
                     <a
-                      href="/coming-soon"
+                      href={item.href}
                       style={{
                         font: '500 14px var(--font-sans)',
                         color: 'var(--data-fg)',
                         textDecoration: 'none',
                       }}
                     >
-                      {item}
+                      {item.label}
                     </a>
                   </li>
                 ))}
