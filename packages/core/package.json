@@ -17,6 +17,7 @@
     "./db/users": "./src/db/users.ts",
     "./lib/enrich": "./src/lib/enrich.ts",
     "./lib/twitter": "./src/lib/twitter.ts",
+    "./movers": "./src/movers.ts",
     "./*": [
       "./src/*/index.ts",
       "./src/*.ts"
