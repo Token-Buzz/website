@@ -1,79 +1,64 @@
 # Session handoff — TokenBuzz
 
-## 2026-05-23 — Movers M1 Phase 2 DONE; browser-UI test setup pending
+## 2026-05-23 — Changelog shipped; Toggl time-tracking pending; M1.5 mobile milestone created
 
-- **M1 Phase 2 (Movers UI) is complete and pushed** on branch `claude/affectionate-cray-8MsWW` (commit `564d667`). Multi-window (1H/24H/7D) buzz deltas end to end: core `windowMinuteRange` + per-window spike GSI builders; Tokens table gains `SpikingByDelta24h` (gsi3) + `SpikingByDelta7d` (gsi4) in `infra/db.ts` AND the dynalite harness `packages/core/test/dynalite-global.ts`; `updateTokenBuzz({ symbol, mentions, deltas })` maintains all three window indexes; `getSpikingTokens({ window })`; the spike-materializer computes all three; `GET /api/movers?window=1h|24h|7d` returns the window-specific delta; new `/movers` page (window pills + sortable table, route protected in `proxy.ts`, Today "See all movers" CTA wired). Gate green: typecheck + lint + test:unit (12) + test:integration (9). **Not deployed; no PR opened.**
-- **GitHub Project**: all 9 milestones + 61 epic/phase issues seeded. M1 Phase 2 (#20) = In review, in "Sprint 1 — Movers UI".
+### TL;DR for the next session
+- **Active branch:** `claude/determined-allen-QILYR` — **PR #81 is open** on it. The branch now carries three different workstreams (live-feed + release config + changelog) — see "PR #81 contents" below; consider splitting if you want clean PRs.
+- **Just shipped (this session):** the public **Changelog** feature (GitHub Releases → marketing `/changelog`), browser-verified. A new **M1.5 mobile-friendly UI** milestone + epic/phases on the board. A decision to use **Toggl Track** for time tracking (build is **blocked on the user's Toggl API token**).
+- **Top of the queue:** (1) wire a **`GITHUB_TOKEN` secret for the production marketing build** or `/changelog` shows empty in prod (see gotcha); (2) once the user provides the Toggl token, build the `track` CLI (#89); (3) finish **M1 Phase 4 — Alerts** (#22); then (4) start **M1.5 mobile** (#82).
 
-### NEXT: browser-test the Movers UI (blocked on network policy)
-This environment's network policy blocks the Playwright browser CDN (`cdn.playwright.dev` / `playwright.download.prss.microsoft.com` → 403) and Clerk (`*.clerk.accounts.dev` won't resolve), so no in-browser test was possible. To enable, the environment needs:
-1. **Network egress** to: `cdn.playwright.dev`, `playwright.download.prss.microsoft.com`, `*.azureedge.net`, `*.clerk.accounts.dev`, `*.clerk.com`.
-2. **Clerk dev-instance keys** as env vars: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_…`, `CLERK_SECRET_KEY=sk_test_…` (the staging/dev instance — NOT prod `pk_live`).
-3. **Test login = Clerk built-in test identity (Option B, no password).** The dev instance must have **email-code** sign-in enabled. Env var: `CLERK_TEST_EMAIL=<x>+clerk_test@example.com`. Headless sign-in: enter that email, then the fixed dev OTP `424242` (Clerk accepts it for any `+clerk_test` address without sending mail; works for sign-up too if the user doesn't exist yet). No password, no real inbox, no roles needed — `proxy.ts` gates `/movers` on auth alone.
+### ⚠️ This handoff + the changelog work live on branch `claude/determined-allen-QILYR`
+A session started from `master` won't see any of it. Start the next session on that branch (or merge PR #81 first).
 
-Plan once egress is live: `npm i -D playwright && npx playwright install chromium`; boot a local dynalite seeded with sample spiking tokens across all three windows (reuse the table defs incl. the new GSIs from `packages/core/test/dynalite-global.ts`) and set `AWS_ENDPOINT_URL_DYNAMODB` + `SST_RESOURCE_*` so `/api/movers` reads it with no AWS; `npm run dev:application` (:3002); Playwright signs in via the `CLERK_TEST_EMAIL` + `424242` code, visits `/movers`, toggles 1H/24H/7D, exercises sort, captures desktop + mobile screenshots and sends them to the user.
+---
 
-## TL;DR for the next session
-- **Repo:** `Token-Buzz/website` (npm-workspaces monorepo, SST v4 on AWS).
-- **Active branch:** `claude/aws-testing-dynamodb-E5haH` — 3 commits, pushed, **PR not opened**. Adds a dynalite integration-test layer + CI gate + CLAUDE.md docs (details below).
-- **Immediate next task:** migrate ClickUp milestones → **GitHub Projects**. Blocked this session because `gh` / the GitHub API isn't reachable in the web environment. The user is installing `gh` ahead of the next session. Full plan + ClickUp IDs + prerequisites under "NEXT TASK" below.
+## What this session shipped
 
-## ⚠️ This handoff lives on branch `claude/aws-testing-dynamodb-E5haH`
-A fresh session started from `master` will NOT see this file (or the test layer) unless the branch is merged first. Either merge `claude/aws-testing-dynamodb-E5haH` to `master`, or start the next session on that branch.
+### 1. Public Changelog (board issue #88 — effectively done)
+Source of truth = **GitHub Releases**, notes auto-generated from merged PRs, rendered publicly.
+- `.github/release.yml` — categorizes generated release notes by PR label (Features/Fixes/Docs/Maintenance/Other). **Only takes effect once on `master`.**
+- `docs/releases.md` — how to cut a release (`gh release create vX.Y.Z --generate-notes`), semver `v`-tags.
+- `packages/marketing/app/changelog/page.tsx` — Server Component, fetches `GET /repos/Token-Buzz/website/releases` **server-side** with `GITHUB_TOKEN ?? GH_TOKEN` (ISR 1h), renders markdown via `react-markdown` + `remark-gfm` (no raw HTML → XSS-safe), styled to the site design system. Nav + Footer links added; graceful empty state. Deps added to `packages/marketing`.
+- **`v0.1.0` release created** (so the page has content) — the user can edit its wording.
+- **Browser-verified** desktop + mobile → `docs/verification/changelog/` (PASS).
 
-## What this session did — verify the movers fix against a real DynamoDB
-The merged movers fix (PR #16) had never been verified against real DynamoDB. The web shell has only **read-only** AWS, `sst shell` doesn't work here (needs `CLOUDFLARE_API_TOKEN` + blocked network), and the user works from mobile — so the durable answer was an offline, CI-able integration layer rather than hand-testing or live-prod reads.
+### 2. M1.5 — Mobile-friendly UI milestone (board)
+Surfaced by M1 browser verification: the authed desktop sidebar doesn't collapse and data pages overflow at ~390px. Slotted **next after M1, before M2** (M2–M9 keep their numbers; the `M1.5` name sorts it between).
+- Native **milestone #10** "M1.5 — Mobile-friendly UI"; **epic #82** (Status: Ready) with sub-issues **#83–#87** (P1 shell → P2 tables → P3 feed/dashboards → P4 forms/modals → P5 QA). P1 (#83) is Ready, rest Backlog. Authed app only; marketing out of scope.
+- A `docs/milestones/M1.5-mobile-ui.md` doc was intentionally **deferred** (to avoid polluting PR #81) — add it on a fresh branch when starting the work.
 
-Built a **dynalite (in-memory DynamoDB) integration-test layer** in `packages/core`:
-- `test/spike-pipeline.integration.test.ts` — 5 scenarios driving the REAL `sumPulse → computeBuzzDelta → updateTokenBuzz → getSpikingTokens/listTrackedTokens` path the spike-materializer composes. Scenario 1 is the direct regression test for the original bug (a write missing `gsi1pk='SPIKE'` is invisible to the SpikingByDelta GSI query).
-- Harness (`test/dynalite-global.ts`, `test/integration-env.ts`, `test/dynalite.d.ts`): boots dynalite, recreates the `infra/db.ts` tables + GSIs, and points production `client.ts` at it via **env vars only** (`AWS_ENDPOINT_URL_DYNAMODB` + `SST_RESOURCE_*`). `client.ts` is NOT modified.
-- `vitest.config.ts` (unit; excludes `*.integration.test.ts`) + `vitest.integration.config.ts` (includes them; wires globalSetup + setupFiles).
-- Scripts: `test:integration` in `packages/core` + a root aggregator. Wired into `.github/workflows/deploy.yml` as a deploy gate (after "Unit tests", before AWS creds — dynalite needs no AWS).
-- CLAUDE.md documents all of it.
-- Commits: `901ac16` (tests), `64c7585` (CI gate), `ed5b739` (docs). Verified locally: `test:integration` 5/5, `test:unit` 6/6, root lint + typecheck clean.
+### 3. Time tracking — decided: Toggl Track (board issue #89 — Ready, BLOCKED)
+Requirements: human time = rough/daily via Toggl's start/stop; AI time = precise per task, logged by Claude via the Toggl API (tag `ai`, name `#<n> <title>`); both summable per period; "tasks/milestones closed in a range" comes free from GitHub `Closed` timestamps.
+- **BLOCKED on the user:** create a Toggl account → generate API token + workspace ID → add as secrets `TOGGL_API_TOKEN` / `TOGGL_WORKSPACE_ID` (never commit) so AI logging is hands-free in sessions.
+- Then build: a `track` CLI in `packages/scripts` (`ai-start <issue>` / `ai-stop <issue>` → Toggl API), the `human`/`ai` tagging convention, and a weekly combined report (Toggl totals + GitHub closed-by-milestone). Toggl's browser extension also gives the user a per-issue start button on GitHub.
 
-### Live AWS facts (read-only `claude-readonly` user)
-- **production**: Tweets 11.7k, Aggregates 36k (incl. **6,307 `PULSE#<sym>` rows** for the 6 default symbols), **Tokens empty**, UserData empty.
-- **pr-16 stage**: 6 tokens (all `dbuzz=0`), no tweets/aggregates.
-- **Poller is stale**: latest `PULSE#$SOL` bucket was `2026-05-22T21:26` (>1 day old). The materializer's 2-hour window finds nothing → no live spikes right now even after the fix deployed. Upstream poller appears stopped — worth checking (separate issue). Live-prod verification is the user's own manual step.
+### 4. PR-screenshot convention (finding — fix pending)
+Images show in a PR conversation only if the **PR body/comment embeds** them — committing PNGs to the repo is not enough. #80 works because its body embeds the committed PNGs via `https://github.com/Token-Buzz/website/blob/<commit-sha>/<path>?raw=true` (renders inline for authenticated viewers, even on a private repo). #81's body is still the placeholder.
+- **Pending:** (a) embed #81's live-feed + changelog screenshots into its body and give it a real title/description; (b) decide whether to codify this as a CLAUDE.md step and/or a CI action that auto-comments `docs/verification/**` images on every PR.
 
-## NEXT TASK — migrate ClickUp milestones → GitHub Projects
+---
 
-### Why it was blocked this session
-The web environment exposes GitHub only via the **MCP server** (`mcp__github__*`) + a **local git proxy** (`http://local_proxy@127.0.0.1:.../git/...`). No `gh`, no GitHub token in env, `curl https://api.github.com` → **403**. MCP tools can create Issues + sub-issues and assign EXISTING milestones, but CANNOT create native **Milestones** or create/populate a **Projects v2 board** (no project tools, no GraphQL access).
+## PR #81 contents (branch `claude/determined-allen-QILYR`)
+Commits since `master`: live-feed M1 Phase 3 (`9321188`, `a84a201`, `b33d7f4`) + release config (`7abdc42`) + changelog page (`065b8f7`) + changelog verification (`02e2be3`) + this handoff. Three unrelated features in one branch — split if you want clean PRs.
 
-### gh prerequisites the next session must verify
-The user is installing `gh` ahead of time. Before doing migration work, confirm all three:
-1. **gh binary present:** `gh --version`.
-2. **Network allows GitHub:** `gh auth status` and `curl -s -o /dev/null -w '%{http_code}' https://api.github.com` should NOT be 403. If 403, the environment's network policy still blocks `github.com` / `api.github.com` — the user must pick a more permissive policy when creating the environment (see https://code.claude.com/docs/en/claude-code-on-the-web).
-3. **Token + scopes:** `GH_TOKEN` set to a PAT with `repo`, `read:org`, `project` (Projects v2 is org-owned under `Token-Buzz`). Verify with `gh project list --owner Token-Buzz`.
+## ⚠️ Gotchas / must-do follow-ups
+- **`/changelog` will be EMPTY in production until a token is wired.** It reads `GITHUB_TOKEN`/`GH_TOKEN` server-side; locally `GH_TOKEN` is ambient, but the SST marketing build has no token. Add a `GITHUB_TOKEN` (read-only, repo scope) to the marketing app env in `infra/marketing.ts` + the Console, or the page shows the empty state in prod. (Tracked in #88.)
+- **`.github/release.yml` categorization** only activates once the file is merged to `master`.
+- Don't commit `playwright`/`@clerk/testing` — install ad hoc for a run (this session installed then removed playwright).
 
-### ClickUp source data (already discovered — reuse, don't re-crawl unless it changed)
-- Space `tokenbuzz.app` (id `90145593462`), list id **`901416380123`**.
-- **9 milestones:** M1 Movers/Live feed/Alerts (`86ba31jna`), M2 Watchlists→Dashboards (`86ba31jnf`), M3 Hum AI slide-out (`86ba31jp2`), M4 Top nav + ⌘K (`86ba31jpx`), M5 Account/Billing/Stripe (`86ba31jq9`), M6 Candlestick + Price Charts (`86ba31jqq`), M7 Marketing live ticker (`86ba31jr3`), M8 Query History (`86ba31jrq`), M9 Multi-Social Ingestion v2 (`86ba31jt0`).
-- A divider task **"OLD TASKS 05-22-2026"** (`86ba31j7d`); ~27 older brainstorm tasks sit below it (likely superseded by M1–M9). One done: "Create the Design" (`86b9x62a4`).
-- Pull full bodies via `clickup_get_task` (`detail_level='detailed'`) before mirroring — the M-task descriptions likely already contain the detail.
+## New-environment setup (what to have ready)
+- **GitHub:** `gh` is authenticated via `GH_TOKEN` in the web env; GitHub MCP tools also available. Project board is org-owned under `Token-Buzz` (Project 1).
+- **Changelog local dev:** ambient `GH_TOKEN` is enough — `npm run dev:marketing` (:3000) → `/changelog` renders live releases.
+- **Authed-app UI testing:** Clerk dev keys are in env (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test…`, `CLERK_SECRET_KEY`, `CLERK_TEST_EMAIL`). Headless sign-in: `@clerk/testing/playwright` → `clerk.signIn({ strategy: 'email_code', identifier: CLERK_TEST_EMAIL })`, OTP `424242`. Point `client.ts` at local dynalite (copy `packages/core/test/integration-env.ts` + boot `dynalite-global.ts`) for real data with no AWS.
+- **Time tracking:** needs the user's `TOGGL_API_TOKEN` / `TOGGL_WORKSPACE_ID` before #89 can be built/tested.
 
-### Pending decisions (the user dismissed the question menu — re-confirm before creating anything)
-- **Mechanism:** full `gh`/GraphQL Projects v2 board + native Milestones, vs. MCP issues + sub-issues.
-- **Scope:** just M1–M9 epics, or M1–M9 + supporting tasks as sub-issues, or include the OLD tasks.
-- **Target shape:** native Milestones + a Project board; epic issues + sub-issues; or both.
-- **Source of truth:** keep ClickUp in sync or one-way migrate? Do NOT delete ClickUp tasks unless explicitly asked.
-- Creating issues/board items is bulk + visible + tedious to reverse → present the issue-by-issue mapping and get approval first.
+## Board state (GitHub Project 1, source of truth)
+- M1 (Movers/Live feed/Alerts): Movers (#20) + Live feed (#21) done/verified; **#22 Alerts is the remaining M1 work.**
+- **M1.5 mobile:** epic #82 (Ready) + #83 (Ready) + #84–87 (Backlog).
+- **#88 Changelog** (In progress → mark Done once the prod token is wired) · **#89 Time tracking** (Ready, blocked on Toggl token).
+- M2–M9 epics seeded.
 
-## Carry-forward — M1 movers technical context (still the active feature area)
-- Poller uses each token's `sym` (e.g. `$PEPE`) as the search query; aggregates live at `AGG#<TYPE>#$SYM`, `PULSE#$SYM`.
-- `PULSE#<sym>` minute buckets (`incrementPulse`, synchronous per tweet) are the per-symbol volume signal `sumPulse` reads. (`AGG#MENTION#<sym>` is @-handle mentions — the wrong signal.)
-- The fix: `computeBuzzDelta` (pure, unit-tested), `sumPulse`, `updateTokenBuzz` (targeted `UpdateCommand` maintaining gsi1/gsi2; removes gsi1 when delta ≤ 0), spike-materializer disjoint current/prior hour windows, `GET /api/movers?limit=`.
-
-## Open items / next feature slices
-- **M1 Phase 2 (Movers UI)** is the natural next build — gives a tappable mobile acceptance test; `/movers` currently 404s.
-- **Adjacent bug (out of scope):** `getPulse` reads `AGG#PULSE#all` but `incrementPulse` writes `PULSE#<query>` → `/api/analytics/pulse` returns nothing. Separate fix.
-- **Poller liveness:** production PULSE data is >1 day stale — confirm the poller cron is running.
-- M1 remaining: live-feed endpoint (reuse `QueryByQueryTime`, fan out over the user's watchlist); alerts CRUD (`alertKey` exists; needs trigger-history key + `/api/alerts`).
-
-## Conventions (also in CLAUDE.md + the project-conventions skill)
-- Lead Opus = **orchestrator**; dispatch Sonnet/Haiku subagents for code; review the real diff before reporting done. A non-blocking hook nudges you if you edit code directly. Docs/config (`*.md`, `.claude/`) you may edit directly.
-- New pure logic ships with unit tests (`npm run test:unit`, CI gate). New/changed DynamoDB access patterns ship with a dynalite integration test (`npm run test:integration`, CI gate).
-- Never commit/push to `master`; feature branch only. Run `npm run typecheck` + `npm run lint` before commit; discard `packages/*/tsconfig.tsbuildinfo`. Never `--no-verify`. **Open PRs only when explicitly asked.**
-- User is on mobile: prefer automatic green-check verification + UI acceptance tests over hand-testing endpoints/JSON.
+## Conventions (full detail in CLAUDE.md + the project-conventions skill)
+- Lead Opus = **orchestrator**; dispatch Sonnet/Haiku subagents for code edits; review the real diff before reporting done. Docs/config (`*.md`, `.claude/`) you may edit directly.
+- New pure logic → unit test (`npm run test:unit`). New/changed DynamoDB access pattern → dynalite integration test (`npm run test:integration`). UI change → real browser test (screenshots under `docs/verification/`).
+- Never commit/push to `master`; feature branch only. `npm run typecheck` + `npm run lint` before every commit; discard `packages/*/tsconfig.tsbuildinfo`. Never `--no-verify`. **Open PRs only when explicitly asked.**
