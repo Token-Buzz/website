@@ -5,6 +5,7 @@ import {
 } from "@monorepo-template/core/db/tokens";
 import { sumPulse } from "@monorepo-template/core/db/aggregates";
 import { minuteBucket } from "@monorepo-template/core/db/keys";
+import { computeBuzzDelta } from "@monorepo-template/core/movers";
 
 const DEFAULT_SYMBOLS = ["$PEPE", "$SOL", "$MOG", "$WIF", "$BONK", "$DOGE"];
 const MINUTE = 60_000;
@@ -33,12 +34,7 @@ export const handler: Handler = async () => {
         sumPulse(symbol, priorFrom, priorTo),
       ]);
 
-      const dbuzz =
-        prior > 0
-          ? Math.round(((current - prior) / prior) * 100)
-          : current > 0
-            ? 9999
-            : 0;
+      const dbuzz = computeBuzzDelta(current, prior);
 
       await updateTokenBuzz({ symbol, dbuzz, mentions: current });
     } catch (err) {
