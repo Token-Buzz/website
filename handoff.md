@@ -5,7 +5,7 @@
 ### TL;DR for the next session
 - **Active branch:** `claude/determined-allen-QILYR` — **PR #81 is open** on it. The branch now carries three different workstreams (live-feed + release config + changelog) — see "PR #81 contents" below; consider splitting if you want clean PRs.
 - **Just shipped (this session):** the public **Changelog** feature (GitHub Releases → marketing `/changelog`), browser-verified. A new **M1.5 mobile-friendly UI** milestone + epic/phases on the board. A decision to use **Toggl Track** for time tracking (build is **blocked on the user's Toggl API token**).
-- **Top of the queue:** (1) wire a **`GITHUB_TOKEN` secret for the production marketing build** or `/changelog` shows empty in prod (see gotcha); (2) once the user provides the Toggl token, build the `track` CLI (#89); (3) finish **M1 Phase 4 — Alerts** (#22); then (4) start **M1.5 mobile** (#82).
+- **Top of the queue:** (1) **seed the `GITHUB_TOKEN` value** (the secret is wired in SST now — see gotcha) or `/changelog` shows empty in prod; (2) once the user provides the Toggl token, build the `track` CLI (#89); (3) finish **M1 Phase 4 — Alerts** (#22); then (4) start **M1.5 mobile** (#82).
 
 ### ⚠️ This handoff + the changelog work live on branch `claude/determined-allen-QILYR`
 A session started from `master` won't see any of it. Start the next session on that branch (or merge PR #81 first).
@@ -32,17 +32,18 @@ Requirements: human time = rough/daily via Toggl's start/stop; AI time = precise
 - **BLOCKED on the user:** create a Toggl account → generate API token + workspace ID → add as secrets `TOGGL_API_TOKEN` / `TOGGL_WORKSPACE_ID` (never commit) so AI logging is hands-free in sessions.
 - Then build: a `track` CLI in `packages/scripts` (`ai-start <issue>` / `ai-stop <issue>` → Toggl API), the `human`/`ai` tagging convention, and a weekly combined report (Toggl totals + GitHub closed-by-milestone). Toggl's browser extension also gives the user a per-issue start button on GitHub.
 
-### 4. PR-screenshot convention (finding — fix pending)
-Images show in a PR conversation only if the **PR body/comment embeds** them — committing PNGs to the repo is not enough. #80 works because its body embeds the committed PNGs via `https://github.com/Token-Buzz/website/blob/<commit-sha>/<path>?raw=true` (renders inline for authenticated viewers, even on a private repo). #81's body is still the placeholder.
-- **Pending:** (a) embed #81's live-feed + changelog screenshots into its body and give it a real title/description; (b) decide whether to codify this as a CLAUDE.md step and/or a CI action that auto-comments `docs/verification/**` images on every PR.
+### 4. PR-screenshot convention (DONE)
+Images render in a PR conversation only when the **body/comment embeds** them via `https://github.com/Token-Buzz/website/blob/<sha>/<path>?raw=true` — committing PNGs is not enough.
+- **#81 fixed:** rewritten with a real title/description + embedded live-feed & changelog screenshots.
+- **Automated:** `.github/workflows/pr-screenshots.yml` — on every PR it finds added/modified `docs/verification/**` images and upserts a sticky comment embedding them (pinned to head SHA). No manual step going forward.
 
 ---
 
 ## PR #81 contents (branch `claude/determined-allen-QILYR`)
-Commits since `master`: live-feed M1 Phase 3 (`9321188`, `a84a201`, `b33d7f4`) + release config (`7abdc42`) + changelog page (`065b8f7`) + changelog verification (`02e2be3`) + this handoff. Three unrelated features in one branch — split if you want clean PRs.
+Commits since `master`: live-feed M1 Phase 3 (`9321188`, `a84a201`, `b33d7f4`) + release config (`7abdc42`) + changelog page (`065b8f7`) + verification (`02e2be3`) + handoff (`81aa767`) + GITHUB_TOKEN wiring (`c104ad0`) + PR-screenshot CI (`f35a5ce`). Several unrelated workstreams in one branch — split if you want clean PRs.
 
 ## ⚠️ Gotchas / must-do follow-ups
-- **`/changelog` will be EMPTY in production until a token is wired.** It reads `GITHUB_TOKEN`/`GH_TOKEN` server-side; locally `GH_TOKEN` is ambient, but the SST marketing build has no token. Add a `GITHUB_TOKEN` (read-only, repo scope) to the marketing app env in `infra/marketing.ts` + the Console, or the page shows the empty state in prod. (Tracked in #88.)
+- **`/changelog` will be EMPTY in production until the token VALUE is seeded.** The `GITHUB_TOKEN` `sst.Secret` is now wired into the marketing app env (`infra/marketing.ts`). Remaining step: seed the value — a **fine-grained PAT scoped to `Token-Buzz/website` with `Contents: Read-only`** — via the Console (production + fallback envs) or `npx sst secret set GITHUB_TOKEN <pat> --stage <stage>`. Locally it works via the ambient `GH_TOKEN`. (Tracked in #88.)
 - **`.github/release.yml` categorization** only activates once the file is merged to `master`.
 - Don't commit `playwright`/`@clerk/testing` — install ad hoc for a run (this session installed then removed playwright).
 
