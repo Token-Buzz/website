@@ -151,6 +151,16 @@ In Claude Code on the web, `gh` is installed and **authenticated** (as `jasonp23
 
 **Keep the GitHub Project current as we make progress.** The ClickUp→GitHub migration is done — GitHub Projects/Issues is now the source of truth for the 9 milestones and their phases. When a phase or milestone moves forward (work starts, lands, or gets verified), update the matching Project item / issue in the same session — status column, checklists, and close the issue on completion — so the board reflects reality instead of drifting.
 
+## Session continuity & memory model
+
+Each milestone is large and spans many fresh (often ephemeral web) sessions. Memory is **layered by how often it changes** — do NOT recreate a monolithic handoff doc each session:
+
+- **Durable knowledge** (architecture, conventions, testing, deploy, secrets) lives here in `CLAUDE.md` + the `project-conventions` skill.
+- **Per-milestone plans/specs** live in `docs/milestones/M*.md` and the milestone's **epic issue**.
+- **Live status** (done / in-flight / blockers / next steps / gotchas) lives in the **epic issue's "Status / Next steps / Gotchas" section** + the GitHub Project board Status column — that is the source of truth. Update the epic issue as work lands; don't let status drift into scratch files.
+- `handoff.md` is only a **pointer** to the above, never a status log.
+- A **SessionStart hook** (`.claude/hooks/session-start.sh`) auto-prints orientation (recent commits, open PRs, open milestones, recent issues) at the start of every session.
+
 ## Conventions
 
 - All cross-package imports go through workspace package names (`@monorepo-template/core/db`), not relative paths.
