@@ -8,4 +8,6 @@ export const contactToAddress = new sst.Secret("CONTACT_TO_ADDRESS");
 export const contactFromAddress = new sst.Secret("CONTACT_FROM_ADDRESS");
 export const twitterApiKey = new sst.Secret("TWITTER_API_KEY");
 export const opencageApiKey = new sst.Secret("OPENCAGE_API_KEY");
-export const githubToken = new sst.Secret("GITHUB_TOKEN");
+// Empty fallback so deploys (esp. ephemeral pr-<N> stages) don't fail when the
+// PAT isn't seeded; /changelog renders its empty state until a real value is set.
+export const githubToken = new sst.Secret("GITHUB_TOKEN", "");
