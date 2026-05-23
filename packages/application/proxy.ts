@@ -1,6 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
-const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/watchlist(.*)', '/analytics(.*)', '/alerts(.*)', '/account(.*)'])
+const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/watchlist(.*)', '/analytics(.*)', '/alerts(.*)', '/account(.*)', '/movers(.*)'])
 
 export default clerkMiddleware(async (auth, req) => {
   // Server action requests use Next-Action header; skip route protection so that

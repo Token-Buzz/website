@@ -49,6 +49,57 @@ export const tokenTrackedGsi = (mentions: number, symbol: string) => ({
   gsi2sk: `${mentions.toString().padStart(10, '0')}#${symbol.toUpperCase()}`,
 })
 
+// GSI mapping for the three mover windows:
+//   1H  → SpikingByDelta    (gsi1pk/gsi1sk, pk value 'SPIKE')           ← unchanged
+//   24H → SpikingByDelta24h (gsi3pk/gsi3sk, pk value 'SPIKE#24H')
+//   7D  → SpikingByDelta7d  (gsi4pk/gsi4sk, pk value 'SPIKE#7D')
+const SPIKE_WINDOW_CONFIG = {
+  '1H': { pkAttr: 'gsi1pk', skAttr: 'gsi1sk', pkValue: 'SPIKE' },
+  '24H': { pkAttr: 'gsi3pk', skAttr: 'gsi3sk', pkValue: 'SPIKE#24H' },
+  '7D': { pkAttr: 'gsi4pk', skAttr: 'gsi4sk', pkValue: 'SPIKE#7D' },
+} as const
+
+/**
+ * Returns the GSI key attributes (gsiNpk / gsiNsk) for a given mover window.
+ * The sort key format matches tokenSpikeGsi: zero-padded delta + '#' + symbol.
+ */
+export function tokenSpikeWindowGsi(
+  window: '1H' | '24H' | '7D',
+  delta: number,
+  symbol: string,
+): Record<string, string> {
+  const { pkAttr, skAttr, pkValue } = SPIKE_WINDOW_CONFIG[window]
+  const sym = symbol.toUpperCase()
+  return {
+    [pkAttr]: pkValue,
+    [skAttr]: `${delta.toString().padStart(10, '0')}#${sym}`,
+  }
+}
+
+/** Maps a mover window to its DynamoDB index name. */
+export function spikeIndexForWindow(window: '1H' | '24H' | '7D'): string {
+  const INDEX_NAMES: Record<'1H' | '24H' | '7D', string> = {
+    '1H': 'SpikingByDelta',
+    '24H': 'SpikingByDelta24h',
+    '7D': 'SpikingByDelta7d',
+  }
+  return INDEX_NAMES[window]
+}
+
+/** The GSI pk value used for a given mover window. */
+export function spikePkForWindow(window: '1H' | '24H' | '7D'): string {
+  return SPIKE_WINDOW_CONFIG[window].pkValue
+}
+
+/** The GSI pk and sk attribute names for a given mover window. */
+export function spikeAttrsForWindow(window: '1H' | '24H' | '7D'): {
+  pkAttr: string
+  skAttr: string
+} {
+  const { pkAttr, skAttr } = SPIKE_WINDOW_CONFIG[window]
+  return { pkAttr, skAttr }
+}
+
 export const followerSnapshotKey = (handle: string, date: string) => ({
   pk: `FOLLOWER#${handle.replace('@', '')}`,
   sk: `SNAP#${date}`,
