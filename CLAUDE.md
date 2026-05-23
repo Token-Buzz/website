@@ -120,6 +120,8 @@ Secrets to configure in Console (same names for both environments, different val
 
 All `sst.Secret` names must use `SCREAMING_SNAKE_CASE` (e.g. `TWITTER_API_KEY`, not `TwitterApiKey`). This keeps secret names consistent with environment variable conventions and makes it obvious when a name needs updating.
 
+**Never give a required secret/config value an empty or placeholder fallback.** A missing required value (an `sst.Secret`, env var, etc.) must fail loudly at deploy/build/startup — do NOT paper over it with `new sst.Secret("X", "")` or any default that lets the app run misconfigured. Empty fallbacks hide misconfiguration and resurface as confusing runtime bugs later. The fix for an unset secret is to **seed the real value** (in both Console environments — production and the fallback env used by `pr-<N>` stages), never to soften the failure.
+
 ## CI/CD (GitHub Actions)
 
 Deployments run from `.github/workflows/deploy.yml` and `.github/workflows/teardown.yml`. SST is still the deploy tool — only the pipeline trigger moved off SST Console.
