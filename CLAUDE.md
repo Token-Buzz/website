@@ -37,6 +37,7 @@ npm run dev:application        # application on :3002
 npm run lint                   # all workspaces
 npm run typecheck              # all workspaces
 npm run lint:application       # single workspace
+npm run test:unit            # pure unit tests, no SST stage needed (also runs in CI)
 npm test -w packages/core      # vitest under `sst shell` (needs an SST stage)
 
 # SST
@@ -46,7 +47,7 @@ npx sst shell --stage <stage> <cmd>   # any cmd with Resource/env bindings
 
 ```
 
-There is no root-level test command; only `packages/core` has tests.
+Root `test:unit` runs the pure unit suite (no SST stage) and gates CI; `npm test -w packages/core` runs the full suite under `sst shell` for DB-bound tests.
 
 ## Architecture
 
@@ -107,7 +108,7 @@ Deployments run from `.github/workflows/deploy.yml` and `.github/workflows/teard
 - Close a PR → removes `pr-<number>` stage (`sst unlock` → `sst refresh` → `sst remove`).
 - Concurrency group per stage; in-progress runs are cancelled when a newer commit lands.
 
-Steps for a deploy run: checkout → setup Node 22 → `npm ci` → `npm run lint` → `npm run typecheck` → `aws-actions/configure-aws-credentials` → `npx sst unlock` (best-effort) → `npx sst deploy --stage <stage>`.
+Steps for a deploy run: checkout → setup Node 22 → `npm ci` → `npm run lint` → `npm run typecheck` → `npm run test:unit` → `aws-actions/configure-aws-credentials` → `npx sst unlock` (best-effort) → `npx sst deploy --stage <stage>`.
 
 ### Required GitHub repository secrets
 

@@ -13,6 +13,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "typecheck:marketing": "npm run typecheck -w packages/marketing",
     "typecheck:application": "npm run typecheck -w packages/application",
+    "test:unit": "npm run test:unit --workspaces --if-present",
     "set-gitlab-vars": "tsx scripts/set-gitlab-vars.ts",
     "set-sst-vars": "tsx scripts/set-sst-vars.ts"
   },

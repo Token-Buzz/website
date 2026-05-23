@@ -3,7 +3,8 @@
   "type": "module",
   "version": "0.0.0",
   "scripts": {
-    "test": "sst shell vitest"
+    "test": "sst shell vitest",
+    "test:unit": "vitest run"
   },
   "exports": {
     "./db/aggregates": "./src/db/aggregates.ts",
