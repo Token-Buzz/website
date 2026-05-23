@@ -57,6 +57,17 @@ Root `test:unit` runs the pure unit suite (no SST stage) and gates CI; `npm run 
 - Files are named `*.integration.test.ts`; `vitest.config.ts` (unit) excludes them, `vitest.integration.config.ts` includes them and wires the dynalite `globalSetup` + env `setupFiles`.
 - **When you add or change a DynamoDB access pattern** (a `keys.ts` builder, a new GSI query, an upsert that maintains index keys), add or extend an integration test that does the real write→read round-trip — don't rely on unit-testing the pure parts alone.
 
+### Local UI / browser testing (authed pages)
+
+**Always attempt a real browser UI test when you change UI** (any page/component in `packages/application` or `packages/marketing`). Typecheck and unit tests don't prove a page renders or a flow works — render it in a browser and observe it (the `/verify` skill captures evidence/screenshots). If something genuinely blocks an in-browser test, say so explicitly rather than claiming success.
+
+The web environment is wired for this fully offline:
+
+- **Clerk dev keys** are present as env vars: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (`pk_test…`, the dev instance), `CLERK_SECRET_KEY` (`sk_test…`), and `CLERK_TEST_EMAIL` (a `+clerk_test@…` address). Note `CLERK_PUBLISHABLE_KEY` holds the prod `pk_live` value — Next reads the `NEXT_PUBLIC_` one (the dev key), so just inherit the ambient env.
+- **Real data, no AWS:** `dev:application` is plain `next dev -p 3002` (not `sst dev`), so point `client.ts` at a local dynalite exactly like the integration harness — set `AWS_ENDPOINT_URL_DYNAMODB` + the five `SST_RESOURCE_*` vars (copy `packages/core/test/integration-env.ts`), boot dynalite and recreate the tables (`packages/core/test/dynalite-global.ts`), seed through the real `packages/core/src/db` functions, then launch `next dev` with those same env vars set.
+- **Headless sign-in:** the custom sign-in form (`app/sign-in/[[...sign-in]]`) uses `signIn.password()` — email **+ password** (email-code is only a 2nd factor). The reliable path is `@clerk/testing/playwright`: `clerkSetup()` → `setupClerkTestingToken({ page })` → `clerk.signIn({ page, signInParams: { strategy: 'email_code', identifier: <CLERK_TEST_EMAIL> } })`. Clerk's fixed dev OTP `424242` for `+clerk_test` addresses is handled internally — no password or real inbox needed. (To drive the real password form instead, first create a `+clerk_test` user with a password via the Clerk Backend API using `CLERK_SECRET_KEY`.)
+- `playwright` and `@clerk/testing` are **not** committed deps — install them ad hoc for a run (`npm i -D playwright @clerk/testing && npx playwright install chromium`) and don't commit the install or the throwaway harness scripts.
+
 ## Architecture
 
 ### Routing — one CloudFront in front of both Next.js apps
@@ -131,10 +142,12 @@ SST application secrets (`sst.Secret` entries in `infra/secrets.ts`: `WEB_DOMAIN
 
 ## GitHub tooling
 
-Two ways to reach GitHub are available; use the right one for the job:
+In Claude Code on the web, `gh` is installed and **authenticated** (as `jasonp2323` via `GH_TOKEN`) and github.com is reachable — so the full `gh` CLI is available, not just the MCP tools. Use the right tool for the job:
 
-- **GitHub Projects (v2)**: use the `gh` CLI (`gh project ...`). The GitHub MCP server has no Projects tool, so `gh` is the only option. Authenticated as `jasonp2323`.
-- **Everything else** (PRs, issues, comments, CI status, reviews, branches, releases, code search): use the GitHub MCP tools (`mcp__github__*`), not `gh`. They integrate with the PR-activity webhook subscriptions used to watch/autofix PRs.
+- **GitHub Projects (v2)**: use the `gh` CLI (`gh project ...`). The GitHub MCP server has no Projects tool, so `gh` is the only option.
+- **PRs, issues, comments, CI status, reviews, branches, releases, code search**: prefer the GitHub MCP tools (`mcp__github__*`) — they integrate with the PR-activity webhook subscriptions used to watch/autofix PRs. `gh` is a fine fallback for anything the MCP tools don't cover.
+
+**Keep the GitHub Project current as we make progress.** The ClickUp→GitHub migration is done — GitHub Projects/Issues is now the source of truth for the 9 milestones and their phases. When a phase or milestone moves forward (work starts, lands, or gets verified), update the matching Project item / issue in the same session — status column, checklists, and close the issue on completion — so the board reflects reality instead of drifting.
 
 ## Conventions
 
@@ -144,6 +157,7 @@ Two ways to reach GitHub are available; use the right one for the job:
 - Use `$app.stage === "production"` (the `isProd` pattern) to gate anything that should only run for the named stage — don't hardcode against ephemeral stage names.
 - Any new pure logic (calculations, parsers, data transforms, DB key builders) ships with unit tests in the same change. CI runs these via `npm run test:unit`.
 - Any new or changed DynamoDB access pattern (GSI query, index-maintaining upsert) ships with a dynalite integration test (`*.integration.test.ts` in `packages/core/test/`) that does the real write→read round-trip. CI runs these via `npm run test:integration`. See "Integration tests — dynalite" above.
+- Any UI change (a page or component) gets a real browser UI test — render the page, drive the changed flow, and observe it; don't rely on typecheck/unit tests alone for UI. See "Local UI / browser testing" above.
 
 ## Git Workflow
 
