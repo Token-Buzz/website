@@ -200,7 +200,7 @@ export async function putTweet(tweet: Tweet): Promise<void> {
       mentions: tweet.mentions,
       urls: tweet.urls,
       gsi1pk: `QUERY#${tweet.query}`,
-      gsi1sk: timestamp,
+      gsi1sk: `${timestamp}#${tweet.tweetId}`,
       gsi2pk: `AUTHOR#${tweet.authorUsername}`,
       gsi2sk: timestamp,
       // Analytics extension fields (undefined values are stripped by ddb marshaller)
@@ -217,6 +217,25 @@ export async function putTweet(tweet: Tweet): Promise<void> {
       keywords: tweet.keywords,
     },
   }))
+}
+
+export async function getRecentTweetsByQuery(
+  query: string,
+  opts: { before?: string; limit?: number } = {},
+): Promise<TweetRecord[]> {
+  const { Items = [] } = await ddb.send(new QueryCommand({
+    TableName: TableNames.tweets,
+    IndexName: 'QueryByQueryTime',
+    KeyConditionExpression: opts.before
+      ? 'gsi1pk = :pk AND gsi1sk < :before'
+      : 'gsi1pk = :pk',
+    ExpressionAttributeValues: opts.before
+      ? { ':pk': `QUERY#${query}`, ':before': opts.before }
+      : { ':pk': `QUERY#${query}` },
+    ScanIndexForward: false,
+    Limit: opts.limit ?? 30,
+  }))
+  return Items as TweetRecord[]
 }
 
 export async function getLatestTweetId(query: string): Promise<string | null> {
