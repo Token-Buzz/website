@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import {
   Icon, Button, Eyebrow, Ticker, BuzzDot, Sparkline, Delta, Avatar,
   Card, SectionHead, fmtCount,
@@ -262,7 +263,7 @@ function SpikeCard({ t }: { t: DashboardData['spikes'][0] }) {
 function Spikes({ spikes }: { spikes: DashboardData['spikes'] }) {
   return (
     <section>
-      <SectionHead eyebrow="Biggest spikes · last hour" meta="ranked by mention rate Δ" action={<Button variant="quiet" size="sm">See all movers →</Button>} />
+      <SectionHead eyebrow="Biggest spikes · last hour" meta="ranked by mention rate Δ" action={<Link href="/movers" style={{ textDecoration: 'none' }}><Button variant="quiet" size="sm">See all movers →</Button></Link>} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
         {spikes.map((t) => <SpikeCard key={t.sym} t={t} />)}
       </div>

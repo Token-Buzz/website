@@ -28,6 +28,12 @@ import { ddb, TableNames } from '@monorepo-template/core/db/client'
 const ENDPOINT = 'http://127.0.0.1:8000'
 const MINUTE = 60_000
 
+// Helper: build a deltas record with the same value in all three windows,
+// useful for scenarios that only care about one window.
+function allWindows(delta: number): Record<'1H' | '24H' | '7D', number> {
+  return { '1H': delta, '24H': delta, '7D': delta }
+}
+
 // Window math copied verbatim from packages/jobs/src/spike-materializer.ts so
 // the tests exercise the same composition the handler does. Current hour is
 // the last 60 minute-buckets; prior hour is the 60 before that; the windows
@@ -106,7 +112,7 @@ describe('spike pipeline (dynalite integration)', () => {
     expect(dbuzz).toBeGreaterThan(0)
     expect(dbuzz).toBe(100) // (20-10)/10 * 100
 
-    await updateTokenBuzz({ symbol: '$PEPE', dbuzz, mentions: current })
+    await updateTokenBuzz({ symbol: '$PEPE', mentions: current, deltas: allWindows(dbuzz) })
 
     const spiking = await getSpikingTokens()
     const pepe = spiking.find((t) => t.sym === '$PEPE')
@@ -118,9 +124,9 @@ describe('spike pipeline (dynalite integration)', () => {
   // Scenario 2 — ranking order. Depends on the zero-padded gsi1sk plus
   // ScanIndexForward:false in getSpikingTokens.
   test('getSpikingTokens ranks descending by delta', async () => {
-    await updateTokenBuzz({ symbol: '$AAA', dbuzz: 50, mentions: 5 })
-    await updateTokenBuzz({ symbol: '$BBB', dbuzz: 300, mentions: 8 })
-    await updateTokenBuzz({ symbol: '$CCC', dbuzz: 120, mentions: 6 })
+    await updateTokenBuzz({ symbol: '$AAA', mentions: 5, deltas: allWindows(50) })
+    await updateTokenBuzz({ symbol: '$BBB', mentions: 8, deltas: allWindows(300) })
+    await updateTokenBuzz({ symbol: '$CCC', mentions: 6, deltas: allWindows(120) })
 
     const spiking = await getSpikingTokens()
     const order = spiking.map((t) => t.sym)
@@ -133,7 +139,7 @@ describe('spike pipeline (dynalite integration)', () => {
   // transition removes it from the SPIKE index.
   test('non-spiking token leaves SPIKE index but stays tracked', async () => {
     // Direct non-spike write.
-    await updateTokenBuzz({ symbol: '$MOG', dbuzz: 0, mentions: 5 })
+    await updateTokenBuzz({ symbol: '$MOG', mentions: 5, deltas: allWindows(0) })
 
     let spiking = await getSpikingTokens()
     expect(spiking.find((t) => t.sym === '$MOG')).toBeUndefined()
@@ -146,11 +152,11 @@ describe('spike pipeline (dynalite integration)', () => {
 
     // Transition: first make it spike, then drop it back to non-spike and
     // confirm the REMOVE gsi1pk/gsi1sk branch evicts it from the SPIKE index.
-    await updateTokenBuzz({ symbol: '$MOG', dbuzz: 80, mentions: 12 })
+    await updateTokenBuzz({ symbol: '$MOG', mentions: 12, deltas: allWindows(80) })
     spiking = await getSpikingTokens()
     expect(spiking.find((t) => t.sym === '$MOG')).toBeDefined()
 
-    await updateTokenBuzz({ symbol: '$MOG', dbuzz: 0, mentions: 12 })
+    await updateTokenBuzz({ symbol: '$MOG', mentions: 12, deltas: allWindows(0) })
     spiking = await getSpikingTokens()
     expect(spiking.find((t) => t.sym === '$MOG')).toBeUndefined()
 
@@ -177,7 +183,7 @@ describe('spike pipeline (dynalite integration)', () => {
     expect(before).not.toBeNull()
     const originalUpdatedAt = before!.updatedAt
 
-    await updateTokenBuzz({ symbol: '$WIF', dbuzz: 150, mentions: 30 })
+    await updateTokenBuzz({ symbol: '$WIF', mentions: 30, deltas: allWindows(150) })
 
     const after = await getToken('$WIF')
     expect(after).not.toBeNull()
@@ -223,5 +229,121 @@ describe('spike pipeline (dynalite integration)', () => {
     expect(prior).toBe(12)
     // No bucket counted twice across the boundary.
     expect(current + prior).toBe(3 + 4 + 7 + 5)
+  })
+})
+
+describe('multi-window spike pipeline (dynalite integration)', () => {
+  // Scenario 6 — per-window GSI isolation: a token positive in 24H but ≤0 in 1H
+  // appears in getSpikingTokens({window:'24H'}) but NOT in the 1H index.
+  test('token positive in 24H only appears in 24H index, not 1H', async () => {
+    // 1H delta = 0 (non-positive), 24H delta = 200, 7D delta = 0.
+    await updateTokenBuzz({
+      symbol: '$ONLY24H',
+      mentions: 5,
+      deltas: { '1H': 0, '24H': 200, '7D': 0 },
+    })
+
+    // Must NOT be in the 1H spiking index.
+    const spiking1h = await getSpikingTokens({ window: '1H' })
+    expect(spiking1h.find((t) => t.sym === '$ONLY24H')).toBeUndefined()
+
+    // MUST be in the 24H spiking index with the correct delta.
+    const spiking24h = await getSpikingTokens({ window: '24H' })
+    const token24h = spiking24h.find((t) => t.sym === '$ONLY24H')
+    expect(token24h).toBeDefined()
+    expect(token24h!.dbuzz24h).toBe(200)
+    expect(token24h!.gsi3pk).toBe('SPIKE#24H')
+
+    // Must NOT be in the 7D spiking index.
+    const spiking7d = await getSpikingTokens({ window: '7D' })
+    expect(spiking7d.find((t) => t.sym === '$ONLY24H')).toBeUndefined()
+  })
+
+  // Scenario 7 — per-window ranking: each index ranks by its own delta
+  // independently of other windows.
+  test('getSpikingTokens ranks correctly per window', async () => {
+    // $X: high 1H (300), low 24H (50), high 7D (400).
+    // $Y: low 1H (50), high 24H (300), low 7D (100).
+    await updateTokenBuzz({
+      symbol: '$X',
+      mentions: 10,
+      deltas: { '1H': 300, '24H': 50, '7D': 400 },
+    })
+    await updateTokenBuzz({
+      symbol: '$Y',
+      mentions: 10,
+      deltas: { '1H': 50, '24H': 300, '7D': 100 },
+    })
+
+    // 1H: $X (300) before $Y (50).
+    const order1h = (await getSpikingTokens({ window: '1H' })).map((t) => t.sym)
+    expect(order1h.indexOf('$X')).toBeLessThan(order1h.indexOf('$Y'))
+
+    // 24H: $Y (300) before $X (50).
+    const order24h = (await getSpikingTokens({ window: '24H' })).map((t) => t.sym)
+    expect(order24h.indexOf('$Y')).toBeLessThan(order24h.indexOf('$X'))
+
+    // 7D: $X (400) before $Y (100).
+    const order7d = (await getSpikingTokens({ window: '7D' })).map((t) => t.sym)
+    expect(order7d.indexOf('$X')).toBeLessThan(order7d.indexOf('$Y'))
+  })
+
+  // Scenario 8 — eviction: dropping a window's delta to ≤0 removes it from
+  // that window's GSI while leaving other windows intact.
+  test('dropping one window delta to ≤0 evicts from that index only', async () => {
+    // Start with all three windows positive.
+    await updateTokenBuzz({
+      symbol: '$EVICT',
+      mentions: 15,
+      deltas: { '1H': 100, '24H': 150, '7D': 80 },
+    })
+
+    // Verify present in all three indices.
+    expect((await getSpikingTokens({ window: '1H' })).find((t) => t.sym === '$EVICT')).toBeDefined()
+    expect((await getSpikingTokens({ window: '24H' })).find((t) => t.sym === '$EVICT')).toBeDefined()
+    expect((await getSpikingTokens({ window: '7D' })).find((t) => t.sym === '$EVICT')).toBeDefined()
+
+    // Drop the 24H delta to 0; keep 1H and 7D positive.
+    await updateTokenBuzz({
+      symbol: '$EVICT',
+      mentions: 15,
+      deltas: { '1H': 100, '24H': 0, '7D': 80 },
+    })
+
+    // Still in 1H and 7D.
+    expect((await getSpikingTokens({ window: '1H' })).find((t) => t.sym === '$EVICT')).toBeDefined()
+    expect((await getSpikingTokens({ window: '7D' })).find((t) => t.sym === '$EVICT')).toBeDefined()
+
+    // Evicted from 24H.
+    expect((await getSpikingTokens({ window: '24H' })).find((t) => t.sym === '$EVICT')).toBeUndefined()
+
+    // Row still tracked (gsi2pk='TRACKED').
+    const tracked = await listTrackedTokens()
+    expect(tracked.find((t) => t.sym === '$EVICT')).toBeDefined()
+
+    // GSI keys for 24H are removed from the item.
+    const item = await getToken('$EVICT')
+    expect(item!.gsi3pk).toBeUndefined()
+    expect(item!.gsi3sk).toBeUndefined()
+    // GSI keys for 1H and 7D are still present.
+    expect(item!.gsi1pk).toBe('SPIKE')
+    expect(item!.gsi4pk).toBe('SPIKE#7D')
+  })
+
+  // Scenario 9 — window-specific delta fields are stored on the record and
+  // readable back: dbuzz1h, dbuzz24h, dbuzz7d.
+  test('all three window deltas are stored and readable on the record', async () => {
+    await updateTokenBuzz({
+      symbol: '$FIELDS',
+      mentions: 20,
+      deltas: { '1H': 111, '24H': 222, '7D': 333 },
+    })
+
+    const item = await getToken('$FIELDS')
+    expect(item).not.toBeNull()
+    expect(item!.dbuzz).toBe(111)   // back-compat 1H field
+    expect(item!.dbuzz1h).toBe(111)
+    expect(item!.dbuzz24h).toBe(222)
+    expect(item!.dbuzz7d).toBe(333)
   })
 })

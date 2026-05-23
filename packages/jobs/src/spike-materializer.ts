@@ -4,11 +4,19 @@ import {
   updateTokenBuzz,
 } from "@monorepo-template/core/db/tokens";
 import { sumPulse } from "@monorepo-template/core/db/aggregates";
-import { minuteBucket } from "@monorepo-template/core/db/keys";
-import { computeBuzzDelta } from "@monorepo-template/core/movers";
+import {
+  computeBuzzDelta,
+  windowMinuteRange,
+  type MoverWindow,
+} from "@monorepo-template/core/movers";
+
+// NOTE: The 24H and 7D windows sum 1440 and 10080 minute-buckets respectively.
+// Read cost scales with window length × tracked token count — acceptable for
+// v1's small token set. A future optimisation could use hourly rollups to
+// reduce the number of DynamoDB reads for the longer windows.
 
 const DEFAULT_SYMBOLS = ["$PEPE", "$SOL", "$MOG", "$WIF", "$BONK", "$DOGE"];
-const MINUTE = 60_000;
+const WINDOWS: MoverWindow[] = ["1H", "24H", "7D"];
 
 export const handler: Handler = async () => {
   let symbols: string[];
@@ -20,23 +28,33 @@ export const handler: Handler = async () => {
   }
 
   const now = Date.now();
-  // Current hour: the last 60 minute-buckets. Prior hour: the 60 before that.
-  // Windows are disjoint so the boundary minute is not double-counted.
-  const curFrom = minuteBucket(now - 59 * MINUTE);
-  const curTo = minuteBucket(now);
-  const priorFrom = minuteBucket(now - 119 * MINUTE);
-  const priorTo = minuteBucket(now - 60 * MINUTE);
 
   for (const symbol of symbols) {
     try {
-      const [current, prior] = await Promise.all([
-        sumPulse(symbol, curFrom, curTo),
-        sumPulse(symbol, priorFrom, priorTo),
-      ]);
+      // Compute buzz delta for all three time windows in parallel.
+      const windowResults = await Promise.all(
+        WINDOWS.map(async (w) => {
+          const range = windowMinuteRange(w, now);
+          const [current, prior] = await Promise.all([
+            sumPulse(symbol, range.curFrom, range.curTo),
+            sumPulse(symbol, range.priorFrom, range.priorTo),
+          ]);
+          return { window: w, current, prior, delta: computeBuzzDelta(current, prior) };
+        }),
+      );
 
-      const dbuzz = computeBuzzDelta(current, prior);
+      const byWindow = Object.fromEntries(
+        windowResults.map(({ window: w, delta }) => [w, delta]),
+      ) as Record<MoverWindow, number>;
 
-      await updateTokenBuzz({ symbol, dbuzz, mentions: current });
+      // mentions = current 1H volume (unchanged from original behaviour).
+      const mentions1h = windowResults.find((r) => r.window === "1H")!.current;
+
+      await updateTokenBuzz({
+        symbol,
+        mentions: mentions1h,
+        deltas: byWindow,
+      });
     } catch (err) {
       console.error(`Spike materializer failed for ${symbol}:`, err);
     }

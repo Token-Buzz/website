@@ -1,6 +1,12 @@
 import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from './client'
-import { tokenKey, tokenSpikeGsi, tokenTrackedGsi } from './keys'
+import {
+  tokenKey,
+  tokenTrackedGsi,
+  tokenSpikeWindowGsi,
+  spikeIndexForWindow,
+  spikePkForWindow,
+} from './keys'
 
 export interface TokenRecord {
   pk: string
@@ -10,7 +16,11 @@ export interface TokenRecord {
   price: number
   d24: number
   mentions: number
+  /** Back-compat field — always equal to the 1H delta. */
   dbuzz: number
+  dbuzz1h?: number
+  dbuzz24h?: number
+  dbuzz7d?: number
   sent: 'bull' | 'bear' | 'neu'
   spark: number[]
   live?: boolean
@@ -20,6 +30,10 @@ export interface TokenRecord {
   gsi1sk?: string
   gsi2pk?: string
   gsi2sk?: string
+  gsi3pk?: string
+  gsi3sk?: string
+  gsi4pk?: string
+  gsi4sk?: string
 }
 
 export interface FollowerSnapshot {
@@ -52,16 +66,30 @@ export async function listTrackedTokens(opts: { limit?: number } = {}): Promise<
   return Items as TokenRecord[]
 }
 
-export async function getSpikingTokens(opts: { limit?: number } = {}): Promise<TokenRecord[]> {
+/**
+ * Queries tokens ranked by buzz delta for the given time window.
+ * Default window '1H' preserves backwards-compatibility for existing callers.
+ */
+export async function getSpikingTokens(
+  opts: { window?: '1H' | '24H' | '7D'; limit?: number } = {},
+): Promise<TokenRecord[]> {
+  const window = opts.window ?? '1H'
+  const pkAttr = pkAttrForWindow(window)
   const { Items = [] } = await ddb.send(new QueryCommand({
     TableName: TableNames.tokens,
-    IndexName: 'SpikingByDelta',
-    KeyConditionExpression: 'gsi1pk = :pk',
-    ExpressionAttributeValues: { ':pk': 'SPIKE' },
+    IndexName: spikeIndexForWindow(window),
+    KeyConditionExpression: '#gsiPk = :pk',
+    ExpressionAttributeNames: { '#gsiPk': pkAttr },
+    ExpressionAttributeValues: { ':pk': spikePkForWindow(window) },
     ScanIndexForward: false,
     Limit: opts.limit ?? 20,
   }))
   return Items as TokenRecord[]
+}
+
+// Helper: the actual hash-key attribute name for each window's GSI.
+function pkAttrForWindow(window: '1H' | '24H' | '7D'): string {
+  return { '1H': 'gsi1pk', '24H': 'gsi3pk', '7D': 'gsi4pk' }[window]
 }
 
 export async function getFollowerHistory(
@@ -104,59 +132,88 @@ export async function upsertToken(token: Omit<TokenRecord, 'pk' | 'sk'>): Promis
 
 /**
  * Updates only the buzz fields on a token's META row, refreshing the
- * SpikingByDelta (gsi1) and WatchlistByMentions (gsi2) index keys so the token
- * surfaces in getSpikingTokens / listTrackedTokens. Uses UpdateCommand rather
- * than a full PUT so it never clobbers price/name/spark set elsewhere. A token
- * with no positive delta is dropped from the SPIKE index (gsi1 keys removed).
+ * SpikingByDelta* GSIs (gsi1/gsi3/gsi4) and WatchlistByMentions GSI (gsi2).
+ *
+ * Uses a single UpdateCommand so it never clobbers price/name/spark set
+ * elsewhere. For each window independently: a positive delta sets that window's
+ * GSI keys; a non-positive delta removes them. gsi2 (TRACKED) is always set.
+ *
+ * `dbuzz` (back-compat) is always set to the 1H delta.
  */
 export async function updateTokenBuzz(data: {
   symbol: string
-  dbuzz: number
   mentions: number
+  deltas: Record<'1H' | '24H' | '7D', number>
 }): Promise<void> {
   const sym = data.symbol.toUpperCase()
   const now = new Date().toISOString()
   const tracked = tokenTrackedGsi(data.mentions, sym)
 
-  const common = {
-    TableName: TableNames.tokens,
-    Key: tokenKey(sym),
+  const d1h = data.deltas['1H']
+  const d24h = data.deltas['24H']
+  const d7d = data.deltas['7D']
+
+  // Build SET and REMOVE clauses dynamically so we never produce an empty clause
+  // or both SET and REMOVE the same attribute.
+
+  // Always-set base expressions.
+  const setExprParts: string[] = [
+    'dbuzz = :d1h',
+    'dbuzz1h = :d1h',
+    'dbuzz24h = :d24h',
+    'dbuzz7d = :d7d',
+    'mentions = :m',
+    'updatedAt = :u',
+    'sym = if_not_exists(sym, :sym)',
+    'gsi2pk = :g2p',
+    'gsi2sk = :g2s',
+  ]
+  const removeExprParts: string[] = []
+
+  const values: Record<string, unknown> = {
+    ':d1h': d1h,
+    ':d24h': d24h,
+    ':d7d': d7d,
+    ':m': data.mentions,
+    ':u': now,
+    ':sym': sym,
+    ':g2p': tracked.gsi2pk,
+    ':g2s': tracked.gsi2sk,
   }
 
-  if (data.dbuzz > 0) {
-    const spike = tokenSpikeGsi(data.dbuzz, sym)
-    await ddb.send(new UpdateCommand({
-      ...common,
-      UpdateExpression:
-        'SET dbuzz = :d, mentions = :m, updatedAt = :u, sym = if_not_exists(sym, :sym), ' +
-        'gsi1pk = :g1p, gsi1sk = :g1s, gsi2pk = :g2p, gsi2sk = :g2s',
-      ExpressionAttributeValues: {
-        ':d': data.dbuzz,
-        ':m': data.mentions,
-        ':u': now,
-        ':sym': sym,
-        ':g1p': spike.gsi1pk,
-        ':g1s': spike.gsi1sk,
-        ':g2p': tracked.gsi2pk,
-        ':g2s': tracked.gsi2sk,
-      },
-    }))
-    return
+  // Per-window: set or remove the GSI spike keys.
+  type Window = '1H' | '24H' | '7D'
+  const windows: Window[] = ['1H', '24H', '7D']
+  const deltaValues: Record<Window, number> = { '1H': d1h, '24H': d24h, '7D': d7d }
+
+  for (const w of windows) {
+    const delta = deltaValues[w]
+    const gsiKeys = tokenSpikeWindowGsi(w, delta, sym)
+    const [pkAttr, skAttr] = Object.keys(gsiKeys)
+
+    if (delta > 0) {
+      const pkPlaceholder = `:${pkAttr}`
+      const skPlaceholder = `:${skAttr}`
+      setExprParts.push(`${pkAttr} = ${pkPlaceholder}`)
+      setExprParts.push(`${skAttr} = ${skPlaceholder}`)
+      values[pkPlaceholder] = gsiKeys[pkAttr]
+      values[skPlaceholder] = gsiKeys[skAttr]
+    } else {
+      removeExprParts.push(pkAttr)
+      removeExprParts.push(skAttr)
+    }
+  }
+
+  let updateExpression = `SET ${setExprParts.join(', ')}`
+  if (removeExprParts.length > 0) {
+    updateExpression += ` REMOVE ${removeExprParts.join(', ')}`
   }
 
   await ddb.send(new UpdateCommand({
-    ...common,
-    UpdateExpression:
-      'SET dbuzz = :d, mentions = :m, updatedAt = :u, sym = if_not_exists(sym, :sym), ' +
-      'gsi2pk = :g2p, gsi2sk = :g2s REMOVE gsi1pk, gsi1sk',
-    ExpressionAttributeValues: {
-      ':d': data.dbuzz,
-      ':m': data.mentions,
-      ':u': now,
-      ':sym': sym,
-      ':g2p': tracked.gsi2pk,
-      ':g2s': tracked.gsi2sk,
-    },
+    TableName: TableNames.tokens,
+    Key: tokenKey(sym),
+    UpdateExpression: updateExpression,
+    ExpressionAttributeValues: values,
   }))
 }
 
