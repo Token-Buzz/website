@@ -1,6 +1,6 @@
 import { PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { Resource } from "sst";
-import { ddb } from "./client.js";
+import { ddb } from "./client";
 
 export type Watchlist = {
   id: string;

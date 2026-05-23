@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { id: 'dashboard', label: 'Today',     icon: 'home'     as const, href: '/dashboard' },
   { id: 'watchlist', label: 'Watchlist', icon: 'table'    as const, href: '/watchlist', count: '6' },
   { id: 'movers',    label: 'Movers',    icon: 'movers'   as const, href: '/movers' },
-  { id: 'feed',      label: 'Live feed', icon: 'activity' as const, href: '/feed' },
+  { id: 'feed',      label: 'Live feed', icon: 'activity' as const, href: '/live-feed' },
   { id: 'alerts',    label: 'Alerts',    icon: 'bell'     as const, href: '/alerts', count: '3' },
   { id: 'analytics', label: 'Analytics', icon: 'trend'    as const, href: '/analytics' },
 ]
