@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "scripts": {
     "test": "sst shell vitest",
-    "test:unit": "vitest run"
+    "test:unit": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "exports": {
     "./db/aggregates": "./src/db/aggregates.ts",
@@ -33,6 +34,7 @@
   "devDependencies": {
     "@tsconfig/node22": "^22",
     "@types/node": "^22",
+    "dynalite": "^4.0.0",
     "typescript": "^5",
     "vitest": "^2"
   }

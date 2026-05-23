@@ -82,6 +82,11 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
+      - name: Integration tests
+        # dynalite (in-memory DynamoDB) — no AWS needed, so this gates the
+        # deploy alongside the unit tests, before credentials are configured.
+        run: npm run test:integration
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:

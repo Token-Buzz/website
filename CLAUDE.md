@@ -38,6 +38,7 @@ npm run lint                   # all workspaces
 npm run typecheck              # all workspaces
 npm run lint:application       # single workspace
 npm run test:unit            # pure unit tests, no SST stage needed (also runs in CI)
+npm run test:integration       # dynalite (in-memory DynamoDB) integration tests, no AWS (also runs in CI)
 npm test -w packages/core      # vitest under `sst shell` (needs an SST stage)
 
 # SST
@@ -47,7 +48,14 @@ npx sst shell --stage <stage> <cmd>   # any cmd with Resource/env bindings
 
 ```
 
-Root `test:unit` runs the pure unit suite (no SST stage) and gates CI; `npm test -w packages/core` runs the full suite under `sst shell` for DB-bound tests.
+Root `test:unit` runs the pure unit suite (no SST stage) and gates CI; `npm run test:integration` runs DB-bound tests against an in-memory DynamoDB (dynalite) — no AWS, no `sst shell`, and also gates CI; `npm test -w packages/core` runs the full suite under `sst shell` for tests that need a live stage.
+
+### Integration tests — dynalite (in-memory DynamoDB)
+
+`packages/core/test/` holds a dynalite-backed integration layer that exercises the real `packages/core/src/db` functions (the actual `ddb` client, key builders, and GSI queries) against a local in-memory DynamoDB — so it catches bugs unit tests can't, e.g. a write that omits a GSI key and is therefore invisible to the index query. It runs fully offline (no AWS, no `sst shell`): the harness boots dynalite, recreates the `infra/db.ts` tables/GSIs, and points the production `client.ts` at it purely via env vars (`AWS_ENDPOINT_URL_DYNAMODB` + `SST_RESOURCE_*`) — `client.ts` is never modified.
+
+- Files are named `*.integration.test.ts`; `vitest.config.ts` (unit) excludes them, `vitest.integration.config.ts` includes them and wires the dynalite `globalSetup` + env `setupFiles`.
+- **When you add or change a DynamoDB access pattern** (a `keys.ts` builder, a new GSI query, an upsert that maintains index keys), add or extend an integration test that does the real write→read round-trip — don't rely on unit-testing the pure parts alone.
 
 ## Architecture
 
@@ -108,7 +116,7 @@ Deployments run from `.github/workflows/deploy.yml` and `.github/workflows/teard
 - Close a PR → removes `pr-<number>` stage (`sst unlock` → `sst refresh` → `sst remove`).
 - Concurrency group per stage; in-progress runs are cancelled when a newer commit lands.
 
-Steps for a deploy run: checkout → setup Node 22 → `npm ci` → `npm run lint` → `npm run typecheck` → `npm run test:unit` → `aws-actions/configure-aws-credentials` → `npx sst unlock` (best-effort) → `npx sst deploy --stage <stage>`.
+Steps for a deploy run: checkout → setup Node 22 → `npm ci` → `npm run lint` → `npm run typecheck` → `npm run test:unit` → `npm run test:integration` → `aws-actions/configure-aws-credentials` → `npx sst unlock` (best-effort) → `npx sst deploy --stage <stage>`. The lint/typecheck/unit/integration steps all run before AWS credentials are configured, so they gate the deploy without needing AWS (dynalite is in-memory).
 
 ### Required GitHub repository secrets
 
@@ -128,6 +136,7 @@ SST application secrets (`sst.Secret` entries in `infra/secrets.ts`: `WEB_DOMAIN
 - New infra resources: create a module under `infra/` and import it from `sst.config.ts` in the right order (secrets → router → apps that attach to it). New configuration values go in `infra/secrets.ts` as `sst.Secret` and get seeded via the Console.
 - Use `$app.stage === "production"` (the `isProd` pattern) to gate anything that should only run for the named stage — don't hardcode against ephemeral stage names.
 - Any new pure logic (calculations, parsers, data transforms, DB key builders) ships with unit tests in the same change. CI runs these via `npm run test:unit`.
+- Any new or changed DynamoDB access pattern (GSI query, index-maintaining upsert) ships with a dynalite integration test (`*.integration.test.ts` in `packages/core/test/`) that does the real write→read round-trip. CI runs these via `npm run test:integration`. See "Integration tests — dynalite" above.
 
 ## Git Workflow
 
