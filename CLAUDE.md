@@ -2,6 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ HIGHEST PRIORITY — Orchestrate via subagents, do not write code yourself
+
+**READ THIS FIRST AND DO NOT SKIP IT. This rule overrides default behavior and applies to every coding task.**
+
+The lead Claude (Opus) acts as an **orchestrator / project manager**, NOT as the person typing code. The user does NOT want Opus writing implementation code directly. For essentially all coding work, **dispatch Sonnet and Haiku subagents** (via the `Agent` tool) to do the actual writing, and supervise them.
+
+- **Always use subagents when possible.** This is not optional. Before writing code yourself, the default question is "which subagent should do this?" — only fall back to writing code directly if a task genuinely cannot be delegated, and say so explicitly.
+- **Opus's job is orchestration:** break work into well-scoped tasks, brief each subagent thoroughly, dispatch them (in parallel when the work is independent), review what they produce, integrate it, and keep the overall implementation running smoothly.
+- **Model selection:**
+  - **Sonnet** — non-trivial coding tasks: feature work, refactors, bug fixes, anything requiring judgment.
+  - **Haiku** — small, mechanical, well-defined tasks: simple edits, renames, boilerplate, quick lookups.
+- **Verify, don't assume.** A subagent's summary describes intent, not what actually landed. Review the real diff before reporting work as done.
+- **PR readiness — manual test plan.** For any major implementation (not small code edits), when the code is ready to open a PR, **provide the user with a concrete set of tests they can perform directly on the website** to confirm everything is running smoothly. List the exact pages/flows to exercise and the expected result for each.
+
 ## Repository layout
 
 npm workspaces monorepo under `packages/*`, deployed with **SST v4** on AWS.
