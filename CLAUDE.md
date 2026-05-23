@@ -2,6 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ HIGHEST PRIORITY — Orchestrate via subagents, do not write code yourself
+
+**READ THIS FIRST AND DO NOT SKIP IT. This rule overrides default behavior and applies to every coding task.**
+
+The lead Claude (Opus) acts as an **orchestrator / project manager**, NOT as the person typing code. The user does NOT want Opus writing implementation code directly. For essentially all coding work, **dispatch Sonnet and Haiku subagents** (via the `Agent` tool) to do the actual writing, and supervise them.
+
+- **Always use subagents when possible.** This is not optional. Before writing code yourself, the default question is "which subagent should do this?" — only fall back to writing code directly if a task genuinely cannot be delegated, and say so explicitly.
+- **Opus's job is orchestration:** break work into well-scoped tasks, brief each subagent thoroughly, dispatch them (in parallel when the work is independent), review what they produce, integrate it, and keep the overall implementation running smoothly.
+- **Model selection:**
+  - **Sonnet** — non-trivial coding tasks: feature work, refactors, bug fixes, anything requiring judgment.
+  - **Haiku** — small, mechanical, well-defined tasks: simple edits, renames, boilerplate, quick lookups.
+- **Verify, don't assume.** A subagent's summary describes intent, not what actually landed. Review the real diff before reporting work as done.
+- **PR readiness — manual test plan.** For any major implementation (not small code edits), when the code is ready to open a PR, **provide the user with a concrete set of tests they can perform directly on the website** to confirm everything is running smoothly. List the exact pages/flows to exercise and the expected result for each.
+
 ## Repository layout
 
 npm workspaces monorepo under `packages/*`, deployed with **SST v4** on AWS.
@@ -23,6 +37,7 @@ npm run dev:application        # application on :3002
 npm run lint                   # all workspaces
 npm run typecheck              # all workspaces
 npm run lint:application       # single workspace
+npm run test:unit            # pure unit tests, no SST stage needed (also runs in CI)
 npm test -w packages/core      # vitest under `sst shell` (needs an SST stage)
 
 # SST
@@ -32,7 +47,7 @@ npx sst shell --stage <stage> <cmd>   # any cmd with Resource/env bindings
 
 ```
 
-There is no root-level test command; only `packages/core` has tests.
+Root `test:unit` runs the pure unit suite (no SST stage) and gates CI; `npm test -w packages/core` runs the full suite under `sst shell` for DB-bound tests.
 
 ## Architecture
 
@@ -93,7 +108,7 @@ Deployments run from `.github/workflows/deploy.yml` and `.github/workflows/teard
 - Close a PR → removes `pr-<number>` stage (`sst unlock` → `sst refresh` → `sst remove`).
 - Concurrency group per stage; in-progress runs are cancelled when a newer commit lands.
 
-Steps for a deploy run: checkout → setup Node 22 → `npm ci` → `npm run lint` → `npm run typecheck` → `aws-actions/configure-aws-credentials` → `npx sst unlock` (best-effort) → `npx sst deploy --stage <stage>`.
+Steps for a deploy run: checkout → setup Node 22 → `npm ci` → `npm run lint` → `npm run typecheck` → `npm run test:unit` → `aws-actions/configure-aws-credentials` → `npx sst unlock` (best-effort) → `npx sst deploy --stage <stage>`.
 
 ### Required GitHub repository secrets
 
@@ -112,6 +127,7 @@ SST application secrets (`sst.Secret` entries in `infra/secrets.ts`: `WEB_DOMAIN
 - New DynamoDB access patterns: add the key builder in `packages/core/src/db/keys.ts` first; never inline `pk`/`sk` strings in route handlers.
 - New infra resources: create a module under `infra/` and import it from `sst.config.ts` in the right order (secrets → router → apps that attach to it). New configuration values go in `infra/secrets.ts` as `sst.Secret` and get seeded via the Console.
 - Use `$app.stage === "production"` (the `isProd` pattern) to gate anything that should only run for the named stage — don't hardcode against ephemeral stage names.
+- Any new pure logic (calculations, parsers, data transforms, DB key builders) ships with unit tests in the same change. CI runs these via `npm run test:unit`.
 
 ## Git Workflow
 

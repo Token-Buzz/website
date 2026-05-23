@@ -31,7 +31,14 @@
       "Read(//c/Users/jasonp/.claude/**)",
       "mcp__gitlab__search_repositories",
       "mcp__gitlab__get_repository_tree",
-      "Bash(Get-ChildItem -Path \"D:/Repositories/tokenbuzz/website/.claude/worktrees/phase2-jobs/packages/application/app/\\(authed\\)\" -Recurse -File)"
+      "Bash(Get-ChildItem -Path \"D:/Repositories/tokenbuzz/website/.claude/worktrees/phase2-jobs/packages/application/app/\\(authed\\)\" -Recurse -File)",
+      "mcp__920fb131-52a7-49f2-8df1-e015208db198__clickup_search",
+      "mcp__920fb131-52a7-49f2-8df1-e015208db198__clickup_get_workspace_hierarchy",
+      "mcp__920fb131-52a7-49f2-8df1-e015208db198__clickup_filter_tasks",
+      "mcp__920fb131-52a7-49f2-8df1-e015208db198__clickup_get_task",
+      "mcp__920fb131-52a7-49f2-8df1-e015208db198__clickup_create_task",
+      "mcp__920fb131-52a7-49f2-8df1-e015208db198__clickup_delete_task",
+      "mcp__920fb131-52a7-49f2-8df1-e015208db198__clickup_update_task"
     ]
   }
 }

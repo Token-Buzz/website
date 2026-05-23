@@ -193,6 +193,30 @@ export async function getMpm(): Promise<number> {
   return Math.round(items.reduce((s, i) => s + (i.count || 0), 0) / items.length)
 }
 
+/**
+ * Sums per-minute PULSE counts for a single query/symbol between two minute
+ * buckets (inclusive). PULSE rows are written synchronously per tweet by the
+ * aggregator (incrementPulse → pk `PULSE#<query>`), so this is the most
+ * reliable per-symbol volume signal. Used by the spike materializer to compute
+ * hour-over-hour buzz deltas.
+ */
+export async function sumPulse(
+  scope: string,
+  fromMinute: string,
+  toMinute: string,
+): Promise<number> {
+  const { Items = [] } = await ddb.send(new QueryCommand({
+    TableName: TableNames.aggregates,
+    KeyConditionExpression: 'pk = :pk AND sk BETWEEN :from AND :to',
+    ExpressionAttributeValues: {
+      ':pk': `PULSE#${scope}`,
+      ':from': `BUCKET#${fromMinute}`,
+      ':to': `BUCKET#${toMinute}`,
+    },
+  }))
+  return (Items as Array<{ count?: number }>).reduce((s, i) => s + (i.count ?? 0), 0)
+}
+
 export async function getDomains(
   scope: string,
   window: '1H' | '4H' | '24H' | '7D' = '24H',

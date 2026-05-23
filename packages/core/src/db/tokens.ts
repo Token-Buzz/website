@@ -1,5 +1,6 @@
-import { GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
+import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from './client'
+import { tokenKey, tokenSpikeGsi, tokenTrackedGsi } from './keys'
 
 export interface TokenRecord {
   pk: string
@@ -101,26 +102,60 @@ export async function upsertToken(token: Omit<TokenRecord, 'pk' | 'sk'>): Promis
   }))
 }
 
-export async function writeSpike(data: {
+/**
+ * Updates only the buzz fields on a token's META row, refreshing the
+ * SpikingByDelta (gsi1) and WatchlistByMentions (gsi2) index keys so the token
+ * surfaces in getSpikingTokens / listTrackedTokens. Uses UpdateCommand rather
+ * than a full PUT so it never clobbers price/name/spark set elsewhere. A token
+ * with no positive delta is dropped from the SPIKE index (gsi1 keys removed).
+ */
+export async function updateTokenBuzz(data: {
   symbol: string
-  deltaScore: number
-  currentMentions: number
-  priorMentions: number
-  computedAt: string
+  dbuzz: number
+  mentions: number
 }): Promise<void> {
-  const pk = `SPIKE#${data.symbol}`
-  const sk = `COMPUTED#${data.computedAt}`
+  const sym = data.symbol.toUpperCase()
+  const now = new Date().toISOString()
+  const tracked = tokenTrackedGsi(data.mentions, sym)
 
-  await ddb.send(new PutCommand({
+  const common = {
     TableName: TableNames.tokens,
-    Item: {
-      pk,
-      sk,
-      symbol: data.symbol,
-      deltaScore: data.deltaScore,
-      currentMentions: data.currentMentions,
-      priorMentions: data.priorMentions,
-      computedAt: data.computedAt,
+    Key: tokenKey(sym),
+  }
+
+  if (data.dbuzz > 0) {
+    const spike = tokenSpikeGsi(data.dbuzz, sym)
+    await ddb.send(new UpdateCommand({
+      ...common,
+      UpdateExpression:
+        'SET dbuzz = :d, mentions = :m, updatedAt = :u, sym = if_not_exists(sym, :sym), ' +
+        'gsi1pk = :g1p, gsi1sk = :g1s, gsi2pk = :g2p, gsi2sk = :g2s',
+      ExpressionAttributeValues: {
+        ':d': data.dbuzz,
+        ':m': data.mentions,
+        ':u': now,
+        ':sym': sym,
+        ':g1p': spike.gsi1pk,
+        ':g1s': spike.gsi1sk,
+        ':g2p': tracked.gsi2pk,
+        ':g2s': tracked.gsi2sk,
+      },
+    }))
+    return
+  }
+
+  await ddb.send(new UpdateCommand({
+    ...common,
+    UpdateExpression:
+      'SET dbuzz = :d, mentions = :m, updatedAt = :u, sym = if_not_exists(sym, :sym), ' +
+      'gsi2pk = :g2p, gsi2sk = :g2s REMOVE gsi1pk, gsi1sk',
+    ExpressionAttributeValues: {
+      ':d': data.dbuzz,
+      ':m': data.mentions,
+      ':u': now,
+      ':sym': sym,
+      ':g2p': tracked.gsi2pk,
+      ':g2s': tracked.gsi2sk,
     },
   }))
 }
