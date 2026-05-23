@@ -1,5 +1,18 @@
 # Session handoff — TokenBuzz
 
+## 2026-05-23 — Movers M1 Phase 2 DONE; browser-UI test setup pending
+
+- **M1 Phase 2 (Movers UI) is complete and pushed** on branch `claude/affectionate-cray-8MsWW` (commit `564d667`). Multi-window (1H/24H/7D) buzz deltas end to end: core `windowMinuteRange` + per-window spike GSI builders; Tokens table gains `SpikingByDelta24h` (gsi3) + `SpikingByDelta7d` (gsi4) in `infra/db.ts` AND the dynalite harness `packages/core/test/dynalite-global.ts`; `updateTokenBuzz({ symbol, mentions, deltas })` maintains all three window indexes; `getSpikingTokens({ window })`; the spike-materializer computes all three; `GET /api/movers?window=1h|24h|7d` returns the window-specific delta; new `/movers` page (window pills + sortable table, route protected in `proxy.ts`, Today "See all movers" CTA wired). Gate green: typecheck + lint + test:unit (12) + test:integration (9). **Not deployed; no PR opened.**
+- **GitHub Project**: all 9 milestones + 61 epic/phase issues seeded. M1 Phase 2 (#20) = In review, in "Sprint 1 — Movers UI".
+
+### NEXT: browser-test the Movers UI (blocked on network policy)
+This environment's network policy blocks the Playwright browser CDN (`cdn.playwright.dev` / `playwright.download.prss.microsoft.com` → 403) and Clerk (`*.clerk.accounts.dev` won't resolve), so no in-browser test was possible. To enable, the environment needs:
+1. **Network egress** to: `cdn.playwright.dev`, `playwright.download.prss.microsoft.com`, `*.azureedge.net`, `*.clerk.accounts.dev`, `*.clerk.com`.
+2. **Clerk dev-instance keys** as env vars: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_…`, `CLERK_SECRET_KEY=sk_test_…` (the staging/dev instance — NOT prod `pk_live`).
+3. A **test user** in that dev instance, or email-code sign-in enabled so `<x>+clerk_test@example.com` + OTP `424242` works headlessly.
+
+Plan once egress is live: `npm i -D playwright && npx playwright install chromium`; boot a local dynalite seeded with sample spiking tokens across all three windows (reuse the table defs incl. the new GSIs from `packages/core/test/dynalite-global.ts`) and set `AWS_ENDPOINT_URL_DYNAMODB` + `SST_RESOURCE_*` so `/api/movers` reads it with no AWS; `npm run dev:application` (:3002); Playwright signs in via the Clerk dev test creds, visits `/movers`, toggles 1H/24H/7D, exercises sort, captures desktop + mobile screenshots and sends them to the user.
+
 ## TL;DR for the next session
 - **Repo:** `Token-Buzz/website` (npm-workspaces monorepo, SST v4 on AWS).
 - **Active branch:** `claude/aws-testing-dynamodb-E5haH` — 3 commits, pushed, **PR not opened**. Adds a dynalite integration-test layer + CI gate + CLAUDE.md docs (details below).
