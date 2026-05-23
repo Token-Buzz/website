@@ -1,51 +1,66 @@
-# Session handoff — TokenBuzz roadmap + M1 movers
+# Session handoff — TokenBuzz
 
-## Where things stand
-- **Repo:** `token-buzz/website` (npm-workspaces monorepo, SST v4 on AWS). Working branch: `claude/token-buzz-clickup-tasks-fAcQ5`.
-- **PR #16** is open → `master`: https://github.com/Token-Buzz/website/pull/16. Branch commits now include: roadmap docs, a settings-permission chore, the movers fix + unit test, the **CI unit-test wiring** (`cacea3c`), and a **workflow-tooling commit** (test convention + `/check-tests` skill + delegate-reminder hook, `56336f8`).
-- typecheck + lint + the 6 unit tests pass locally **and now in CI**. The movers change is still **not** verified against live DynamoDB.
+## TL;DR for the next session
+- **Repo:** `Token-Buzz/website` (npm-workspaces monorepo, SST v4 on AWS).
+- **Active branch:** `claude/aws-testing-dynamodb-E5haH` — 3 commits, pushed, **PR not opened**. Adds a dynalite integration-test layer + CI gate + CLAUDE.md docs (details below).
+- **Immediate next task:** migrate ClickUp milestones → **GitHub Projects**. Blocked this session because `gh` / the GitHub API isn't reachable in the web environment. The user is installing `gh` ahead of the next session. Full plan + ClickUp IDs + prerequisites under "NEXT TASK" below.
 
-## This session (testing infra + workflow tooling)
-Context driving this work: the user works from a **mobile phone and cannot hand-test APIs/JSON endpoints**. The goal was to make correctness *automatic* (read a green check) instead of manual.
-1. **Unit tests now run in CI.** `.github/workflows/deploy.yml` has a **Unit tests** step (after Typecheck, before AWS credentials, so it gates the deploy without needing AWS). Wiring: root `npm run test:unit` → `npm run test:unit --workspaces --if-present` → `packages/core`'s `test:unit` = `vitest run` (plain, **no SST stage**). The existing `npm test -w packages/core` (`sst shell vitest`) is left untouched for future DB-bound integration tests.
-2. **CLAUDE.md convention added:** *"Any new pure logic (calculations, parsers, data transforms, DB key builders) ships with unit tests in the same change. CI runs these via `npm run test:unit`."*
-3. **`/check-tests` skill** (`.claude/skills/check-tests/SKILL.md`): on-demand audit — diffs the branch vs `master`, flags new/changed **pure logic** lacking tests, runs `npm run test:unit`, reports gaps + pass/fail. **Advisory** (offers to write missing tests, doesn't auto-write).
-4. **Delegate-reminder hook** (`.claude/hooks/remind-delegate.sh` + a `PreToolUse` entry in `.claude/settings.json`): a **non-blocking** reminder nudging the MAIN agent to dispatch a subagent for code edits. Stays **silent** for subagent edits (detected via `agent_id` in the hook stdin) and for docs/config (`*.md`, `.claude/`). **NEXT LEAD (you):** when you try to edit code directly you'll get this nudge in-context — heed it and dispatch a Sonnet/Haiku subagent. It won't block you; it's a guardrail for the CLAUDE.md orchestration rule.
+## ⚠️ This handoff lives on branch `claude/aws-testing-dynamodb-E5haH`
+A fresh session started from `master` will NOT see this file (or the test layer) unless the branch is merged first. Either merge `claude/aws-testing-dynamodb-E5haH` to `master`, or start the next session on that branch.
 
-## Verification model going forward (important — the user is on mobile)
-- **Do NOT ask the user to curl/Postman/hand-test endpoints.** `/api/movers` is Clerk-auth-gated and a fresh stage has empty DynamoDB, so manual hits are both impractical and uninformative.
-- **Pure logic →** CI green check (the Unit tests step). That's the verification surface.
-- **Product features →** the **UI is the acceptance test**. Build the page, then the user taps-and-looks on mobile, and the next Claude can drive a headless browser locally to screenshot it before the user even opens it.
-- **Live-DB round-trip →** still needs an **integration-test layer** (`sst shell vitest` against a deployed stage). **Not built yet.** This is the cleanest way to close the "movers not verified against live DynamoDB" gap without hand-testing.
+## What this session did — verify the movers fix against a real DynamoDB
+The merged movers fix (PR #16) had never been verified against real DynamoDB. The web shell has only **read-only** AWS, `sst shell` doesn't work here (needs `CLOUDFLARE_API_TOKEN` + blocked network), and the user works from mobile — so the durable answer was an offline, CI-able integration layer rather than hand-testing or live-prod reads.
 
-## The movers fix — important technical context
-The `SpikeMaterializer` cron already existed in `infra/jobs.ts` (every 5 min → `packages/jobs/src/spike-materializer.handler`) but was non-functional:
-- It wrote `SPIKE#<sym>` rows via `writeSpike()` that set **no `gsi1pk='SPIKE'` keys**, so `getSpikingTokens()` (which queries the `SpikingByDelta` GSI) never saw them.
-- It computed deltas from a global `getPulse('1H')` *inside* the per-symbol loop → every token got the same value. And `getPulse` reads `AGG#PULSE#all`, which `incrementPulse` never writes.
+Built a **dynalite (in-memory DynamoDB) integration-test layer** in `packages/core`:
+- `test/spike-pipeline.integration.test.ts` — 5 scenarios driving the REAL `sumPulse → computeBuzzDelta → updateTokenBuzz → getSpikingTokens/listTrackedTokens` path the spike-materializer composes. Scenario 1 is the direct regression test for the original bug (a write missing `gsi1pk='SPIKE'` is invisible to the SpikingByDelta GSI query).
+- Harness (`test/dynalite-global.ts`, `test/integration-env.ts`, `test/dynalite.d.ts`): boots dynalite, recreates the `infra/db.ts` tables + GSIs, and points production `client.ts` at it via **env vars only** (`AWS_ENDPOINT_URL_DYNAMODB` + `SST_RESOURCE_*`). `client.ts` is NOT modified.
+- `vitest.config.ts` (unit; excludes `*.integration.test.ts`) + `vitest.integration.config.ts` (includes them; wires globalSetup + setupFiles).
+- Scripts: `test:integration` in `packages/core` + a root aggregator. Wired into `.github/workflows/deploy.yml` as a deploy gate (after "Unit tests", before AWS creds — dynalite needs no AWS).
+- CLAUDE.md documents all of it.
+- Commits: `901ac16` (tests), `64c7585` (CI gate), `ed5b739` (docs). Verified locally: `test:integration` 5/5, `test:unit` 6/6, root lint + typecheck clean.
 
-Data-model facts confirmed (don't re-derive):
-- The poller (`packages/jobs/src/poller.ts`) uses each token's `sym` (e.g. `$PEPE`) **as the search query**, and the aggregator writes every aggregate under `scope = query = sym`. So a token's aggregates live at `AGG#<TYPE>#$PEPE`, `PULSE#$PEPE`, etc.
-- `PULSE#<sym>` minute buckets (`incrementPulse`) are bumped **synchronously per tweet** → most reliable per-symbol volume signal. (`AGG#MENTION#<sym>` is @-handle mentions, *not* token buzz — wrong signal.)
+### Live AWS facts (read-only `claude-readonly` user)
+- **production**: Tweets 11.7k, Aggregates 36k (incl. **6,307 `PULSE#<sym>` rows** for the 6 default symbols), **Tokens empty**, UserData empty.
+- **pr-16 stage**: 6 tokens (all `dbuzz=0`), no tweets/aggregates.
+- **Poller is stale**: latest `PULSE#$SOL` bucket was `2026-05-22T21:26` (>1 day old). The materializer's 2-hour window finds nothing → no live spikes right now even after the fix deployed. Upstream poller appears stopped — worth checking (separate issue). Live-prod verification is the user's own manual step.
 
-The fix:
-- `packages/core/src/movers.ts` — `computeBuzzDelta(current, prior)` (pure, DB-free, so it's testable without SST).
-- `packages/core/src/movers.test.ts` — 5 vitest cases, run with plain `npx vitest run` (no `sst shell`).
-- `packages/core/src/db/aggregates.ts` — `sumPulse(scope, from, to)` sums `PULSE#<scope>` minute buckets.
-- `packages/core/src/db/tokens.ts` — `updateTokenBuzz()` does a targeted `UpdateCommand` that refreshes `SpikingByDelta`/`WatchlistByMentions` GSI keys **without clobbering** price/name/spark; removes `gsi1` keys when delta ≤ 0. Removed dead `writeSpike`.
-- `packages/jobs/src/spike-materializer.ts` — per-symbol disjoint current/prior hour windows.
-- `packages/application/app/api/movers/route.ts` — `GET /api/movers?limit=`.
+## NEXT TASK — migrate ClickUp milestones → GitHub Projects
 
-## Open items / next steps
-- **Runtime verification still owed.** Needs a deployed stage (`sst shell`) to confirm the materializer writes rows that `/api/movers` ranks. No local DynamoDB mock exists in the repo. Recommended path: build the **integration-test layer** described above rather than hand-testing.
-- **M1 Phase 2 (Movers UI) is the natural next slice.** It gives the user a tappable mobile acceptance test, and the next Claude can screenshot it from a local dev server before the user opens it. (The `/movers` page currently 404s.)
-- **Adjacent bug, deliberately out of scope:** `getPulse` reads `AGG#PULSE#all` but `incrementPulse` writes `PULSE#<query>` → `/api/analytics/pulse` also returns nothing. Separate fix.
-- **M1 remaining phases:** live-feed endpoint (reuse `tweetQueryGsi` / `QueryByQueryTime`, fan out over the user's watchlist), alerts CRUD (`alertKey` exists; needs a trigger-history key + `/api/alerts`). Movers UI, live-feed UI, alerts UI are Phases 2–4.
+### Why it was blocked this session
+The web environment exposes GitHub only via the **MCP server** (`mcp__github__*`) + a **local git proxy** (`http://local_proxy@127.0.0.1:.../git/...`). No `gh`, no GitHub token in env, `curl https://api.github.com` → **403**. MCP tools can create Issues + sub-issues and assign EXISTING milestones, but CANNOT create native **Milestones** or create/populate a **Projects v2 board** (no project tools, no GraphQL access).
 
-## Conventions & workflow the user expects (follow these)
-- **Lead is the orchestrator.** Dispatch Sonnet/Haiku subagents for coding work (Sonnet = judgment/feature/refactor; Haiku = small mechanical edits); review the real diff before reporting done. A non-blocking hook will remind you if you edit code directly. Docs/config (`*.md`, `.claude/`) you may edit directly.
-- **New pure logic ships with unit tests in the same change** — now a CI gate (`npm run test:unit`).
-- **Local loop, no AWS:** branch → code → local `npm run lint` + `npm run typecheck` + `npm run test:unit` → commit → push → open PR → review. Lint/typecheck/pure-unit-tests need **no** AWS. Only live-DB integration needs a stage (the repo's `ddb` client eagerly reads `Resource.X.name` at import, so anything importing it crashes outside `sst shell` — extract pure logic to keep it testable).
-- Add DB key builders in `packages/core/src/db/keys.ts`; never inline pk/sk. Cross-package imports via workspace names (`@monorepo-template/core/...`).
-- Never commit/push to `master`; work on the feature branch. Discard `packages/*/tsconfig.tsbuildinfo` before staging (a Stop hook flags a dirty tree; these regenerate on every typecheck and must not be committed). Never `--no-verify`.
-- **Open PRs only when explicitly asked.**
-- The user prefers the **per-milestone, one-phase-per-session plan-mode** approach: ground each milestone doc against real code before implementing, because the docs were written from the brainstorm and overstate net-new work (M1 proved this).
+### gh prerequisites the next session must verify
+The user is installing `gh` ahead of time. Before doing migration work, confirm all three:
+1. **gh binary present:** `gh --version`.
+2. **Network allows GitHub:** `gh auth status` and `curl -s -o /dev/null -w '%{http_code}' https://api.github.com` should NOT be 403. If 403, the environment's network policy still blocks `github.com` / `api.github.com` — the user must pick a more permissive policy when creating the environment (see https://code.claude.com/docs/en/claude-code-on-the-web).
+3. **Token + scopes:** `GH_TOKEN` set to a PAT with `repo`, `read:org`, `project` (Projects v2 is org-owned under `Token-Buzz`). Verify with `gh project list --owner Token-Buzz`.
+
+### ClickUp source data (already discovered — reuse, don't re-crawl unless it changed)
+- Space `tokenbuzz.app` (id `90145593462`), list id **`901416380123`**.
+- **9 milestones:** M1 Movers/Live feed/Alerts (`86ba31jna`), M2 Watchlists→Dashboards (`86ba31jnf`), M3 Hum AI slide-out (`86ba31jp2`), M4 Top nav + ⌘K (`86ba31jpx`), M5 Account/Billing/Stripe (`86ba31jq9`), M6 Candlestick + Price Charts (`86ba31jqq`), M7 Marketing live ticker (`86ba31jr3`), M8 Query History (`86ba31jrq`), M9 Multi-Social Ingestion v2 (`86ba31jt0`).
+- A divider task **"OLD TASKS 05-22-2026"** (`86ba31j7d`); ~27 older brainstorm tasks sit below it (likely superseded by M1–M9). One done: "Create the Design" (`86b9x62a4`).
+- Pull full bodies via `clickup_get_task` (`detail_level='detailed'`) before mirroring — the M-task descriptions likely already contain the detail.
+
+### Pending decisions (the user dismissed the question menu — re-confirm before creating anything)
+- **Mechanism:** full `gh`/GraphQL Projects v2 board + native Milestones, vs. MCP issues + sub-issues.
+- **Scope:** just M1–M9 epics, or M1–M9 + supporting tasks as sub-issues, or include the OLD tasks.
+- **Target shape:** native Milestones + a Project board; epic issues + sub-issues; or both.
+- **Source of truth:** keep ClickUp in sync or one-way migrate? Do NOT delete ClickUp tasks unless explicitly asked.
+- Creating issues/board items is bulk + visible + tedious to reverse → present the issue-by-issue mapping and get approval first.
+
+## Carry-forward — M1 movers technical context (still the active feature area)
+- Poller uses each token's `sym` (e.g. `$PEPE`) as the search query; aggregates live at `AGG#<TYPE>#$SYM`, `PULSE#$SYM`.
+- `PULSE#<sym>` minute buckets (`incrementPulse`, synchronous per tweet) are the per-symbol volume signal `sumPulse` reads. (`AGG#MENTION#<sym>` is @-handle mentions — the wrong signal.)
+- The fix: `computeBuzzDelta` (pure, unit-tested), `sumPulse`, `updateTokenBuzz` (targeted `UpdateCommand` maintaining gsi1/gsi2; removes gsi1 when delta ≤ 0), spike-materializer disjoint current/prior hour windows, `GET /api/movers?limit=`.
+
+## Open items / next feature slices
+- **M1 Phase 2 (Movers UI)** is the natural next build — gives a tappable mobile acceptance test; `/movers` currently 404s.
+- **Adjacent bug (out of scope):** `getPulse` reads `AGG#PULSE#all` but `incrementPulse` writes `PULSE#<query>` → `/api/analytics/pulse` returns nothing. Separate fix.
+- **Poller liveness:** production PULSE data is >1 day stale — confirm the poller cron is running.
+- M1 remaining: live-feed endpoint (reuse `QueryByQueryTime`, fan out over the user's watchlist); alerts CRUD (`alertKey` exists; needs trigger-history key + `/api/alerts`).
+
+## Conventions (also in CLAUDE.md + the project-conventions skill)
+- Lead Opus = **orchestrator**; dispatch Sonnet/Haiku subagents for code; review the real diff before reporting done. A non-blocking hook nudges you if you edit code directly. Docs/config (`*.md`, `.claude/`) you may edit directly.
+- New pure logic ships with unit tests (`npm run test:unit`, CI gate). New/changed DynamoDB access patterns ship with a dynalite integration test (`npm run test:integration`, CI gate).
+- Never commit/push to `master`; feature branch only. Run `npm run typecheck` + `npm run lint` before commit; discard `packages/*/tsconfig.tsbuildinfo`. Never `--no-verify`. **Open PRs only when explicitly asked.**
+- User is on mobile: prefer automatic green-check verification + UI acceptance tests over hand-testing endpoints/JSON.
