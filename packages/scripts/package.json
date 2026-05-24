@@ -2,15 +2,16 @@
   "name": "@monorepo-template/scripts",
   "version": "0.0.0",
   "type": "module",
-  "dependencies": {
-    "@monorepo-template/core": "*",
-    "sst": "*"
-  },
+  "dependencies": {},
   "scripts": {
-    "shell": "sst shell tsx"
+    "track": "tsx src/track.ts",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run"
   },
   "devDependencies": {
     "@types/node": "^22",
-    "tsx": "^4"
+    "tsx": "^4",
+    "typescript": "^5",
+    "vitest": "^4"
   }
 }

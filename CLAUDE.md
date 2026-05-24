@@ -163,6 +163,20 @@ Each milestone is large and spans many fresh (often ephemeral web) sessions. Mem
 - `handoff.md` is only a **pointer** to the above, never a status log.
 - A **SessionStart hook** (`.claude/hooks/session-start.sh`) auto-prints orientation (recent commits, open PRs, open milestones, recent issues) at the start of every session.
 
+## Time tracking (AI auto-logging — issue #89)
+
+AI work time is logged to Toggl Track per GitHub issue via the `track` CLI in `packages/scripts` (entries tagged `ai`, named `#<n> <title>`). Logging is **per-turn**: a `UserPromptSubmit` hook (`track-resume.sh`) starts the timer each turn and a `Stop` hook (`track-pause.sh`) pauses it when the turn ends, so idle time isn't counted. Both hooks silently no-op unless `TOGGL_API_TOKEN` + `TOGGL_WORKSPACE_ID` are set **and** an active issue has been seeded.
+
+**To start logging: when you begin working on an issue, run it once —**
+
+```bash
+npm run -s track --prefix packages/scripts -- ai-start <issue>   # seeds .claude/.track-current.json + starts the timer
+npm run -s track --prefix packages/scripts -- ai-stop            # at end of task: stops + clears the active issue
+npm run -s track --prefix packages/scripts -- report             # weekly AI/human/other totals + issues/milestones closed
+```
+
+`ai-start` is the only manual step; the hooks handle resume/pause for every subsequent turn. `ai-pause` only stops `ai`-tagged entries, so a human timer started in the Toggl app is never auto-stopped. The active-issue file (`.claude/.track-current.json`) is gitignored.
+
 ## Conventions
 
 - All cross-package imports go through workspace package names (`@monorepo-template/core/db`), not relative paths.
