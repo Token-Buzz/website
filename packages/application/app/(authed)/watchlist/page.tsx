@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { WatchlistView } from '../_dashboard/WatchlistView'
 import { TokenDetailPane } from '../_dashboard/TokenDetailPane'
-import { useIsMobile } from '../_dashboard/useIsMobile'
+import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import type { Token } from '../_dashboard/types'
 
 export default function WatchlistPage() {

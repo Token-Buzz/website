@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { KPIs } from "./types";
 import { fmtCount } from "./utils";
+import { useIsMobile } from "@/app/_hooks/useIsMobile";
 
 export function KPIStrip() {
   const [kpis, setKpis] = useState<KPIs | null>(null);
   const [loading, setLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchKpis = async () => {
@@ -34,7 +36,7 @@ export function KPIStrip() {
   ];
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "32px" }}>
+    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: "12px", marginBottom: "32px" }}>
       {cards.map((card, idx) => (
         <div
           key={idx}

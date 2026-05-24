@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Card, SectionHead, Eyebrow } from "../_dashboard/primitives";
 import { SearchBar } from "../_analytics/SearchBar";
 import { ChartErrorBoundary } from "../_analytics/ChartErrorBoundary";
+import { useIsMobile } from "@/app/_hooks/useIsMobile";
 import { TopHashtagsChart } from "../_analytics/TopHashtagsChart";
 import { TopMentionsChart } from "../_analytics/TopMentionsChart";
 import { DomainDistributionChart } from "../_analytics/DomainDistributionChart";
@@ -38,14 +39,15 @@ export default function AnalyticsPage() {
 function AnalyticsPageInner() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") ?? "";
+  const isMobile = useIsMobile();
 
   return (
     <div
       style={{
-        padding: "24px",
+        padding: isMobile ? "16px 12px" : "24px",
         display: "flex",
         flexDirection: "column",
-        gap: 24,
+        gap: isMobile ? 16 : 24,
         maxWidth: 1480,
         margin: "0 auto",
       }}
@@ -55,7 +57,7 @@ function AnalyticsPageInner() {
         <Eyebrow style={{ marginBottom: 8 }}>Analytics</Eyebrow>
         <h1
           style={{
-            font: "600 28px/1.15 var(--font-sans)",
+            font: `600 ${isMobile ? "22px" : "28px"}/1.15 var(--font-sans)`,
             letterSpacing: "-0.015em",
             color: "var(--fg-1)",
             margin: "0 0 20px",
@@ -82,8 +84,8 @@ function AnalyticsPageInner() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 16,
+          gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+          gap: isMobile ? 12 : 16,
         }}
       >
         {/* Row 1 */}

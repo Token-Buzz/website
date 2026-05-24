@@ -6,6 +6,7 @@ import {
   fmtCount,
 } from '../_dashboard/primitives'
 import type { Sentiment } from '../_dashboard/types'
+import { useIsMobile } from '@/app/_hooks/useIsMobile'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -47,12 +48,12 @@ function isSentiment(v: string | undefined): v is Sentiment {
 
 // ── TweetCard ──────────────────────────────────────────────────────────────
 
-function TweetCard({ tweet }: { tweet: LiveFeedTweet }) {
+function TweetCard({ tweet, isMobile }: { tweet: LiveFeedTweet; isMobile: boolean }) {
   const sent = isSentiment(tweet.sentiment) ? tweet.sentiment : undefined
   return (
     <div
       style={{
-        padding: '14px 20px',
+        padding: isMobile ? '10px 12px' : '14px 20px',
         borderBottom: '1px solid var(--border-hairline)',
         transition: 'background 80ms',
       }}
@@ -238,6 +239,7 @@ const SENTIMENT_FILTERS: { value: SentimentFilter; label: string }[] = [
 // ── Main page ──────────────────────────────────────────────────────────────
 
 export default function LiveFeedPage() {
+  const isMobile = useIsMobile()
   const [sentimentFilter, setSentimentFilter] = useState<SentimentFilter>('all')
   const [tweets, setTweets] = useState<LiveFeedTweet[]>([])
   const [cursor, setCursor] = useState<string | undefined>(undefined)
@@ -354,10 +356,10 @@ export default function LiveFeedPage() {
   return (
     <div
       style={{
-        padding: '24px',
+        padding: isMobile ? '16px 12px' : '24px',
         display: 'flex',
         flexDirection: 'column',
-        gap: 24,
+        gap: isMobile ? 16 : 24,
         maxWidth: 1200,
         margin: '0 auto',
       }}
@@ -367,7 +369,7 @@ export default function LiveFeedPage() {
         <Eyebrow style={{ marginBottom: 8 }}>Feed</Eyebrow>
         <h1
           style={{
-            font: '600 28px/1.15 var(--font-sans)',
+            font: `600 ${isMobile ? '22px' : '28px'}/1.15 var(--font-sans)`,
             letterSpacing: '-0.015em',
             color: 'var(--fg-1)',
             margin: 0,
@@ -436,7 +438,7 @@ export default function LiveFeedPage() {
         ) : (
           <>
             {tweets.map((tweet) => (
-              <TweetCard key={tweet.tweetId} tweet={tweet} />
+              <TweetCard key={tweet.tweetId} tweet={tweet} isMobile={isMobile} />
             ))}
             {loadingMore && <LoadingMoreIndicator />}
           </>
