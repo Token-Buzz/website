@@ -5,6 +5,7 @@ import {
   Card, Eyebrow, Ticker, Pill, Delta,
   fmtCount, fmtPrice,
 } from '../_dashboard/primitives'
+import { useIsMobile } from '../_dashboard/useIsMobile'
 import type { Sentiment } from '../_dashboard/types'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -79,7 +80,7 @@ function SortHead({
   )
 }
 
-// ── Table header / row grid ────────────────────────────────────────────────
+// ── Table header / row grid (desktop) ─────────────────────────────────────
 
 // symbol | buzz-delta | mentions | price | 24h-change | sentiment
 const GRID = '140px 1fr 1fr 100px 100px 90px'
@@ -213,6 +214,55 @@ function MoverRow({ mover }: { mover: Mover }) {
   )
 }
 
+// ── Mobile card layout ─────────────────────────────────────────────────────
+// Two-line stacked card: ticker + buzz delta on top row, then mentions /
+// price / 24h / sentiment pill on the second row.
+
+function MoverCard({ mover }: { mover: Mover }) {
+  const sentTone: 'bull' | 'bear' | 'neu' = mover.sentiment
+  return (
+    <div
+      style={{
+        padding: '14px 16px',
+        borderBottom: '1px solid var(--border-hairline)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        minHeight: 44,
+      }}
+    >
+      {/* Row 1: ticker + buzz delta */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Ticker symbol={mover.symbol} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Eyebrow style={{ color: 'var(--fg-4)', letterSpacing: '0.1em' }}>Buzz Δ</Eyebrow>
+          <Delta value={mover.buzzDelta} format="pct" style={{ fontSize: 14 }} />
+        </div>
+      </div>
+
+      {/* Row 2: mentions · price · 24h · sentiment */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ font: '500 10px var(--font-sans)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-4)' }}>Mentions</span>
+          <span style={{ font: '600 12px var(--font-mono)', color: 'var(--fg-1)', fontVariantNumeric: 'tabular-nums' }}>{fmtCount(mover.mentions)}</span>
+        </div>
+        <span style={{ color: 'var(--border-strong)', fontSize: 10 }}>·</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ font: '500 10px var(--font-sans)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-4)' }}>Price</span>
+          <span style={{ font: '600 12px var(--font-mono)', color: 'var(--fg-1)', fontVariantNumeric: 'tabular-nums' }}>{fmtPrice(mover.price)}</span>
+        </div>
+        <span style={{ color: 'var(--border-strong)', fontSize: 10 }}>·</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ font: '500 10px var(--font-sans)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-4)' }}>24h</span>
+          <Delta value={mover.change24h} format="pct" style={{ fontSize: 12 }} />
+        </div>
+        <div style={{ flex: 1 }} />
+        <Pill tone={sentTone}>{mover.sentiment}</Pill>
+      </div>
+    </div>
+  )
+}
+
 // ── State labels ───────────────────────────────────────────────────────────
 
 function EmptyState() {
@@ -272,6 +322,8 @@ export default function MoversPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const isMobile = useIsMobile()
+
   useEffect(() => {
     let cancelled = false
 
@@ -319,10 +371,10 @@ export default function MoversPage() {
   return (
     <div
       style={{
-        padding: '24px',
+        padding: isMobile ? '16px 12px' : '24px',
         display: 'flex',
         flexDirection: 'column',
-        gap: 24,
+        gap: isMobile ? 16 : 24,
         maxWidth: 1200,
         margin: '0 auto',
       }}
@@ -332,7 +384,7 @@ export default function MoversPage() {
         <Eyebrow style={{ marginBottom: 8 }}>Movers</Eyebrow>
         <h1
           style={{
-            font: '600 28px/1.15 var(--font-sans)',
+            font: isMobile ? '600 22px/1.15 var(--font-sans)' : '600 28px/1.15 var(--font-sans)',
             letterSpacing: '-0.015em',
             color: 'var(--fg-1)',
             margin: 0,
@@ -343,7 +395,13 @@ export default function MoversPage() {
       </div>
 
       {/* ── Controls row ─────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        flexWrap: 'wrap',
+        rowGap: 8,
+      }}>
         {/* Time-window pill group — styled like Shell TopBar */}
         <div
           style={{
@@ -361,7 +419,7 @@ export default function MoversPage() {
               onClick={() => setWindow(w)}
               style={{
                 border: 'none',
-                padding: '5px 11px',
+                padding: isMobile ? '5px 9px' : '5px 11px',
                 borderRadius: 999,
                 cursor: 'pointer',
                 font: '600 11px var(--font-sans)',
@@ -391,7 +449,7 @@ export default function MoversPage() {
               onClick={() => handleSort(col)}
               style={{
                 border: 'none',
-                padding: '5px 10px',
+                padding: isMobile ? '5px 8px' : '5px 10px',
                 borderRadius: 4,
                 cursor: 'pointer',
                 font: '600 11px var(--font-sans)',
@@ -404,7 +462,7 @@ export default function MoversPage() {
                 gap: 4,
               }}
             >
-              {col === 'buzz' ? 'Buzz Δ' : col === 'mentions' ? 'Mentions' : 'Sentiment'}
+              {col === 'buzz' ? 'Buzz Δ' : col === 'mentions' ? 'Mentions' : 'Sent'}
               {sortBy === col && (
                 <span style={{ fontSize: 9 }}>{sortDir === 'desc' ? '▼' : '▲'}</span>
               )}
@@ -427,12 +485,11 @@ export default function MoversPage() {
         )}
       </div>
 
-      {/* ── Table ──────────────────────────────────────────────────────────── */}
+      {/* ── Table / Cards ─────────────────────────────────────────────────── */}
       <Card padding={0} style={{ overflow: 'hidden' }}>
-        {/* Horizontal scroll wrapper for mobile */}
-        <div style={{ overflowX: 'auto', minWidth: 0 }}>
-          <div style={{ minWidth: 640 }}>
-            <TableHead sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+        {isMobile ? (
+          // Mobile: stacked cards, no horizontal scroll
+          <>
             {loading ? (
               <LoadingState />
             ) : error ? (
@@ -440,10 +497,26 @@ export default function MoversPage() {
             ) : sorted.length === 0 ? (
               <EmptyState />
             ) : (
-              sorted.map((m) => <MoverRow key={m.symbol} mover={m} />)
+              sorted.map((m) => <MoverCard key={m.symbol} mover={m} />)
             )}
+          </>
+        ) : (
+          // Desktop: grid table with horizontal scroll fallback
+          <div style={{ overflowX: 'auto', minWidth: 0 }}>
+            <div style={{ minWidth: 640 }}>
+              <TableHead sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+              {loading ? (
+                <LoadingState />
+              ) : error ? (
+                <ErrorState message={error} />
+              ) : sorted.length === 0 ? (
+                <EmptyState />
+              ) : (
+                sorted.map((m) => <MoverRow key={m.symbol} mover={m} />)
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </Card>
 
       {/* ── Footer ─────────────────────────────────────────────────────────── */}

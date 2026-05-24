@@ -4,28 +4,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { UserButton, SignOutButton } from '@clerk/nextjs'
 import { Icon, Button, Eyebrow, BuzzDot, Avatar } from './primitives'
+import { useIsMobile } from './useIsMobile'
 import type { WatchlistGroup } from './types'
-
-// ── useIsMobile ────────────────────────────────────────────────────────────
-// SSR-safe: initialises to false (desktop) so the first server render matches.
-// Corrects on mount via matchMedia. 768px breakpoint.
-
-function useIsMobile(): boolean {
-  const [isMobile, setIsMobile] = useState(false)
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 768px)')
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
-    mq.addEventListener('change', handler)
-    // Use a one-shot listener on the mq itself to read the initial value
-    // without calling setState synchronously in the effect body.
-    const initHandler = () => setIsMobile(mq.matches)
-    queueMicrotask(initHandler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
-
-  return isMobile
-}
 
 // ── Sidebar nav items ──────────────────────────────────────────────────────
 
