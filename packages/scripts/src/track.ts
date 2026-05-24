@@ -7,6 +7,8 @@
  *
  * Optional environment variables:
  *   TRACK_REPO           — GitHub repo in "owner/name" form (default: Token-Buzz/website)
+ *   TRACK_STATE_FILE     — override path for the active-issue state file
+ *                          (default: <repoRoot>/.claude/.track-current.json)
  *
  * Tagging convention:
  *   This CLI writes the "ai" tag on every entry it starts. To mark an entry
@@ -15,14 +17,34 @@
  *
  * Entry naming: "#<issueNumber> <issueTitle>"
  *
+ * Per-turn timing model:
+ *   AI time is measured per Claude Code turn. A UserPromptSubmit hook calls
+ *   `ai-resume` at the start of each turn and a Stop hook calls `ai-pause` at
+ *   the end. This produces several short Toggl entries per issue, all tagged
+ *   "ai", whose durations sum in the `report` command.
+ *
+ *   The active issue persists in .claude/.track-current.json between turns.
+ *   `ai-start` seeds it; `ai-stop` clears it. The per-turn hooks are silent
+ *   no-ops when the state file is absent.
+ *
  * Subcommands:
  *   ai-start <issue> [--repo owner/name]
  *       Start timing AI work on an issue. Automatically stops any running entry.
+ *       Persists the active issue to the state file so per-turn hooks can resume.
  *       <issue> accepts "83", "#83", or "#83 anything after".
  *
  *   ai-stop [issue] [--repo owner/name]
- *       Stop the currently running time entry. If [issue] is given, warns if the
- *       running entry doesn't match that issue, but stops it anyway.
+ *       Stop the currently running time entry and clear the active-issue state.
+ *       If [issue] is given, warns if the running entry doesn't match that issue,
+ *       but stops it anyway.
+ *
+ *   ai-resume
+ *       Resume timing the active issue (no-op if none or already running).
+ *       Called automatically by the per-turn UserPromptSubmit hook.
+ *
+ *   ai-pause
+ *       Pause the running AI timer, keeping the active issue for the next turn.
+ *       Called automatically by the per-turn Stop hook.
  *
  *   report [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--days N] [--repo owner/name] [--json]
  *       Print a weekly combined report. Defaults to the last 7 days.
@@ -35,11 +57,16 @@
  * Examples:
  *   TOGGL_API_TOKEN=xxx TOGGL_WORKSPACE_ID=yyy tsx src/track.ts ai-start 83
  *   tsx src/track.ts ai-stop
+ *   tsx src/track.ts ai-resume
+ *   tsx src/track.ts ai-pause
  *   tsx src/track.ts report --days 14
  *   tsx src/track.ts report --since 2025-05-01 --until 2025-05-15 --json
  *   tsx src/track.ts status
  */
 
+import { execSync } from 'node:child_process'
+import { existsSync, readFileSync, mkdirSync, writeFileSync, unlinkSync } from 'node:fs'
+import { join } from 'node:path'
 import { getCurrentEntry, startEntry, stopEntry, listEntries } from './toggl.js'
 import { getIssueTitle, listClosedIssues, listClosedMilestones } from './github.js'
 import {
@@ -49,6 +76,9 @@ import {
   getDefaultRange,
   buildReport,
   renderReport,
+  serializeTrackState,
+  parseTrackState,
+  type TrackState,
 } from './time-tracking.js'
 
 const USAGE = `
@@ -56,7 +86,9 @@ Usage: tsx src/track.ts <subcommand> [options]
 
 Subcommands:
   ai-start <issue> [--repo owner/name]          Start AI time entry for an issue
-  ai-stop [issue] [--repo owner/name]           Stop the current time entry
+  ai-stop [issue] [--repo owner/name]           Stop the current time entry and clear active issue
+  ai-resume                                     Resume timing the active issue (no-op if none / already running)
+  ai-pause                                      Pause the running AI timer, keeping the active issue
   report [--since DATE] [--until DATE]          Weekly combined report
          [--days N] [--repo owner/name] [--json]
   status                                        Show running entry
@@ -131,6 +163,47 @@ function resolveRepo(named: Record<string, string>): string {
 }
 
 // ---------------------------------------------------------------------------
+// State-file I/O  (NOT pure — side-effects, kept in track.ts)
+// ---------------------------------------------------------------------------
+
+/** Return the path of the active-issue state file. */
+function stateFilePath(): string {
+  const envOverride = process.env['TRACK_STATE_FILE']
+  if (envOverride) return envOverride
+
+  let repoRoot: string
+  try {
+    repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf-8' }).trim()
+  } catch {
+    repoRoot = process.cwd()
+  }
+  return join(repoRoot, '.claude', '.track-current.json')
+}
+
+/** Read and parse the state file. Returns null if missing or malformed. */
+function readState(): TrackState | null {
+  const filePath = stateFilePath()
+  if (!existsSync(filePath)) return null
+  const contents = readFileSync(filePath, 'utf-8')
+  return parseTrackState(contents)
+}
+
+/** Write state to the state file, creating the parent directory if needed. */
+function writeState(state: TrackState): void {
+  const filePath = stateFilePath()
+  mkdirSync(join(filePath, '..'), { recursive: true })
+  writeFileSync(filePath, serializeTrackState(state), 'utf-8')
+}
+
+/** Delete the state file if it exists. Never throws. */
+function clearState(): void {
+  const filePath = stateFilePath()
+  if (existsSync(filePath)) {
+    unlinkSync(filePath)
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Subcommands
 // ---------------------------------------------------------------------------
 
@@ -148,6 +221,8 @@ async function cmdAiStart(positional: string[], named: Record<string, string>): 
   const title = getIssueTitle(repo, issueNumber)
   const description = formatEntryName(issueNumber, title)
 
+  writeState({ issue: issueNumber, repo, description })
+
   const running = await getCurrentEntry(token)
   if (running) {
     console.log(`Stopping current entry: "${running.description}"`)
@@ -162,7 +237,9 @@ async function cmdAiStop(positional: string[], named: Record<string, string>): P
 
   const running = await getCurrentEntry(token)
   if (!running) {
+    clearState()
     console.log('No running time entry.')
+    console.log('Cleared active issue.')
     return
   }
 
@@ -177,7 +254,37 @@ async function cmdAiStop(positional: string[], named: Record<string, string>): P
   }
 
   const stopped = await stopEntry({ token, workspaceId, entryId: running.id })
+  clearState()
   console.log(`Stopped: "${stopped.description}" — ${formatDuration(stopped.duration)}`)
+}
+
+async function cmdAiResume(): Promise<void> {
+  const token = process.env['TOGGL_API_TOKEN']
+  const workspaceId = process.env['TOGGL_WORKSPACE_ID']
+  if (!token || !workspaceId) return
+
+  const state = readState()
+  if (!state) return
+
+  const running = await getCurrentEntry(token)
+  if (running) return
+
+  const entry = await startEntry({ token, workspaceId, description: state.description, tags: ['ai'] })
+  console.log(`Resumed: "${entry.description}"`)
+}
+
+async function cmdAiPause(): Promise<void> {
+  const token = process.env['TOGGL_API_TOKEN']
+  const workspaceId = process.env['TOGGL_WORKSPACE_ID']
+  if (!token || !workspaceId) return
+
+  const running = await getCurrentEntry(token)
+  if (!running) return
+
+  if (!running.tags.includes('ai')) return
+
+  const stopped = await stopEntry({ token, workspaceId, entryId: running.id })
+  console.log(`Paused: "${stopped.description}" — ${formatDuration(stopped.duration)}`)
 }
 
 async function cmdReport(named: Record<string, string>, flags: Set<string>): Promise<void> {
@@ -237,6 +344,12 @@ async function main(): Promise<void> {
       break
     case 'ai-stop':
       await cmdAiStop(positional, named)
+      break
+    case 'ai-resume':
+      await cmdAiResume()
+      break
+    case 'ai-pause':
+      await cmdAiPause()
       break
     case 'report':
       await cmdReport(named, flags)

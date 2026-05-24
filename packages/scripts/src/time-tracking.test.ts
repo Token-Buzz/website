@@ -8,8 +8,11 @@ import {
   filterClosedInRange,
   buildReport,
   renderReport,
+  serializeTrackState,
+  parseTrackState,
   type TogglEntry,
   type ReportModel,
+  type TrackState,
 } from './time-tracking.js'
 
 // ---------------------------------------------------------------------------
@@ -348,5 +351,104 @@ describe('renderReport', () => {
   it('lists milestone by number and title', () => {
     const out = renderReport(model)
     expect(out).toContain('#1 Milestone One')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// serializeTrackState / parseTrackState
+// ---------------------------------------------------------------------------
+describe('serializeTrackState', () => {
+  const state: TrackState = { issue: 42, repo: 'owner/name', description: '#42 Fix the bug' }
+
+  it('round-trips back to an equal object via parseTrackState', () => {
+    const raw = serializeTrackState(state)
+    expect(parseTrackState(raw)).toEqual(state)
+  })
+
+  it('ends with a trailing newline', () => {
+    const raw = serializeTrackState(state)
+    expect(raw.endsWith('\n')).toBe(true)
+  })
+
+  it('uses 2-space indentation', () => {
+    const raw = serializeTrackState(state)
+    // A 2-space-indented JSON object starts the second line with two spaces
+    const lines = raw.split('\n')
+    // At least one interior line should start with exactly two spaces
+    expect(lines.some(l => /^ {2}[^ ]/.test(l))).toBe(true)
+    // No interior line should start with four or more leading spaces from
+    // top-level keys (top-level fields are indented 2, not 4)
+    expect(lines.some(l => /^ {4}[^ ]/.test(l))).toBe(false)
+  })
+})
+
+describe('parseTrackState', () => {
+  const valid: TrackState = { issue: 7, repo: 'acme/repo', description: '#7 Some task' }
+
+  it('parses a valid serialized state', () => {
+    expect(parseTrackState(serializeTrackState(valid))).toEqual(valid)
+  })
+
+  it('returns null for invalid JSON', () => {
+    expect(parseTrackState('not json at all {')).toBeNull()
+  })
+
+  it('returns null for a JSON number (non-object)', () => {
+    expect(parseTrackState('5')).toBeNull()
+  })
+
+  it('returns null for JSON null', () => {
+    expect(parseTrackState('null')).toBeNull()
+  })
+
+  it('returns null for a JSON array', () => {
+    expect(parseTrackState('[]')).toBeNull()
+  })
+
+  it('returns null when issue field is missing', () => {
+    const { issue: _omit, ...rest } = valid
+    expect(parseTrackState(JSON.stringify(rest))).toBeNull()
+  })
+
+  it('returns null when repo field is missing', () => {
+    const { repo: _omit, ...rest } = valid
+    expect(parseTrackState(JSON.stringify(rest))).toBeNull()
+  })
+
+  it('returns null when description field is missing', () => {
+    const { description: _omit, ...rest } = valid
+    expect(parseTrackState(JSON.stringify(rest))).toBeNull()
+  })
+
+  it('returns null when issue is 0', () => {
+    expect(parseTrackState(JSON.stringify({ ...valid, issue: 0 }))).toBeNull()
+  })
+
+  it('returns null when issue is negative', () => {
+    expect(parseTrackState(JSON.stringify({ ...valid, issue: -1 }))).toBeNull()
+  })
+
+  it('returns null when issue is a non-integer number', () => {
+    expect(parseTrackState(JSON.stringify({ ...valid, issue: 1.5 }))).toBeNull()
+  })
+
+  it('returns null when issue is a string', () => {
+    expect(parseTrackState(JSON.stringify({ ...valid, issue: '7' }))).toBeNull()
+  })
+
+  it('returns null when repo is an empty string', () => {
+    expect(parseTrackState(JSON.stringify({ ...valid, repo: '' }))).toBeNull()
+  })
+
+  it('returns null when description is an empty string', () => {
+    expect(parseTrackState(JSON.stringify({ ...valid, description: '' }))).toBeNull()
+  })
+
+  it('returns null when repo is not a string', () => {
+    expect(parseTrackState(JSON.stringify({ ...valid, repo: 123 }))).toBeNull()
+  })
+
+  it('returns null when description is not a string', () => {
+    expect(parseTrackState(JSON.stringify({ ...valid, description: true }))).toBeNull()
   })
 })

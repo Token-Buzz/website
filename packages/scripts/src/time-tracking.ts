@@ -138,6 +138,57 @@ export function buildReport(opts: {
   return { since, until, totals, closedIssues: filteredIssues, closedMilestones: filteredMilestones }
 }
 
+// ---------------------------------------------------------------------------
+// Track state — serialisation helpers (pure, no I/O)
+// ---------------------------------------------------------------------------
+
+export interface TrackState {
+  issue: number
+  repo: string
+  description: string
+}
+
+/**
+ * Serialize a TrackState to a JSON string (pretty-printed, 2-space indent,
+ * trailing newline).
+ */
+export function serializeTrackState(state: TrackState): string {
+  return JSON.stringify(state, null, 2) + '\n'
+}
+
+/**
+ * Parse a state-file string into a TrackState.  Returns null on malformed
+ * JSON, non-object JSON (e.g. "5", "null", "[]"), any missing field, or any
+ * field with a wrong type.  Never throws.
+ *
+ * Constraints:
+ *   - issue  must be a positive integer (> 0)
+ *   - repo   must be a non-empty string
+ *   - description must be a non-empty string
+ */
+export function parseTrackState(raw: string): TrackState | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return null
+  }
+
+  const obj = parsed as Record<string, unknown>
+
+  const { issue, repo, description } = obj
+
+  if (typeof issue !== 'number' || !Number.isInteger(issue) || issue <= 0) return null
+  if (typeof repo !== 'string' || repo === '') return null
+  if (typeof description !== 'string' || description === '') return null
+
+  return { issue, repo, description }
+}
+
 /**
  * Render a ReportModel as a plain-text terminal report.
  */
