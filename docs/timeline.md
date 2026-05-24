@@ -149,8 +149,12 @@ M9 — Multi-Social Ingestion (v2):
 ## Notes
 
 - Estimates are per-phase. The board's `Estimate` field holds the hour value; `Size` holds the
-  t-shirt; `Start date`/`Target date` drive the Roadmap view; epics carry the rolled-up totals.
+  t-shirt; **`Roadmap Start` / `Roadmap Target`** (custom date fields) drive the Roadmap view; epics
+  carry the rolled-up totals.
+- These two custom date fields exist because GitHub's *native* `Start date` / `Target date` planning
+  fields can't be written by the automation token (they require issue-field scopes the PAT lacks),
+  whereas custom project date fields can.
 - To see the timeline: open the Project → switch the view layout to **Roadmap**, and set its date
-  fields to **Start date** (start) and **Target date** (end).
+  fields to **Roadmap Start** (start) and **Roadmap Target** (end).
 - Re-running the sequence with a 1.3× buffer is a one-line change if you want the dates to reflect
   realistic slippage rather than full-capacity throughput.
