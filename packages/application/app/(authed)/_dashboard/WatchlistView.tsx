@@ -170,6 +170,9 @@ function WatchlistCard({ t, starred, onStar, onOpen, selected }: WatchlistCardPr
           style={{
             color: starred ? 'var(--buzz-500)' : 'var(--ink-300)',
             fontSize: 16, lineHeight: 1, cursor: 'pointer', flexShrink: 0,
+            // Enlarge mobile tap target to ~40px without affecting layout
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            padding: 12, margin: -12,
           }}
         >★</span>
         <Ticker symbol={t.sym} />
