@@ -6,7 +6,7 @@ import {
     resendApiKey,
     contactToAddress,
     contactFromAddress,
-    githubChangelogToken,
+    changelogGithubToken,
 } from "./secrets";
 
 const isProd = $app.stage === "production";
@@ -38,6 +38,6 @@ export const web = new sst.aws.Nextjs("Marketing", {
         RESEND_API_KEY: resendApiKey.value,
         CONTACT_TO_ADDRESS: contactToAddress.value,
         CONTACT_FROM_ADDRESS: contactFromAddress.value,
-        GITHUB_CHANGELOG_TOKEN: githubChangelogToken.value,
+        CHANGELOG_GITHUB_TOKEN: changelogGithubToken.value,
     },
 });

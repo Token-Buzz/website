@@ -8,4 +8,4 @@ export const contactToAddress = new sst.Secret("CONTACT_TO_ADDRESS");
 export const contactFromAddress = new sst.Secret("CONTACT_FROM_ADDRESS");
 export const twitterApiKey = new sst.Secret("TWITTER_API_KEY");
 export const opencageApiKey = new sst.Secret("OPENCAGE_API_KEY");
-export const githubChangelogToken = new sst.Secret("GITHUB_CHANGELOG_TOKEN");
+export const changelogGithubToken = new sst.Secret("CHANGELOG_GITHUB_TOKEN");

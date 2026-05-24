@@ -6,5 +6,5 @@ Captured 2026-05-23 in a real browser against `next dev` on `:3000`, with the pa
 - `changelog-mobile.png` — 390×844. Single-column reflow; release content and footer remain readable.
 
 Notes:
-- Private repo, so releases are fetched **server-side** (`GITHUB_CHANGELOG_TOKEN`/`GH_TOKEN`); the token is never exposed to the client. ISR `revalidate: 3600`.
+- Private repo, so releases are fetched **server-side** (`CHANGELOG_GITHUB_TOKEN`/`GH_TOKEN`); the token is never exposed to the client. ISR `revalidate: 3600`.
 - Empty/error state (`No releases yet — check back soon.`) renders when the token is missing or zero published releases exist; drafts are excluded.

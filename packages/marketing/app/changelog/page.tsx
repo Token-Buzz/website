@@ -19,9 +19,9 @@ interface GitHubRelease {
 }
 
 async function getReleases(): Promise<GitHubRelease[]> {
-  const token = process.env.GITHUB_CHANGELOG_TOKEN ?? process.env.GH_TOKEN
+  const token = process.env.CHANGELOG_GITHUB_TOKEN ?? process.env.GH_TOKEN
   if (!token) {
-    console.error('[changelog] No GitHub token found (GITHUB_CHANGELOG_TOKEN / GH_TOKEN). Returning empty list.')
+    console.error('[changelog] No GitHub token found (CHANGELOG_GITHUB_TOKEN / GH_TOKEN). Returning empty list.')
     return []
   }
 
