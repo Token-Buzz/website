@@ -1,7 +1,15 @@
 # Roadmap & Time Estimates
 
 Effort estimates and a calendar timeline for every milestone / phase, driving the GitHub Project
-**Roadmap view** (`Start date → Target date` fields). Generated 2026-05-24.
+**Roadmap view**. Generated 2026-05-24.
+
+The board tracks **planned vs actual** with two date-field pairs:
+
+- **Planned** (baseline) — the native issue **`Start date` / `Target date`** fields, holding the
+  schedule below. The default Roadmap view binds to these.
+- **Actual** — the project fields **`Actual Start` / `Actual Finish`** (created 2026-05-24), holding
+  when work really began and finished. Backfilled for completed issues; forward items fill in as
+  work lands.
 
 ## Assumptions
 
@@ -156,6 +164,12 @@ M9 — Multi-Social Ingestion (v2):
   (`PATCH /repos/{owner}/{repo}/issues/{n}` with `issue_field_values:[{field_id, value}]`) — field
   ids `42248468` (Start date) and `42248469` (Target date). The PATCH **replaces** the whole array,
   so always send both fields together. Requires the token's `issues=write` permission.
-- Completed issues are intentionally left with no dates so the Roadmap shows only forward work.
+- The **Actual** pair (`Actual Start` / `Actual Finish`) are ordinary project fields, so unlike the
+  planned pair they ARE writable via the `updateProjectV2ItemFieldValue` mutation (i.e.
+  `gh project item-edit --field-id <id> --date <YYYY-MM-DD>`). Backfill rule used for done issues:
+  actual start = the closing PR's open date (or issue `createdAt` if no PR), actual finish = PR
+  `mergedAt` (or issue `closedAt`). Auto-filling actuals on every issue close is tracked in #98.
+- Completed issues carry no **planned** dates (they were done before this schedule existed), so the
+  Roadmap's planned bars show only forward work; their **actual** dates are still populated.
 - Re-running the sequence with a 1.3× buffer is a one-line change if you want the dates to reflect
   realistic slippage rather than full-capacity throughput.
