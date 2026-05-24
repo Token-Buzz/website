@@ -16,7 +16,7 @@ Read it, then open the epic issue for whichever milestone is active.
 ## Current focus (pointer only — details live in the issues)
 - **M1** — `#22 Alerts` is the remaining phase.
 - **M1.5 (mobile)** — epic `#82`, next after M1.
-- **#88 Changelog** — shipped (merged in #81); only open item is seeding the `GITHUB_TOKEN` value in prod.
+- **#88 Changelog** — shipped (merged in #81); only open item is seeding the `GITHUB_CHANGELOG_TOKEN` value in prod.
 - **#89 Time tracking (Toggl)** — blocked on the user's `TOGGL_API_TOKEN`.
 
 > Keep this file a pointer. Status updates go in the relevant **issue**, not here.
