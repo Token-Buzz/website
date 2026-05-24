@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { searchTweets } from "@monorepo-template/core/lib/twitter";
+import { searchTweets, TwitterApiError } from "@monorepo-template/core/lib/twitter";
 import { enrichRawTweet } from "@monorepo-template/core/lib/enrich";
 import { putTweet } from "@monorepo-template/core/db/tweets";
 import { computeBotScore } from "@monorepo-template/core/db/bot-heuristic";
@@ -77,6 +77,12 @@ export async function POST(req: Request) {
     rawTweets = await searchTweets(query, { maxPages });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
+    if (err instanceof TwitterApiError && err.status === 429) {
+      return Response.json(
+        { error: "rate limited upstream", detail },
+        { status: 429 },
+      );
+    }
     return Response.json(
       { error: "twitter ingest failed", detail },
       { status: 502 },
