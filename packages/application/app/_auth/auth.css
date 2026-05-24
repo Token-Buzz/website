@@ -21,6 +21,10 @@
   width: 100%;
   display: grid;
   place-items: center;
+  /* Explicit 1fr column prevents the auto track from sizing to max-content
+     (which allows provider-button text to push .tb-pane past the viewport
+     at narrow widths, causing 5px overflow on /sign-in and /sign-up). */
+  grid-template-columns: minmax(0, 1fr);
   padding: var(--sp-7);
   background:
     radial-gradient(1100px 600px at 50% -10%, rgba(255,107,44,0.05), transparent 60%),

@@ -1,6 +1,7 @@
 'use client'
 
 import { Icon, Button, Eyebrow, Ticker, Pill, BuzzDot, Avatar, Delta, fmtCount, fmtPrice } from './primitives'
+import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import type { Token, Mention } from './types'
 
 const SAMPLE_MENTIONS: Mention[] = [
@@ -118,6 +119,7 @@ interface TokenDetailPaneProps {
 export function TokenDetailPane({ token, onClose, onAskHum, mentions = SAMPLE_MENTIONS }: TokenDetailPaneProps) {
   const score = token.sent === 'bull' ? 62 : token.sent === 'bear' ? -48 : 8
   const scoreColor = score > 20 ? 'var(--pos)' : score < -20 ? 'var(--neg)' : 'var(--neu)'
+  const isMobile = useIsMobile()
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg)', minWidth: 0 }}>
@@ -134,39 +136,77 @@ export function TokenDetailPane({ token, onClose, onAskHum, mentions = SAMPLE_ME
           <div style={{ font: '500 13px var(--font-sans)', color: 'var(--fg-3)' }}>{token.name}</div>
         </div>
         <div style={{ flex: 1 }} />
-        <Button variant="ghost" size="sm" icon="bell">Set alert</Button>
-        <Button variant="primary" size="sm" icon="sparkle" onClick={() => onAskHum?.(`What's driving $${token.sym} buzz?`)}>Ask Hum</Button>
+        {/* On mobile, show icon-only to avoid crowding the 390px header row */}
+        <Button variant="ghost" size="sm" icon="bell">{isMobile ? null : 'Set alert'}</Button>
+        <Button variant="primary" size="sm" icon="sparkle" onClick={() => onAskHum?.(`What's driving $${token.sym} buzz?`)}>{isMobile ? null : 'Ask Hum'}</Button>
         <Button variant="quiet" size="sm" icon="close" onClick={onClose} />
       </div>
 
-      {/* Stat strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+      {/* Stat strip — 4-col on desktop/tablet, 2×2 on mobile */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+        borderBottom: '1px solid var(--border)',
+        flexShrink: 0,
+      }}>
         {[
           { l: 'Price',          v: '—',                     s: <Delta value={token.d24} style={{ fontSize: 13 }} /> },
           { l: 'Mentions / 24h', v: fmtCount(token.mentions), s: <Delta value={token.dbuzz} style={{ fontSize: 13 }} /> },
           { l: 'Unique handles', v: '412',                   s: <span style={{ font: '500 12px var(--font-mono)', color: 'var(--fg-3)' }}>+38 new</span> },
           { l: 'Sentiment',      v: <span style={{ color: scoreColor }}>{score > 0 ? '+' : ''}{score}</span>, s: <span style={{ font: '500 12px var(--font-mono)', color: 'var(--fg-3)' }}>of 100</span> },
         ].map((c, i) => (
-          <div key={i} style={{ padding: '14px 20px', borderRight: i < 3 ? '1px solid var(--border-hairline)' : 'none' }}>
+          <div
+            key={i}
+            style={{
+              padding: isMobile ? '12px 14px' : '14px 20px',
+              minWidth: 0,
+              // Desktop (4-col): right-border on first 3 cells
+              // Mobile (2-col): right-border on left-column cells (i%2===0),
+              //                 bottom-border on top row (i<2)
+              borderRight: isMobile
+                ? (i % 2 === 0 ? '1px solid var(--border-hairline)' : 'none')
+                : (i < 3 ? '1px solid var(--border-hairline)' : 'none'),
+              borderBottom: isMobile && i < 2 ? '1px solid var(--border-hairline)' : 'none',
+            }}
+          >
             <Eyebrow style={{ marginBottom: 6 }}>{c.l}</Eyebrow>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-              <span style={{ font: '600 22px var(--font-mono)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em' }}>{c.v}</span>
+              <span style={{
+                font: `600 ${isMobile ? 18 : 22}px var(--font-mono)`,
+                fontVariantNumeric: 'tabular-nums',
+                letterSpacing: '-0.01em',
+              }}>{c.v}</span>
               {c.s}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Chart + sentiment dial */}
-      <div style={{ padding: 20, display: 'grid', gridTemplateColumns: '1fr 240px', gap: 16, flexShrink: 0 }}>
+      {/* Chart + sentiment dial — side-by-side on desktop, stacked on mobile */}
+      <div style={{
+        padding: 20,
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : '1fr 240px',
+        gap: 16,
+        flexShrink: 0,
+      }}>
         <PriceChart token={token} />
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 10,
+          padding: 16,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          alignItems: isMobile ? 'center' : 'flex-start',
+        }}>
           <Eyebrow>Sentiment dial</Eyebrow>
           <SentimentMeter score={score} width={200} />
           <div style={{ textAlign: 'center', font: '600 18px var(--font-mono)', color: scoreColor }}>
             {score > 20 ? '▲ Bullish' : score < -20 ? '▼ Bearish' : '◆ Mixed'} · {score > 0 ? '+' : ''}{score}
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', font: '500 11px var(--font-mono)', color: 'var(--fg-3)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', font: '500 11px var(--font-mono)', color: 'var(--fg-3)', width: 200 }}>
             <span>bear</span><span>mixed</span><span>bull</span>
           </div>
         </div>
