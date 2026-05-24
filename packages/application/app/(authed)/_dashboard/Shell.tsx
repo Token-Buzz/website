@@ -1,10 +1,31 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { UserButton, SignOutButton } from '@clerk/nextjs'
 import { Icon, Button, Eyebrow, BuzzDot, Avatar } from './primitives'
 import type { WatchlistGroup } from './types'
+
+// ── useIsMobile ────────────────────────────────────────────────────────────
+// SSR-safe: initialises to false (desktop) so the first server render matches.
+// Corrects on mount via matchMedia. 768px breakpoint.
+
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    // Use a one-shot listener on the mq itself to read the initial value
+    // without calling setState synchronously in the effect body.
+    const initHandler = () => setIsMobile(mq.matches)
+    queueMicrotask(initHandler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  return isMobile
+}
 
 // ── Sidebar nav items ──────────────────────────────────────────────────────
 
@@ -166,14 +187,18 @@ function ProfileFooter() {
   )
 }
 
-// ── Sidebar ────────────────────────────────────────────────────────────────
+// ── SidebarContent ─────────────────────────────────────────────────────────
+// Extracted so it can be rendered both in the persistent aside and in the
+// mobile drawer overlay without duplicating JSX.
 
-function Sidebar({
+function SidebarContent({
   activeWatchlist,
   setActiveWatchlist,
+  onNavClick,
 }: {
   activeWatchlist: string
   setActiveWatchlist: (id: string) => void
+  onNavClick?: () => void
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -181,11 +206,7 @@ function Sidebar({
   const activeNav = NAV_ITEMS.find((n) => pathname.startsWith(n.href))?.id ?? 'dashboard'
 
   return (
-    <aside style={{
-      width: 240, height: '100%', padding: '16px 12px',
-      borderRight: '1px solid var(--border)', background: 'var(--bg)',
-      display: 'flex', flexDirection: 'column', gap: 16, flexShrink: 0,
-    }}>
+    <>
       {/* Logo */}
       <div style={{ padding: '4px 6px', display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{
@@ -216,7 +237,10 @@ function Sidebar({
             label={item.label}
             active={activeNav === item.id}
             count={item.count}
-            onClick={() => router.push(item.href)}
+            onClick={() => {
+              router.push(item.href)
+              onNavClick?.()
+            }}
           />
         ))}
       </div>
@@ -233,7 +257,10 @@ function Sidebar({
               key={g.id}
               group={g}
               active={activeWatchlist === g.id}
-              onClick={() => setActiveWatchlist(g.id)}
+              onClick={() => {
+                setActiveWatchlist(g.id)
+                onNavClick?.()
+              }}
             />
           ))}
         </div>
@@ -243,7 +270,188 @@ function Sidebar({
 
       {/* Profile footer */}
       <ProfileFooter />
+    </>
+  )
+}
+
+// ── Sidebar (desktop persistent aside) ────────────────────────────────────
+
+function Sidebar({
+  activeWatchlist,
+  setActiveWatchlist,
+}: {
+  activeWatchlist: string
+  setActiveWatchlist: (id: string) => void
+}) {
+  return (
+    <aside style={{
+      width: 240, height: '100%', padding: '16px 12px',
+      borderRight: '1px solid var(--border)', background: 'var(--bg)',
+      display: 'flex', flexDirection: 'column', gap: 16, flexShrink: 0,
+    }}>
+      <SidebarContent
+        activeWatchlist={activeWatchlist}
+        setActiveWatchlist={setActiveWatchlist}
+      />
     </aside>
+  )
+}
+
+// ── MobileDrawer ──────────────────────────────────────────────────────────
+// Off-canvas overlay with backdrop scrim, slide-in animation, focus trap,
+// Esc-to-close, backdrop-click-to-close, and body-scroll lock.
+
+function MobileDrawer({
+  open,
+  onClose,
+  activeWatchlist,
+  setActiveWatchlist,
+}: {
+  open: boolean
+  onClose: () => void
+  activeWatchlist: string
+  setActiveWatchlist: (id: string) => void
+}) {
+  const drawerRef = useRef<HTMLDivElement>(null)
+  const pathname = usePathname()
+
+  // Close on route change (nav tap auto-closes drawer)
+  useEffect(() => {
+    if (open) onClose()
+    // We intentionally only react to pathname changes, not to `open` or `onClose`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
+
+  // Body scroll lock
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [open])
+
+  // Focus trap + Esc-to-close
+  useEffect(() => {
+    if (!open) return
+
+    // Focus the drawer panel so keyboard users start inside it
+    const drawer = drawerRef.current
+    if (!drawer) return
+
+    // Gather all focusable elements inside the drawer
+    const getFocusable = (): HTMLElement[] =>
+      Array.from(
+        drawer.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => el.offsetParent !== null) // exclude hidden elements
+
+    // Focus first element
+    const focusables = getFocusable()
+    if (focusables.length > 0) focusables[0].focus()
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+        return
+      }
+
+      if (e.key !== 'Tab') return
+
+      const elements = getFocusable()
+      if (elements.length === 0) return
+
+      const first = elements[0]
+      const last = elements[elements.length - 1]
+
+      if (e.shiftKey) {
+        // Shift+Tab: if focus is on first element, wrap to last
+        if (document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else {
+        // Tab: if focus is on last element, wrap to first
+        if (document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, onClose])
+
+  // Don't unmount — keep in DOM so the slide-out animation plays.
+  // Visibility via pointer-events + aria-hidden when closed.
+  return (
+    <>
+      {/* Backdrop scrim */}
+      <div
+        aria-hidden="true"
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 40,
+          background: 'rgba(0,0,0,0.45)',
+          opacity: open ? 1 : 0,
+          pointerEvents: open ? 'auto' : 'none',
+          transition: 'opacity 250ms ease',
+        }}
+      />
+
+      {/* Drawer panel */}
+      <div
+        ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation"
+        inert={!open}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: 280,
+          zIndex: 50,
+          background: 'var(--bg)',
+          borderRight: '1px solid var(--border)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16,
+          padding: '16px 12px',
+          transform: open ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 250ms cubic-bezier(0.32,0,0.16,1)',
+          overflowY: 'auto',
+          pointerEvents: open ? 'auto' : 'none',
+        }}
+      >
+        {/* Close button row */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            onClick={onClose}
+            aria-label="Close navigation"
+            style={{
+              border: 'none', background: 'transparent', cursor: 'pointer',
+              color: 'var(--fg-2)', padding: 4, borderRadius: 4, lineHeight: 0,
+            }}
+          >
+            <Icon name="close" size={20} />
+          </button>
+        </div>
+
+        <SidebarContent
+          activeWatchlist={activeWatchlist}
+          setActiveWatchlist={setActiveWatchlist}
+          onNavClick={onClose}
+        />
+      </div>
+    </>
   )
 }
 
@@ -257,74 +465,153 @@ function TopBar({
   setTimeWindow,
   humOpen,
   onAskHum,
+  isMobile,
+  onMenuOpen,
 }: {
   timeWindow: TimeWindow
   setTimeWindow: (w: TimeWindow) => void
   humOpen: boolean
   onAskHum: () => void
+  isMobile: boolean
+  onMenuOpen: () => void
 }) {
   return (
     <header style={{
-      height: 56, padding: '0 20px',
+      height: 56, padding: isMobile ? '0 12px' : '0 20px',
       borderBottom: '1px solid var(--border)',
       background: 'var(--bg-translucent)',
       backdropFilter: 'blur(10px)',
-      display: 'flex', alignItems: 'center', gap: 16,
+      display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 16,
       position: 'sticky', top: 0, zIndex: 10, flexShrink: 0,
+      minWidth: 0,
     }}>
-      {/* Live ticker */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingRight: 16, borderRight: '1px solid var(--border)' }}>
-        <BuzzDot />
-        <span style={{ font: '600 11px var(--font-sans)', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--fg-2)' }}>Live</span>
-        <span style={{ font: '500 12px var(--font-mono)', color: 'var(--fg-3)' }}>2,140 mentions/m · 412 handles</span>
-      </div>
-
-      {/* Search */}
-      <div style={{
-        flex: 1, maxWidth: 480, display: 'flex', alignItems: 'center', gap: 8,
-        padding: '0 12px', height: 32,
-        background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
-        color: 'var(--fg-3)',
-      }}>
-        <Icon name="search" size={14} />
-        <input
-          placeholder="Search tokens, handles, narratives..."
-          style={{
-            flex: 1, border: 'none', outline: 'none', background: 'transparent',
-            font: '500 13px var(--font-sans)', color: 'var(--fg-1)',
-          }}
-        />
-      </div>
-
-      {/* Time window */}
-      <div style={{ display: 'inline-flex', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 999, padding: 3, gap: 2 }}>
-        {TIME_WINDOWS.map((w) => (
+      {isMobile ? (
+        // ── Mobile top bar ──────────────────────────────────────────────────
+        <>
+          {/* Hamburger */}
           <button
-            key={w}
-            onClick={() => setTimeWindow(w)}
+            onClick={onMenuOpen}
+            aria-label="Open navigation"
             style={{
-              border: 'none', padding: '5px 11px', borderRadius: 999, cursor: 'pointer',
-              font: '600 11px var(--font-sans)',
-              background: timeWindow === w ? 'var(--bg-elevated)' : 'transparent',
-              color: timeWindow === w ? 'var(--fg-1)' : 'var(--fg-2)',
-              boxShadow: timeWindow === w ? '0 1px 2px rgba(0,0,0,0.12)' : 'none',
+              border: 'none', background: 'transparent', cursor: 'pointer',
+              color: 'var(--fg-1)', padding: 4, borderRadius: 4,
+              lineHeight: 0, flexShrink: 0,
             }}
-          >{w}</button>
-        ))}
-      </div>
+          >
+            <Icon name="menu" size={22} />
+          </button>
 
-      {/* Right actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Button variant="ghost" size="sm" icon="bell">3</Button>
-        <Button
-          variant={humOpen ? 'secondary' : 'primary'}
-          size="sm"
-          icon="sparkle"
-          onClick={onAskHum}
-        >
-          {humOpen ? 'Hum open' : 'Ask Hum'}
-        </Button>
-      </div>
+          {/* Search — takes remaining space */}
+          <div style={{
+            flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8,
+            padding: '0 10px', height: 32,
+            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
+            color: 'var(--fg-3)',
+          }}>
+            <Icon name="search" size={14} style={{ flexShrink: 0 }} />
+            <input
+              placeholder="Search..."
+              style={{
+                flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent',
+                font: '500 13px var(--font-sans)', color: 'var(--fg-1)',
+              }}
+            />
+          </div>
+
+          {/* Time pills — compact */}
+          <div style={{
+            display: 'inline-flex', background: 'var(--surface)',
+            border: '1px solid var(--border)', borderRadius: 999,
+            padding: 2, gap: 1, flexShrink: 0,
+          }}>
+            {TIME_WINDOWS.map((w) => (
+              <button
+                key={w}
+                onClick={() => setTimeWindow(w)}
+                style={{
+                  border: 'none', padding: '4px 7px', borderRadius: 999, cursor: 'pointer',
+                  font: '600 10px var(--font-sans)',
+                  background: timeWindow === w ? 'var(--bg-elevated)' : 'transparent',
+                  color: timeWindow === w ? 'var(--fg-1)' : 'var(--fg-2)',
+                  boxShadow: timeWindow === w ? '0 1px 2px rgba(0,0,0,0.12)' : 'none',
+                }}
+              >{w}</button>
+            ))}
+          </div>
+
+          {/* Ask Hum — icon-only on mobile */}
+          <button
+            onClick={onAskHum}
+            aria-label={humOpen ? 'Hum open' : 'Ask Hum'}
+            style={{
+              border: 'none', borderRadius: 4, cursor: 'pointer', lineHeight: 0,
+              padding: '6px',
+              background: humOpen ? 'var(--inv-bg)' : 'var(--buzz-500)',
+              color: humOpen ? 'var(--inv-fg)' : '#fff',
+              flexShrink: 0,
+            }}
+          >
+            <Icon name="sparkle" size={16} />
+          </button>
+        </>
+      ) : (
+        // ── Desktop top bar (unchanged) ─────────────────────────────────────
+        <>
+          {/* Live ticker */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingRight: 16, borderRight: '1px solid var(--border)' }}>
+            <BuzzDot />
+            <span style={{ font: '600 11px var(--font-sans)', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--fg-2)' }}>Live</span>
+            <span style={{ font: '500 12px var(--font-mono)', color: 'var(--fg-3)' }}>2,140 mentions/m · 412 handles</span>
+          </div>
+
+          {/* Search */}
+          <div style={{
+            flex: 1, maxWidth: 480, display: 'flex', alignItems: 'center', gap: 8,
+            padding: '0 12px', height: 32,
+            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
+            color: 'var(--fg-3)',
+          }}>
+            <Icon name="search" size={14} />
+            <input
+              placeholder="Search tokens, handles, narratives..."
+              style={{
+                flex: 1, border: 'none', outline: 'none', background: 'transparent',
+                font: '500 13px var(--font-sans)', color: 'var(--fg-1)',
+              }}
+            />
+          </div>
+
+          {/* Time window */}
+          <div style={{ display: 'inline-flex', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 999, padding: 3, gap: 2 }}>
+            {TIME_WINDOWS.map((w) => (
+              <button
+                key={w}
+                onClick={() => setTimeWindow(w)}
+                style={{
+                  border: 'none', padding: '5px 11px', borderRadius: 999, cursor: 'pointer',
+                  font: '600 11px var(--font-sans)',
+                  background: timeWindow === w ? 'var(--bg-elevated)' : 'transparent',
+                  color: timeWindow === w ? 'var(--fg-1)' : 'var(--fg-2)',
+                  boxShadow: timeWindow === w ? '0 1px 2px rgba(0,0,0,0.12)' : 'none',
+                }}
+              >{w}</button>
+            ))}
+          </div>
+
+          {/* Right actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Button variant="ghost" size="sm" icon="bell">3</Button>
+            <Button
+              variant={humOpen ? 'secondary' : 'primary'}
+              size="sm"
+              icon="sparkle"
+              onClick={onAskHum}
+            >
+              {humOpen ? 'Hum open' : 'Ask Hum'}
+            </Button>
+          </div>
+        </>
+      )}
     </header>
   )
 }
@@ -335,16 +622,47 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [activeWatchlist, setActiveWatchlist] = useState('memecoins')
   const [timeWindow, setTimeWindow] = useState<TimeWindow>('24H')
   const [humOpen, setHumOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
+  const isMobile = useIsMobile()
+
+  const openDrawer = useCallback(() => setDrawerOpen(true), [])
+  const closeDrawer = useCallback(() => setDrawerOpen(false), [])
+
+  // Ensure drawer closes if screen widens past breakpoint.
+  // setState is called inside a microtask callback to avoid the synchronous
+  // setState-in-effect lint rule.
+  useEffect(() => {
+    if (!isMobile && drawerOpen) {
+      queueMicrotask(() => setDrawerOpen(false))
+    }
+  }, [isMobile, drawerOpen])
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
-      <Sidebar activeWatchlist={activeWatchlist} setActiveWatchlist={setActiveWatchlist} />
+      {/* Desktop persistent sidebar — hidden on mobile */}
+      {!isMobile && (
+        <Sidebar activeWatchlist={activeWatchlist} setActiveWatchlist={setActiveWatchlist} />
+      )}
+
+      {/* Mobile drawer overlay — only rendered when mobile */}
+      {isMobile && (
+        <MobileDrawer
+          open={drawerOpen}
+          onClose={closeDrawer}
+          activeWatchlist={activeWatchlist}
+          setActiveWatchlist={setActiveWatchlist}
+        />
+      )}
+
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
         <TopBar
           timeWindow={timeWindow}
           setTimeWindow={setTimeWindow}
           humOpen={humOpen}
           onAskHum={() => setHumOpen((v) => !v)}
+          isMobile={isMobile}
+          onMenuOpen={openDrawer}
         />
         <main style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {children}
