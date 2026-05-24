@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { PulsePoint, Spike } from "./types";
 import { Sparkline } from "./Sparkline";
 import { fmtCount } from "./utils";
+import { useIsMobile } from "@/app/_hooks/useIsMobile";
 
 type TimeRange = "15m" | "1h" | "4h";
 
@@ -51,6 +52,8 @@ export function PulseSection() {
     return () => clearInterval(interval);
   }, [range]);
 
+  const isMobile = useIsMobile();
+
   const currentCount = pulse.length > 0 ? pulse[pulse.length - 1].count : 0;
   const avgCount = pulse.length > 0 ? Math.round(pulse.reduce((sum, p) => sum + p.count, 0) / pulse.length) : 0;
   const change = avgCount > 0 ? Math.round(((currentCount - avgCount) / avgCount) * 100) : 0;
@@ -83,12 +86,12 @@ export function PulseSection() {
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px", marginBottom: "20px" }}>
-          <div style={{ borderRight: "1px solid rgba(255, 107, 44, 0.1)", paddingRight: "16px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: isMobile ? "12px" : "16px", marginBottom: "20px" }}>
+          <div style={{ borderRight: isMobile ? "none" : "1px solid rgba(255, 107, 44, 0.1)", borderBottom: isMobile ? "1px solid rgba(255, 107, 44, 0.1)" : "none", paddingRight: isMobile ? "0" : "16px", paddingBottom: isMobile ? "12px" : "0" }}>
             <div style={{ fontSize: "11px", color: "var(--data-fg)", opacity: 0.6, marginBottom: "6px" }}>Current mentions/min</div>
             <div style={{ fontSize: "20px", fontWeight: 600, color: "var(--data-amber)" }}>{loading ? "—" : fmtCount(currentCount)}</div>
           </div>
-          <div style={{ borderRight: "1px solid rgba(255, 107, 44, 0.1)", paddingRight: "16px" }}>
+          <div style={{ borderRight: isMobile ? "none" : "1px solid rgba(255, 107, 44, 0.1)", borderBottom: isMobile ? "1px solid rgba(255, 107, 44, 0.1)" : "none", paddingRight: isMobile ? "0" : "16px", paddingBottom: isMobile ? "12px" : "0" }}>
             <div style={{ fontSize: "11px", color: "var(--data-fg)", opacity: 0.6, marginBottom: "6px" }}>Average</div>
             <div style={{ fontSize: "20px", fontWeight: 600, color: "var(--data-fg)" }}>{loading ? "—" : fmtCount(avgCount)}</div>
           </div>

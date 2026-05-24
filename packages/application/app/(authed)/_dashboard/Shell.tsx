@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { UserButton, SignOutButton } from '@clerk/nextjs'
 import { Icon, Button, Eyebrow, BuzzDot, Avatar } from './primitives'
-import { useIsMobile } from './useIsMobile'
+import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import type { WatchlistGroup } from './types'
 
 // ── Sidebar nav items ──────────────────────────────────────────────────────

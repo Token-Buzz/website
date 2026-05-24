@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { SentimentEntry } from "./types";
+import { useIsMobile } from "@/app/_hooks/useIsMobile";
 
 export function SentimentGrid() {
   const [sentiment, setSentiment] = useState<SentimentEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchSentiment = async () => {
@@ -55,7 +57,7 @@ export function SentimentGrid() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: "12px" }}>
         {sentiment.map((entry) => {
           const colors = getSentimentColor(entry.avgScore);
           const label = getSentimentLabel(entry.avgScore);

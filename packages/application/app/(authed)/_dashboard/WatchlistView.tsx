@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Icon, Button, Eyebrow, Ticker, BuzzDot, Sparkline, Delta, fmtCount } from './primitives'
-import { useIsMobile } from './useIsMobile'
+import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import type { Token } from './types'
 
 const SAMPLE_TOKENS: Token[] = [

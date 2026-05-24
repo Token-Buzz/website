@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { Spike } from "./types";
 import { Sparkline } from "./Sparkline";
+import { useIsMobile } from "@/app/_hooks/useIsMobile";
 
 export function SpikeCards() {
   const [spikes, setSpikes] = useState<Spike[]>([]);
   const [loading, setLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchSpikes = async () => {
@@ -44,7 +46,7 @@ export function SpikeCards() {
       <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--fg-3)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>
         Market spikes
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(4, 1fr)", gap: "12px" }}>
         {spikes.map((spike, idx) => {
           const sparklinePoints = generateSparkline(spike.symbol.charCodeAt(0));
           const sparklineColor = getColor(spike.deltaScore);

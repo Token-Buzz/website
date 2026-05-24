@@ -5,7 +5,7 @@ import {
   Card, Eyebrow, Ticker, Pill, Delta,
   fmtCount, fmtPrice,
 } from '../_dashboard/primitives'
-import { useIsMobile } from '../_dashboard/useIsMobile'
+import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import type { Sentiment } from '../_dashboard/types'
 
 // ── Types ──────────────────────────────────────────────────────────────────
