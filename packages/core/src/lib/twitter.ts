@@ -2,6 +2,13 @@
 
 const BASE_URL = "https://api.twitterapi.io";
 
+export class TwitterApiError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+    this.name = "TwitterApiError";
+  }
+}
+
 export type TwitterAuthor = {
   userName: string;
   id: string;
@@ -85,7 +92,7 @@ export async function searchTweets(
       headers: { "X-API-Key": apiKey },
     });
     if (!response.ok) {
-      throw new Error(`Twitter API error: ${response.status} ${response.statusText}`);
+      throw new TwitterApiError(`Twitter API error: ${response.status} ${response.statusText}`, response.status);
     }
 
     const data = (await response.json()) as SearchResponse;

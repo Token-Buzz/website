@@ -1,9 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createGate } from "./concurrencyGate";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_SCHEDULE_MS = [1_000, 2_000, 4_000, 8_000, 8_000, 8_000];
+
+// One shared gate across all chart instances on the page.
+// Caps concurrent in-flight fetches to prevent Lambda concurrency throttling
+// when ~20 charts mount simultaneously and all fire fetch() at once.
+const MAX_CONCURRENT_FETCHES = 5;
+const fetchGate = createGate(MAX_CONCURRENT_FETCHES);
 
 // ── useObjectPolling ───────────────────────────────────────────────────────
 // Like useAggregatePolling but for endpoints that return a single JSON object
@@ -47,7 +54,10 @@ export function useObjectPolling<T extends object>(
       if (cancelled) return;
 
       try {
-        const res = await fetch(url!);
+        // Gate is released as soon as the fetch settles (try/finally inside run).
+        // The backoff sleep happens outside the gate so retrying requests don't
+        // hold a slot while waiting — they re-acquire on the next attempt.
+        const res = await fetchGate.run(() => fetch(url!));
         if (cancelled) return;
 
         if (!res.ok) {
@@ -143,7 +153,10 @@ export function useAggregatePolling<T>(
       if (cancelled) return;
 
       try {
-        const res = await fetch(url!);
+        // Gate is released as soon as the fetch settles (try/finally inside run).
+        // The backoff sleep happens outside the gate so retrying requests don't
+        // hold a slot while waiting — they re-acquire on the next attempt.
+        const res = await fetchGate.run(() => fetch(url!));
         if (cancelled) return;
 
         if (!res.ok) {
