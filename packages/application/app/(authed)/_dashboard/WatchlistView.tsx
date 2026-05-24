@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Icon, Button, Eyebrow, Ticker, BuzzDot, Sparkline, Delta, fmtCount, fmtPrice } from './primitives'
-import type { Token, Sentiment } from './types'
+import { Icon, Button, Eyebrow, Ticker, BuzzDot, Sparkline, Delta, fmtCount } from './primitives'
+import { useIsMobile } from './useIsMobile'
+import type { Token } from './types'
 
 const SAMPLE_TOKENS: Token[] = [
   { sym: 'PEPE',  name: 'Pepe',      price: 0.0000182, d24: 24.10, mentions: 48900, dbuzz: 412, sent: 'bull', spark: [3,4,4,5,4,6,7,7,8,9,11,12,14,18,22], live: true },
@@ -20,30 +21,56 @@ type SortKey = keyof Pick<Token, 'sym' | 'price' | 'd24' | 'dbuzz' | 'mentions'>
 
 interface Sort { k: SortKey; dir: 'asc' | 'desc' }
 
-function FilterBar({ filter, setFilter }: { filter: FilterType; setFilter: (f: FilterType) => void }) {
+// ── FilterBar ──────────────────────────────────────────────────────────────
+
+function FilterBar({ filter, setFilter, isMobile }: {
+  filter: FilterType
+  setFilter: (f: FilterType) => void
+  isMobile: boolean
+}) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+    <div style={{
+      display: 'flex',
+      alignItems: isMobile ? 'flex-start' : 'center',
+      flexDirection: isMobile ? 'column' : 'row',
+      gap: isMobile ? 8 : 10,
+      padding: isMobile ? '10px 12px' : '12px 20px',
+      borderBottom: '1px solid var(--border)',
+      background: 'var(--bg)',
+    }}>
       <Eyebrow>Memecoins · 12 tokens</Eyebrow>
-      <div style={{ flex: 1 }} />
-      <div style={{ display: 'inline-flex', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: 2 }}>
-        {(['all', 'bull', 'bear', 'live'] as FilterType[]).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            style={{
-              border: 'none', padding: '5px 10px', borderRadius: 4, cursor: 'pointer',
-              font: '600 11px var(--font-sans)', letterSpacing: '0.06em', textTransform: 'uppercase',
-              background: filter === f ? 'var(--inv-bg)' : 'transparent',
-              color: filter === f ? 'var(--inv-fg)' : 'var(--fg-2)',
-            }}
-          >{f}</button>
-        ))}
+      {isMobile ? null : <div style={{ flex: 1 }} />}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        flexWrap: 'wrap',
+        rowGap: 6,
+        width: isMobile ? '100%' : undefined,
+      }}>
+        {/* Filter pills */}
+        <div style={{ display: 'inline-flex', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: 2 }}>
+          {(['all', 'bull', 'bear', 'live'] as FilterType[]).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              style={{
+                border: 'none', padding: '5px 10px', borderRadius: 4, cursor: 'pointer',
+                font: '600 11px var(--font-sans)', letterSpacing: '0.06em', textTransform: 'uppercase',
+                background: filter === f ? 'var(--inv-bg)' : 'transparent',
+                color: filter === f ? 'var(--inv-fg)' : 'var(--fg-2)',
+              }}
+            >{f}</button>
+          ))}
+        </div>
+        <Button variant="ghost" size="sm" icon="filter">Filters</Button>
+        <Button variant="ghost" size="sm" icon="plus">Add token</Button>
       </div>
-      <Button variant="ghost" size="sm" icon="filter">Filters</Button>
-      <Button variant="ghost" size="sm" icon="plus">Add token</Button>
     </div>
   )
 }
+
+// ── SortHead ───────────────────────────────────────────────────────────────
 
 function SortHead({ children, k, sort, setSort, align = 'left' }: {
   children: React.ReactNode; k: SortKey; sort: Sort; setSort: (s: Sort) => void; align?: 'left' | 'right'
@@ -63,6 +90,8 @@ function SortHead({ children, k, sort, setSort, align = 'left' }: {
     </div>
   )
 }
+
+// ── Desktop grid ───────────────────────────────────────────────────────────
 
 const GRID = '32px 140px 1fr 120px 100px 160px 28px'
 
@@ -105,6 +134,75 @@ function WatchlistRow({ t, starred, onStar, onOpen, selected }: WatchlistRowProp
   )
 }
 
+// ── Mobile card ────────────────────────────────────────────────────────────
+// Star + ticker + name on top line; price / 24h / mentions·Δbuzz on second
+// line; sparkline on the right side; chevron tap opens detail.
+// The star tap is stopped from propagating so it doesn't open the detail.
+
+interface WatchlistCardProps {
+  t: Token
+  starred: boolean
+  onStar: () => void
+  onOpen: () => void
+  selected: boolean
+}
+
+function WatchlistCard({ t, starred, onStar, onOpen, selected }: WatchlistCardProps) {
+  const sparkColor = t.d24 >= 0 ? 'var(--pos)' : 'var(--neg)'
+  return (
+    <div
+      onClick={onOpen}
+      style={{
+        padding: '12px 14px',
+        borderBottom: '1px solid var(--border-hairline)',
+        background: selected ? 'var(--bg-elevated)' : 'transparent',
+        cursor: 'pointer',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        minHeight: 60,
+      }}
+    >
+      {/* Row 1: star · ticker · name · sparkline */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span
+          onClick={(e) => { e.stopPropagation(); onStar() }}
+          style={{
+            color: starred ? 'var(--buzz-500)' : 'var(--ink-300)',
+            fontSize: 16, lineHeight: 1, cursor: 'pointer', flexShrink: 0,
+          }}
+        >★</span>
+        <Ticker symbol={t.sym} />
+        <span style={{ font: '500 12px var(--font-sans)', color: 'var(--fg-3)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
+        {t.live && <BuzzDot />}
+        <Sparkline points={t.spark} color={sparkColor} width={60} height={22} fill />
+        <Icon name="chevR" size={14} style={{ color: 'var(--fg-4)', flexShrink: 0 }} />
+      </div>
+
+      {/* Row 2: price · 24h · mentions · Δbuzz */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', rowGap: 4, paddingLeft: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ font: '500 10px var(--font-sans)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-4)' }}>Price</span>
+          <span style={{ font: '600 12px var(--font-mono)', color: 'var(--fg-1)', fontVariantNumeric: 'tabular-nums' }}>—</span>
+        </div>
+        <span style={{ color: 'var(--border-strong)', fontSize: 10 }}>·</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ font: '500 10px var(--font-sans)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-4)' }}>24h</span>
+          <Delta value={t.d24} style={{ fontSize: 12 }} />
+        </div>
+        <span style={{ color: 'var(--border-strong)', fontSize: 10 }}>·</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ font: '500 10px var(--font-sans)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-4)' }}>Mentions</span>
+          <span style={{ font: '600 12px var(--font-mono)', color: 'var(--fg-2)', fontVariantNumeric: 'tabular-nums' }}>{fmtCount(t.mentions)}</span>
+          <Delta value={t.dbuzz} style={{ fontSize: 11 }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── WatchlistView ──────────────────────────────────────────────────────────
+
 interface WatchlistViewProps {
   tokens?: Token[]
   onSelectToken?: (t: Token | null) => void
@@ -116,6 +214,8 @@ export function WatchlistView({ tokens = SAMPLE_TOKENS, onSelectToken, selectedT
   const [sort, setSort] = useState<Sort>({ k: 'dbuzz', dir: 'desc' })
   const [starred, setStarred] = useState(new Set(['PEPE', 'SOL', 'WIF']))
 
+  const isMobile = useIsMobile()
+
   let rows = [...tokens]
   if (filter === 'bull') rows = rows.filter((t) => t.sent === 'bull')
   if (filter === 'bear') rows = rows.filter((t) => t.sent === 'bear')
@@ -125,34 +225,58 @@ export function WatchlistView({ tokens = SAMPLE_TOKENS, onSelectToken, selectedT
     return sort.dir === 'desc' ? bv - av : av - bv
   })
 
+  const toggleStar = (sym: string) => {
+    const s = new Set(starred)
+    s.has(sym) ? s.delete(sym) : s.add(sym)
+    setStarred(s)
+  }
+
+  const handleOpen = (t: Token) => onSelectToken?.(selectedToken?.sym === t.sym ? null : t)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <FilterBar filter={filter} setFilter={setFilter} />
-      <div style={{ display: 'grid', gridTemplateColumns: GRID, alignItems: 'center', gap: 16, padding: '10px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', position: 'sticky', top: 0, zIndex: 1 }}>
-        <div />
-        <SortHead k="sym"     sort={sort} setSort={setSort}>Ticker</SortHead>
-        <SortHead k="sym"     sort={sort} setSort={setSort}>15min · sparkline</SortHead>
-        <SortHead k="price"   sort={sort} setSort={setSort} align="right">Price</SortHead>
-        <SortHead k="d24"     sort={sort} setSort={setSort} align="right">24h</SortHead>
-        <SortHead k="dbuzz"   sort={sort} setSort={setSort} align="right">Mentions · Δ buzz</SortHead>
-        <div />
-      </div>
-      <div>
-        {rows.map((t) => (
-          <WatchlistRow
-            key={t.sym}
-            t={t}
-            starred={starred.has(t.sym)}
-            onStar={() => {
-              const s = new Set(starred)
-              s.has(t.sym) ? s.delete(t.sym) : s.add(t.sym)
-              setStarred(s)
-            }}
-            onOpen={() => onSelectToken?.(selectedToken?.sym === t.sym ? null : t)}
-            selected={selectedToken?.sym === t.sym}
-          />
-        ))}
-      </div>
+      <FilterBar filter={filter} setFilter={setFilter} isMobile={isMobile} />
+
+      {isMobile ? (
+        // Mobile: stacked cards, no column header row
+        <div>
+          {rows.map((t) => (
+            <WatchlistCard
+              key={t.sym}
+              t={t}
+              starred={starred.has(t.sym)}
+              onStar={() => toggleStar(t.sym)}
+              onOpen={() => handleOpen(t)}
+              selected={selectedToken?.sym === t.sym}
+            />
+          ))}
+        </div>
+      ) : (
+        // Desktop: sticky column header + grid rows
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: GRID, alignItems: 'center', gap: 16, padding: '10px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', position: 'sticky', top: 0, zIndex: 1 }}>
+            <div />
+            <SortHead k="sym"     sort={sort} setSort={setSort}>Ticker</SortHead>
+            <SortHead k="sym"     sort={sort} setSort={setSort}>15min · sparkline</SortHead>
+            <SortHead k="price"   sort={sort} setSort={setSort} align="right">Price</SortHead>
+            <SortHead k="d24"     sort={sort} setSort={setSort} align="right">24h</SortHead>
+            <SortHead k="dbuzz"   sort={sort} setSort={setSort} align="right">Mentions · Δ buzz</SortHead>
+            <div />
+          </div>
+          <div>
+            {rows.map((t) => (
+              <WatchlistRow
+                key={t.sym}
+                t={t}
+                starred={starred.has(t.sym)}
+                onStar={() => toggleStar(t.sym)}
+                onOpen={() => handleOpen(t)}
+                selected={selectedToken?.sym === t.sym}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
