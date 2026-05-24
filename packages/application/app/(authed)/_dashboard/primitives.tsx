@@ -24,6 +24,7 @@ const ICONS: Record<string, string[]> = {
   activity: ['M3 12h4l3-9 4 18 3-9h4'],
   movers:   ['M2 16l4-8 4 4 4-6 4 6 4-8'],
   logout:   ['M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4', 'M16 17l5-5-5-5', 'M21 12H9'],
+  menu:     ['M3 6h18', 'M3 12h18', 'M3 18h18'],
 }
 
 interface IconProps {
