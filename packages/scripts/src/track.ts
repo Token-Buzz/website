@@ -221,14 +221,13 @@ async function cmdAiStart(positional: string[], named: Record<string, string>): 
   const title = getIssueTitle(repo, issueNumber)
   const description = formatEntryName(issueNumber, title)
 
-  writeState({ issue: issueNumber, repo, description })
-
   const running = await getCurrentEntry(token)
   if (running) {
     console.log(`Stopping current entry: "${running.description}"`)
   }
 
   const entry = await startEntry({ token, workspaceId, description, tags: ['ai'] })
+  writeState({ issue: issueNumber, repo, description })
   console.log(`Started: "${entry.description}" (id: ${entry.id})`)
 }
 
