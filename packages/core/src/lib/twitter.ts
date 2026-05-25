@@ -162,7 +162,7 @@ export async function searchTweets(
 // Looks up a Twitter user by username.
 export async function lookupUser(apiKey: string, username: string): Promise<TwitterAuthor | null> {
   const url = new URL(`${BASE_URL}/twitter/user/info`);
-  url.searchParams.append("username", username);
+  url.searchParams.append("userName", username);
 
   try {
     const response = await fetch(url.toString(), {
@@ -172,8 +172,11 @@ export async function lookupUser(apiKey: string, username: string): Promise<Twit
       return null;
     }
 
-    const user = (await response.json()) as TwitterAuthor;
-    return user;
+    const body = (await response.json()) as { status?: string; msg?: string; data?: TwitterAuthor };
+    if (!body?.data?.userName) {
+      return null;
+    }
+    return body.data;
   } catch {
     return null;
   }

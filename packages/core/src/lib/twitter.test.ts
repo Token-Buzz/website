@@ -111,18 +111,38 @@ describe("lookupUser", () => {
     vi.unstubAllGlobals();
   });
 
-  test("returns the user object on a 200 response", async () => {
+  test("returns the user on 200 with real twitterapi.io envelope shape", async () => {
     const mockFetch = vi.mocked(global.fetch);
     mockFetch.mockResolvedValueOnce({
       ok: true,
       status: 200,
       statusText: "OK",
-      json: async () => mockAuthor,
+      json: async () => ({ status: "success", msg: "ok", data: mockAuthor }),
     } as Response);
 
     const result = await lookupUser("api-key-5678", "testuser");
 
     expect(result).toEqual(mockAuthor);
+
+    // Assert the request used the correct camelCase param name
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    const parsedUrl = new URL(calledUrl);
+    expect(parsedUrl.searchParams.get("userName")).toBe("testuser");
+    expect(parsedUrl.searchParams.has("username")).toBe(false);
+  });
+
+  test("returns null on 200 with no usable user (data: null)", async () => {
+    const mockFetch = vi.mocked(global.fetch);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => ({ status: "error", msg: "not found", data: null }),
+    } as Response);
+
+    const result = await lookupUser("api-key-5678", "noone");
+
+    expect(result).toBeNull();
   });
 
   test("returns null on a non-ok response", async () => {
@@ -157,7 +177,7 @@ describe("validateKey", () => {
       ok: true,
       status: 200,
       statusText: "OK",
-      json: async () => mockAuthor,
+      json: async () => ({ status: "success", msg: "ok", data: mockAuthor }),
     } as Response);
 
     const result = await validateKey("my-secret-key-abcd");
@@ -187,7 +207,7 @@ describe("validateKey", () => {
       ok: true,
       status: 200,
       statusText: "OK",
-      json: async () => mockAuthor,
+      json: async () => ({ status: "success", msg: "ok", data: mockAuthor }),
     } as Response);
 
     const key = "ABCDEFGH1234";
@@ -195,6 +215,21 @@ describe("validateKey", () => {
 
     expect(result.last4).toBe("1234");
     expect(result.last4).toBe(key.slice(-4));
+  });
+
+  test("returns ok=false when 200 response has data: null", async () => {
+    const mockFetch = vi.mocked(global.fetch);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => ({ status: "error", msg: "not found", data: null }),
+    } as Response);
+
+    const result = await validateKey("any-key-zzzz");
+
+    expect(result.ok).toBe(false);
+    expect(result.last4).toBe("zzzz");
   });
 });
 
