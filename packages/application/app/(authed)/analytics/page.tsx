@@ -25,6 +25,7 @@ import { SentimentGaugeChart } from "../_analytics/SentimentGaugeChart";
 import { PostingHeatmapChart } from "../_analytics/PostingHeatmapChart";
 import { GeographicDistributionMapChart } from "../_analytics/GeographicDistributionMapChart";
 import { ContentLengthEngagementChart } from "../_analytics/ContentLengthEngagementChart";
+import { SummaryProvider } from "../_analytics/SummaryProvider";
 
 // ── Analytics page ─────────────────────────────────────────────────────────
 
@@ -69,6 +70,9 @@ function AnalyticsPageInner() {
         {/* Search bar */}
         <SearchBar onIngested={() => {}} />
       </div>
+
+      {/* ── Summary data provider — one request for all charts ─────────── */}
+      <SummaryProvider query={query}>
 
       {/* ── Tweet results ───────────────────────────────────────────────── */}
       {query && (
@@ -226,6 +230,8 @@ function AnalyticsPageInner() {
       >
         Analytics powered by TokenBuzz · charts load after you submit a query
       </div>
+
+      </SummaryProvider>
     </div>
   );
 }

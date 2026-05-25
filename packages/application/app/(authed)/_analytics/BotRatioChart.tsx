@@ -1,25 +1,12 @@
 "use client";
 
 import { AnalyzingIndicator } from "./AnalyzingIndicator";
-import { useObjectPolling } from "./useAggregatePolling";
+import { useSummaryField } from "./SummaryProvider";
 
 type Props = { query: string };
 
-interface ApiResponse {
-  automated: number;
-  notAutomated: number;
-  automatedPercentage: number;
-  methodology: string;
-}
-
-export function BotRatioChart({ query }: Props) {
-  const url = query
-    ? `/api/analytics/bot-ratio?query=${encodeURIComponent(query)}&window=24H`
-    : null;
-
-  const { data, loading, error } = useObjectPolling<ApiResponse>(url, {
-    isPopulated: (d) => d.automated + d.notAutomated > 0,
-  });
+export function BotRatioChart({ query: _query }: Props) {
+  const { data, loading, error } = useSummaryField("botRatio");
 
   if (error)
     return (

@@ -5,7 +5,7 @@ import { auth } from "@clerk/nextjs/server";
 // This route intentionally returns [] in v1. When/if twitterapi.io starts
 // returning `source`, the aggregator should be extended with a SOURCE fan-out
 // and this route updated to read from the SOURCE aggregate.
-// See: please-look-at-lazy-whisper.md §6 "Source field — likely unsupported"
+// Note: the upstream Twitter API likely does not support the Source field, so this distribution may be empty.
 
 export async function GET(req: Request) {
   const { userId } = await auth();

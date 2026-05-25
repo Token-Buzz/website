@@ -57,8 +57,16 @@ export function SearchBar({ onIngested }: SearchBarProps) {
         if (res.status === 429) {
           throw new Error("Server is busy — please try again in a moment.");
         }
-        if (res.status === 504 || res.status === 502) {
+        if (res.status === 504) {
           throw new Error("Search timed out — try again or pick a less broad query.");
+        }
+        if (res.status === 502) {
+          const body = await res.json().catch(() => ({}));
+          const reason =
+            (body as { detail?: string; error?: string }).detail ??
+            (body as { detail?: string; error?: string }).error ??
+            "(no detail)";
+          throw new Error(`Search failed: ${reason}`);
         }
         const body = await res.json().catch(() => ({}));
         throw new Error(

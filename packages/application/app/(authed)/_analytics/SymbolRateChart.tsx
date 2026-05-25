@@ -1,14 +1,9 @@
 "use client";
 
 import { AnalyzingIndicator } from "./AnalyzingIndicator";
-import { useObjectPolling } from "./useAggregatePolling";
+import { useSummaryField } from "./SummaryProvider";
 
 type Props = { query: string };
-
-interface ApiResponse {
-  rate: number; // tweets per minute averaged over timeframe
-  sparkline: number[]; // hourly counts
-}
 
 function Sparkline({ points }: { points: number[] }) {
   if (points.length < 2) return null;
@@ -37,14 +32,8 @@ function Sparkline({ points }: { points: number[] }) {
   );
 }
 
-export function SymbolRateChart({ query }: Props) {
-  const url = query
-    ? `/api/symbols/rate?query=${encodeURIComponent(query)}&timeframe=1d`
-    : null;
-
-  const { data, loading, error } = useObjectPolling<ApiResponse>(url, {
-    isPopulated: (d) => d.rate > 0 || d.sparkline.some((n) => n > 0),
-  });
+export function SymbolRateChart({ query: _query }: Props) {
+  const { data, loading, error } = useSummaryField("symbolRate");
 
   if (error)
     return (

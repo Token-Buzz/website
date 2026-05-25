@@ -1,21 +1,12 @@
 "use client";
 
 import { AnalyzingIndicator } from "./AnalyzingIndicator";
-import { useAggregatePolling } from "./useAggregatePolling";
+import { useSummaryItems } from "./SummaryProvider";
 
 type Props = { query: string };
 
-interface ApiItem {
-  keyword: string;
-  count: number;
-}
-
-export function KeywordWordCloudChart({ query }: Props) {
-  const url = query
-    ? `/api/analytics/keywords?query=${encodeURIComponent(query)}&window=7D`
-    : null;
-
-  const { items, loading, error } = useAggregatePolling<ApiItem>(url);
+export function KeywordWordCloudChart({ query: _query }: Props) {
+  const { items, loading, error } = useSummaryItems("keywords");
 
   if (error)
     return (

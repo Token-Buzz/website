@@ -38,7 +38,9 @@
       "mcp__920fb131-52a7-49f2-8df1-e015208db198__clickup_get_task",
       "mcp__920fb131-52a7-49f2-8df1-e015208db198__clickup_create_task",
       "mcp__920fb131-52a7-49f2-8df1-e015208db198__clickup_delete_task",
-      "mcp__920fb131-52a7-49f2-8df1-e015208db198__clickup_update_task"
+      "mcp__920fb131-52a7-49f2-8df1-e015208db198__clickup_update_task",
+      "Bash(rm -f .claude/.track-current.json)",
+      "Bash(npm run *)"
     ]
   }
 }

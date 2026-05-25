@@ -1,15 +1,9 @@
 "use client";
 
 import { AnalyzingIndicator } from "./AnalyzingIndicator";
-import { useAggregatePolling } from "./useAggregatePolling";
+import { useSummaryItems } from "./SummaryProvider";
 
 type Props = { query: string };
-
-interface HeatmapPoint {
-  day: string;
-  hour: number;
-  count: number;
-}
 
 // Fixed day order for rows
 const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -28,14 +22,8 @@ const LEFT_LABEL_W = 28;
 const BOTTOM_LABEL_H = 16;
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
-export function PostingHeatmapChart({ query }: Props) {
-  // Returns an array of { day, hour, count } — use useAggregatePolling since
-  // the endpoint returns a plain array.
-  const url = query
-    ? `/api/analytics/posting-heatmap?query=${encodeURIComponent(query)}&window=7D`
-    : null;
-
-  const { items, loading, error } = useAggregatePolling<HeatmapPoint>(url);
+export function PostingHeatmapChart({ query: _query }: Props) {
+  const { items, loading, error } = useSummaryItems("postingHeatmap");
 
   if (error)
     return (

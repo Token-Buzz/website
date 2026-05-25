@@ -72,7 +72,7 @@ export default function CTA() {
             <Button
               variant="ghost"
               size="lg"
-              href="#"
+              href="/changelog"
               style={{ color: 'var(--data-fg)', borderColor: 'var(--data-line)' }}
             >
               Read the changelog

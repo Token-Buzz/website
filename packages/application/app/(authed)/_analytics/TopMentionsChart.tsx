@@ -1,21 +1,12 @@
 "use client";
 
 import { BarList } from "./BarList";
-import { useAggregatePolling } from "./useAggregatePolling";
+import { useSummaryItems } from "./SummaryProvider";
 
 type Props = { query: string };
 
-interface ApiItem {
-  mention: string;
-  count: number;
-}
-
-export function TopMentionsChart({ query }: Props) {
-  const url = query
-    ? `/api/analytics/mentions?query=${encodeURIComponent(query)}&window=7D`
-    : null;
-
-  const { items: rawItems, loading, error } = useAggregatePolling<ApiItem>(url);
+export function TopMentionsChart({ query: _query }: Props) {
+  const { items: rawItems, loading, error } = useSummaryItems("mentions");
   const items = rawItems.map((d) => ({ label: d.mention, value: d.count }));
 
   if (error)

@@ -1,21 +1,12 @@
 "use client";
 
 import { BarList } from "./BarList";
-import { useAggregatePolling } from "./useAggregatePolling";
+import { useSummaryItems } from "./SummaryProvider";
 
 type Props = { query: string };
 
-interface ApiItem {
-  domain: string;
-  count: number;
-}
-
-export function DomainDistributionChart({ query }: Props) {
-  const url = query
-    ? `/api/analytics/domains?query=${encodeURIComponent(query)}&window=7D`
-    : null;
-
-  const { items: rawItems, loading, error } = useAggregatePolling<ApiItem>(url);
+export function DomainDistributionChart({ query: _query }: Props) {
+  const { items: rawItems, loading, error } = useSummaryItems("domains");
   const items = rawItems.map((d) => ({ label: d.domain, value: d.count }));
 
   if (error)
