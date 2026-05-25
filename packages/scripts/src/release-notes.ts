@@ -7,14 +7,14 @@
  * Requires:
  *   - `gh` CLI authenticated (GH_TOKEN env var, as provided by GITHUB_TOKEN in CI)
  *   - `git` available (full history + tags via fetch-depth: 0)
- *   - ANTHROPIC_API_KEY (optional — falls back to a plain notes body if absent or erroring)
+ *   - CLAUDE_CODE_OAUTH_TOKEN (optional — falls back to a plain notes body if absent or erroring)
  *
  * Behaviour:
  *   1. Reads .release-please-manifest.json from CWD to get the current version.
  *   2. Lists existing git tags. If v{version} already exists → exits 0 (idempotent).
  *   3. Determines the previous semver tag (for the git log range).
  *   4. Collects commit subjects since the previous tag.
- *   5. Generates release notes via Claude Haiku (with fallback).
+ *   5. Generates release notes via Claude Code CLI (with fallback).
  *   6. Creates the GitHub release via `gh release create`.
  */
 
@@ -22,7 +22,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { execFileSync, spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import Anthropic from '@anthropic-ai/sdk'
+import { mkdtempSync } from 'node:fs'
 import {
   parseManifestVersion,
   resolvePreviousTag,
@@ -50,28 +50,34 @@ function ghRelease(args: string[]): void {
 // Notes generation
 // ---------------------------------------------------------------------------
 
-async function generateNotesWithClaude(version: string, commitSubjects: string[]): Promise<string> {
-  const client = new Anthropic()
+function generateNotesWithClaude(version: string, commitSubjects: string[]): string {
   const { system, user } = buildNotesMessages(version, commitSubjects)
+  const prompt = system + '\n\n' + user
 
-  const response = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1500,
-    system: [
-      {
-        type: 'text',
-        text: system,
-        cache_control: { type: 'ephemeral' },
-      },
+  // Use a fresh temp dir as cwd so the CLI does NOT load this repo's
+  // .claude settings/hooks/CLAUDE.md — the prompt is fully self-contained.
+  const cwd = mkdtempSync(join(tmpdir(), 'rel-'))
+
+  const stdout = execFileSync(
+    'claude',
+    [
+      '-p',
+      prompt,
+      '--model',
+      'claude-haiku-4-5-20251001',
+      '--output-format',
+      'text',
+      '--no-session-persistence',
     ],
-    messages: [{ role: 'user', content: user }],
-  })
+    {
+      encoding: 'utf-8',
+      cwd,
+      maxBuffer: 10_000_000,
+      env: process.env,
+    },
+  )
 
-  const block = response.content[0]
-  if (!block || block.type !== 'text') {
-    throw new Error('Unexpected response shape from Claude API')
-  }
-  return block.text.trim()
+  return stdout.trim()
 }
 
 function fallbackNotes(version: string, commitSubjects: string[]): string {
@@ -118,21 +124,21 @@ async function main(): Promise<void> {
 
   console.log(`Found ${commitSubjects.length} commit(s) to summarise.`)
 
-  // 5. Generate release notes (Claude Haiku, with fallback).
+  // 5. Generate release notes (Claude Code CLI, with fallback).
   let notes: string
-  const apiKey = process.env['ANTHROPIC_API_KEY']
+  const oauthToken = process.env['CLAUDE_CODE_OAUTH_TOKEN']
 
-  if (!apiKey) {
-    console.log('ANTHROPIC_API_KEY not set — using fallback notes.')
+  if (!oauthToken) {
+    console.log('CLAUDE_CODE_OAUTH_TOKEN not set — using fallback notes.')
     notes = fallbackNotes(version, commitSubjects)
   } else {
     try {
-      console.log('Generating release notes with Claude Haiku…')
-      notes = await generateNotesWithClaude(version, commitSubjects)
+      console.log('Generating release notes with Claude Haiku via Claude Code CLI…')
+      notes = generateNotesWithClaude(version, commitSubjects)
       console.log('Claude notes generated successfully.')
     } catch (err) {
       console.warn(
-        'Claude API call failed; falling back to plain notes.',
+        'Claude CLI call failed; falling back to plain notes.',
         err instanceof Error ? err.message : String(err),
       )
       notes = fallbackNotes(version, commitSubjects)
