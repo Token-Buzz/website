@@ -70,6 +70,10 @@ jobs:
             echo "name=pr-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Resolve deploy gate
+        id: gate
+        run: echo "deploy=${{ (!contains(github.event.head_commit.message, '[skip deploy]') && !contains(github.event.pull_request.title, '[skip deploy]')) }}" >> "$GITHUB_OUTPUT"
+
       - name: Install dependencies
         run: npm ci
 
@@ -88,16 +92,19 @@ jobs:
         run: npm run test:integration
 
       - name: Configure AWS credentials (OIDC)
+        if: steps.gate.outputs.deploy == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
 
       - name: SST unlock
+        if: steps.gate.outputs.deploy == 'true'
         run: npx sst unlock --stage ${{ steps.stage.outputs.name }}
         continue-on-error: true
 
       - name: SST deploy
+        if: steps.gate.outputs.deploy == 'true'
         id: sst_deploy
         run: |
           set -o pipefail
@@ -105,7 +112,7 @@ jobs:
             2>&1 | tee /tmp/sst-deploy.log
 
       - name: Surface deployment URLs
-        if: success()
+        if: ${{ success() && steps.gate.outputs.deploy == 'true' }}
         run: |
           stage="${{ steps.stage.outputs.name }}"
           # SST prints stack outputs after a "✓  Complete" or "---" line in

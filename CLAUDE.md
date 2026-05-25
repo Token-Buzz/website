@@ -114,11 +114,11 @@ Secrets are declared in `infra/secrets.ts` as `sst.Secret` and seeded via the SS
 `CLOUDFLARE_API_TOKEN` is the exception: it is read as `process.env` in `app()` (before secrets load) and must be set as a Console **environment variable**, not a secret, in both environments.
 
 Secrets to configure in Console (same names for both environments, different values):
-`WEB_DOMAIN`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `RESEND_API_KEY`, `CONTACT_TO_ADDRESS`, `CONTACT_FROM_ADDRESS`, `TWITTER_API_KEY`, `CHANGELOG_GITHUB_TOKEN`
+`WEB_DOMAIN`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `RESEND_API_KEY`, `CONTACT_TO_ADDRESS`, `CONTACT_FROM_ADDRESS`, `CHANGELOG_GITHUB_TOKEN`
 
 `CHANGELOG_GITHUB_TOKEN` is read server-side by the marketing `/changelog` page to fetch this (private) repo's GitHub Releases. Use a **fine-grained PAT scoped to only `Token-Buzz/website` with `Contents: Read-only`** (least privilege). It's wired into the marketing app's `environment` in `infra/marketing.ts` (not `NEXT_PUBLIC_`, so it stays server-side).
 
-All `sst.Secret` names must use `SCREAMING_SNAKE_CASE` (e.g. `TWITTER_API_KEY`, not `TwitterApiKey`). This keeps secret names consistent with environment variable conventions and makes it obvious when a name needs updating.
+All `sst.Secret` names must use `SCREAMING_SNAKE_CASE` (e.g. `RESEND_API_KEY`, not `ResendApiKey`). This keeps secret names consistent with environment variable conventions and makes it obvious when a name needs updating.
 
 **Never give a required secret/config value an empty or placeholder fallback.** A missing required value (an `sst.Secret`, env var, etc.) must fail loudly at deploy/build/startup — do NOT paper over it with `new sst.Secret("X", "")` or any default that lets the app run misconfigured. Empty fallbacks hide misconfiguration and resurface as confusing runtime bugs later. The fix for an unset secret is to **seed the real value** (in both Console environments — production and the fallback env used by `pr-<N>` stages), never to soften the failure.
 
@@ -130,6 +130,7 @@ Deployments run from `.github/workflows/deploy.yml` and `.github/workflows/teard
 - Open / update / reopen a PR → deploys ephemeral `pr-<number>` stage.
 - Close a PR → removes `pr-<number>` stage (`sst unlock` → `sst refresh` → `sst remove`).
 - Concurrency group per stage; in-progress runs are cancelled when a newer commit lands.
+- **`[skip deploy]` escape hatch (repo-custom, NOT a GitHub-native token):** putting `[skip deploy]` in the push head commit message (production path) or in the PR title (pr-`<N>` path) skips the four SST deploy steps (Configure AWS credentials, SST unlock, SST deploy, Surface deployment URLs) while still running lint/typecheck/unit/integration. Unlike `[skip ci]` (which would skip the entire workflow run including all gates), `[skip deploy]` only suppresses the deployment — the quality gates always run.
 
 Steps for a deploy run: checkout → setup Node 22 → `npm ci` → `npm run lint` → `npm run typecheck` → `npm run test:unit` → `npm run test:integration` → `aws-actions/configure-aws-credentials` → `npx sst unlock` (best-effort) → `npx sst deploy --stage <stage>`. The lint/typecheck/unit/integration steps all run before AWS credentials are configured, so they gate the deploy without needing AWS (dynalite is in-memory).
 
@@ -142,7 +143,7 @@ Set under **Settings → Secrets and variables → Actions → Secrets** before 
 
 The workflows authenticate to AWS via OIDC (`aws-actions/configure-aws-credentials@v4` with `role-to-assume`), so no long-lived AWS access keys are stored in GitHub.
 
-SST application secrets (`sst.Secret` entries in `infra/secrets.ts`: `WEB_DOMAIN`, `CLERK_*`, `TURNSTILE_*`, `RESEND_API_KEY`, `CONTACT_*`, `TWITTER_API_KEY`, `OPENCAGE_API_KEY`, `CHANGELOG_GITHUB_TOKEN`) are stored in AWS SSM Parameter Store, not in GitHub. Seed them per stage with `npx sst secret set <NAME> <value> --stage <stage>` (or use the `npm run set-sst-vars` script with a `.env.local`).
+SST application secrets (`sst.Secret` entries in `infra/secrets.ts`: `WEB_DOMAIN`, `CLERK_*`, `TURNSTILE_*`, `RESEND_API_KEY`, `CONTACT_*`, `OPENCAGE_API_KEY`, `CHANGELOG_GITHUB_TOKEN`) are stored in AWS SSM Parameter Store, not in GitHub. Seed them per stage with `npx sst secret set <NAME> <value> --stage <stage>` (or use the `npm run set-sst-vars` script with a `.env.local`).
 
 ## GitHub tooling
 
@@ -225,4 +226,6 @@ The helper resolves all field/item IDs at runtime via the `gh` CLI — no hardco
 - Never commit or push directly to `master`. Always work on a feature branch; if checked out on `master`, branch off before staging.
 - Run `npm run typecheck` and `npm run lint` from the repo root before every commit and before the final push. Both must exit 0. Never use `--no-verify` to bypass hooks — the same checks run in CI.
 - Discard build cache files before staging: `git checkout -- packages/*/tsconfig.tsbuildinfo`. They're local-only artifacts that pollute diffs.
-- Don't open PRs unless the user explicitly asks ("open the PR"). The human opens PRs manually after reviewing the branch.
+- **Don't push while a deploy is in flight for the same stage.** Before pushing to a branch with an open PR (its push deploys that `pr-<N>` stage) or to `master` (deploys `production`), check for a running Deploy run on that stage and wait for it to finish — `gh run list --workflow Deploy --branch <branch> --status in_progress` (also check `--status queued`). Pushing mid-deploy trips the workflow's `cancel-in-progress`, which kills the in-flight deploy **mid-apply** and can leave SST/Pulumi state out of sync with AWS (e.g. AWS created a GSI but state never recorded it → the next deploy fails with "index already exists"). If a deploy is running, wait for it; recovering from a cancelled-mid-apply deploy means `sst refresh --stage <stage>` then redeploy.
+- When code changes are complete, committed, pushed, and the gates are green, **open a PR automatically — don't ask first.** Target `master` from the current feature branch with a descriptive title/body and test plan. If an open PR already tracks the branch, push to update it instead of opening a duplicate. (The user reviews and merges the PR; they don't need to be asked before it's created.)
+- After opening (or updating) a PR, **end the summary with three links, in this exact order**: (1) the **PR** — `https://github.com/Token-Buzz/website/pull/<pr#>`, (2) the **issue** it resolves — `https://github.com/Token-Buzz/website/issues/<issue#>`, (3) the **branch** — `https://github.com/Token-Buzz/website/tree/<branch>`. Label each line with its number (PR #, Issue #, branch name).
