@@ -17,6 +17,7 @@ export interface ByokRecord {
   last4: string
   validatedAt: string
   status: ByokStatus
+  backgroundPolling?: boolean
   gsi1pk: string
   gsi1sk: string
 }
@@ -51,6 +52,7 @@ export async function putByokKey(params: {
     last4,
     validatedAt,
     status: 'active',
+    backgroundPolling: false,
     gsi1pk: `BYOK#${provider}`,
     gsi1sk: `USER#${userId}`,
   }
@@ -119,6 +121,7 @@ export interface ByokKeyStatus {
   last4: string
   validatedAt: string
   status: ByokStatus
+  backgroundPolling: boolean
 }
 
 /**
@@ -135,12 +138,17 @@ export async function getByokKeyStatus(
     new GetCommand({
       TableName: TableNames.userData,
       Key: byokKey(userId, provider),
-      ProjectionExpression: 'last4, validatedAt, #s',
+      ProjectionExpression: 'last4, validatedAt, #s, backgroundPolling',
       ExpressionAttributeNames: { '#s': 'status' },
     }),
   )
   if (!Item) return null
-  return { last4: Item.last4, validatedAt: Item.validatedAt, status: Item.status }
+  return {
+    last4: Item.last4,
+    validatedAt: Item.validatedAt,
+    status: Item.status,
+    backgroundPolling: Item.backgroundPolling ?? false,
+  }
 }
 
 /**
@@ -173,13 +181,40 @@ export async function markByokKeyInvalid(userId: string, provider: string): Prom
 }
 
 /**
+ * Sets the `backgroundPolling` opt-in flag for a user's stored API key.
+ * Default is false (opt-in); set to true to allow background polling jobs
+ * to use this key. Uses a conditional update so a missing row is a safe no-op.
+ */
+export async function setByokBackgroundPolling(
+  userId: string,
+  provider: string,
+  enabled: boolean,
+): Promise<void> {
+  try {
+    await ddb.send(
+      new UpdateCommand({
+        TableName: TableNames.userData,
+        Key: byokKey(userId, provider),
+        UpdateExpression: 'SET backgroundPolling = :v',
+        ConditionExpression: 'attribute_exists(pk)',
+        ExpressionAttributeValues: { ':v': enabled },
+      }),
+    )
+  } catch (err) {
+    // No row to update (key does not exist) — treat as a no-op.
+    if ((err as { name?: string }).name === 'ConditionalCheckFailedException') return
+    throw err
+  }
+}
+
+/**
  * Queries the ByokHolders GSI to enumerate all users holding a key for the
- * given provider. Returns userId + status pairs.
+ * given provider. Returns userId, status, and backgroundPolling flag.
  * Used by Phase 6 jobs to fan out ingestion across key holders.
  */
 export async function listKeyHolders(
   provider: string,
-): Promise<Array<{ userId: string; status: ByokStatus }>> {
+): Promise<Array<{ userId: string; status: ByokStatus; backgroundPolling: boolean }>> {
   const { Items = [] } = await ddb.send(
     new QueryCommand({
       TableName: TableNames.userData,
@@ -194,5 +229,6 @@ export async function listKeyHolders(
   return (Items as ByokRecord[]).map((item) => ({
     userId: item.userId,
     status: item.status,
+    backgroundPolling: item.backgroundPolling ?? false,
   }))
 }

@@ -58,6 +58,7 @@ import {
   listKeyHolders,
   getByokKeyStatus,
   markByokKeyInvalid,
+  setByokBackgroundPolling,
   TWITTER_PROVIDER,
 } from '@monorepo-template/core/db/byok'
 
@@ -243,5 +244,58 @@ describe('markByokKeyInvalid', () => {
     // Must not have created a phantom item.
     const result = await getByokKeyStatus('no_such_user', PROVIDER)
     expect(result).toBeNull()
+  })
+})
+
+describe('backgroundPolling opt-in', () => {
+  const USER_ID = 'user_bgpoll_test'
+  const PROVIDER = TWITTER_PROVIDER
+  const API_KEY = 'twitterapiio_bgpolltest1234'
+
+  test('putByokKey defaults backgroundPolling to false', async () => {
+    await putByokKey({ userId: USER_ID, provider: PROVIDER, apiKey: API_KEY })
+
+    const status = await getByokKeyStatus(USER_ID, PROVIDER)
+    expect(status).not.toBeNull()
+    expect(status!.backgroundPolling).toBe(false)
+  })
+
+  test('setByokBackgroundPolling(true) is reflected in getByokKeyStatus', async () => {
+    await putByokKey({ userId: USER_ID, provider: PROVIDER, apiKey: API_KEY })
+
+    await setByokBackgroundPolling(USER_ID, PROVIDER, true)
+
+    const status = await getByokKeyStatus(USER_ID, PROVIDER)
+    expect(status).not.toBeNull()
+    expect(status!.backgroundPolling).toBe(true)
+  })
+
+  test('setByokBackgroundPolling(true) is reflected in listKeyHolders', async () => {
+    await putByokKey({ userId: USER_ID, provider: PROVIDER, apiKey: API_KEY })
+    await setByokBackgroundPolling(USER_ID, PROVIDER, true)
+
+    const holders = await listKeyHolders(PROVIDER)
+    const match = holders.find((h) => h.userId === USER_ID)
+    expect(match).toBeDefined()
+    expect(match!.backgroundPolling).toBe(true)
+  })
+
+  test('setByokBackgroundPolling can be toggled back to false', async () => {
+    await putByokKey({ userId: USER_ID, provider: PROVIDER, apiKey: API_KEY })
+    await setByokBackgroundPolling(USER_ID, PROVIDER, true)
+    await setByokBackgroundPolling(USER_ID, PROVIDER, false)
+
+    const status = await getByokKeyStatus(USER_ID, PROVIDER)
+    expect(status!.backgroundPolling).toBe(false)
+  })
+
+  test('setByokBackgroundPolling on a non-existent key is a no-op (no throw, status stays null)', async () => {
+    // No putByokKey — row does not exist.
+    await expect(
+      setByokBackgroundPolling('no_such_user', PROVIDER, true),
+    ).resolves.toBeUndefined()
+
+    const status = await getByokKeyStatus('no_such_user', PROVIDER)
+    expect(status).toBeNull()
   })
 })
