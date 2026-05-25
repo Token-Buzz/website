@@ -16,6 +16,16 @@ The lead Claude (Opus) acts as an **orchestrator / project manager**, NOT as the
 - **Verify, don't assume.** A subagent's summary describes intent, not what actually landed. Review the real diff before reporting work as done.
 - **PR readiness — manual test plan.** For any major implementation (not small code edits), when the code is ready to open a PR, **provide the user with a concrete set of tests they can perform directly on the website** to confirm everything is running smoothly. List the exact pages/flows to exercise and the expected result for each.
 
+## Size-aware execution (scale effort to the task's Size)
+
+When you start an issue, read its `Size` (the Project field) along with its Status, and scale your orchestration + context discipline to match. Bigger tasks span compactions and ephemeral sessions, so they need checkpoints. This is guidance you follow, not a harness-enforced cap.
+
+- **XS / S** — work normally: direct edits or a single subagent, one commit at the end.
+- **M** — decompose into a couple of subagent tasks; commit at logical checkpoints.
+- **L / XL** — **mandatory** before writing code: break the work into phases. Dispatch each phase to its own subagent (keeps the main context lean). **Commit + push after every phase** so a dying ephemeral session loses nothing. At phase boundaries, proactively `/compact` or write a short status note into the epic issue so the thread survives summarization.
+
+If an issue has no Size, set one first (see "Task sizing" under GitHub tooling) — don't run a large task blind.
+
 ## Repository layout
 
 npm workspaces monorepo under `packages/*`, deployed with **SST v4** on AWS.
@@ -171,6 +181,25 @@ gh project item-list 1 --owner Token-Buzz --format json   # map an issue (conten
 gh project item-edit --project-id "$PID" --field-id "$FIELD" --id <ITEM_ID> --single-select-option-id <OPTION_ID>
 ```
 If these IDs ever go stale, re-derive them with `gh project field-list 1 --owner Token-Buzz --format json`. Whenever you change Status, also run the stamp helper: `start` when an issue leaves Backlog, `done` when it reaches Done (see the "Cycle-time tracking" section below).
+
+### Task sizing — every issue gets a Size (required)
+
+**Every issue MUST have a `Size` set — at creation time, never left blank.** The Project's single-select `Size` field (XS/S/M/L/XL) is what drives the size-aware execution strategy (see "Size-aware execution" near the top of this file), so a missing Size means a task runs with no context plan. When you create an issue — or pick up one that has no Size — set it in the same turn.
+
+Rough rubric:
+- **XS** — trivial: a one-line/config tweak, a copy change, a single rename.
+- **S** — small focused change: one file or one component, no new access pattern.
+- **M** — a feature slice: a few files, maybe one new DB access pattern + its test.
+- **L** — a full milestone phase: multiple components/routes, schema + UI + tests.
+- **XL** — epic-scale / multi-phase. Prefer to **decompose into phase sub-issues** rather than leave a single XL issue.
+
+Set it the same way as Status (single-select `item-edit`):
+```bash
+PID=PVT_kwDOEQMpAc4BYiIz                  # Token Buzz Project
+SIZE_FIELD=PVTSSF_lADOEQMpAc4BYiIzzhTnW_4 # the single-select "Size" field
+# Size option IDs: XS=6c6483d2  S=f784b110  M=7515a9f1  L=817d0097  XL=db339eb2
+gh project item-edit --project-id "$PID" --field-id "$SIZE_FIELD" --id <ITEM_ID> --single-select-option-id <OPTION_ID>
+```
 
 ## Session continuity & memory model
 
