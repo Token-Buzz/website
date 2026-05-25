@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { TextField } from '@/app/_auth/TextField'
 import { ContinueButton } from '@/app/_auth/ContinueButton'
-import { useIsMobile } from '@/app/_hooks/useIsMobile'
 
 interface KeyStatus {
   provider: string
@@ -26,7 +25,6 @@ function formatDate(iso: string): string {
 }
 
 export function ApiKeysSection() {
-  const isMobile = useIsMobile()
   const [keyStatus, setKeyStatus] = useState<KeyStatus | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -96,18 +94,16 @@ export function ApiKeysSection() {
     }
   }
 
-  const pad = isMobile ? '16px 8px' : '32px 24px'
-
   if (loading) {
     return (
-      <div style={{ padding: pad, color: 'var(--fg-3)', fontSize: 'var(--fs-small)' }}>
+      <div style={{ color: 'var(--fg-3)', fontSize: 'var(--fs-small)' }}>
         Loading…
       </div>
     )
   }
 
   return (
-    <div style={{ padding: pad, width: '100%', boxSizing: 'border-box', maxWidth: 520 }}>
+    <div style={{ width: '100%', boxSizing: 'border-box' }}>
       <div style={{ marginBottom: 'var(--sp-5)' }}>
         <h2 style={{
           margin: 0,
@@ -199,7 +195,7 @@ export function ApiKeysSection() {
         </div>
       ) : (
         /* ── Entry form ── */
-        <form onSubmit={handleSave} className="tb-form" style={{ maxWidth: 440 }}>
+        <form onSubmit={handleSave} className="tb-form">
           <p style={{
             margin: 0,
             font: '400 var(--fs-small) / var(--lh-body) var(--font-sans)',
