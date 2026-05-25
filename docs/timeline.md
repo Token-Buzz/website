@@ -17,7 +17,7 @@ The board tracks **planned vs actual** with two date-field pairs:
   live, and merging — not AI wall-clock (which overlaps your review of other phases).
 - **Your capacity: 44h/week** = 4h × 5 weekdays + 12h × 2 weekend days.
 - **Sequence: fastest path to a sellable v1**, respecting dependencies:
-  finish M1 → M2 → M3 → M6 → M5 → M4 → M8 → M7 → M9.
+  finish M1 → M2 → M3 → M6 → M5 → M4 → M8 → M7 → M9 → M13 → M14.
 - Dates below are **nominal full-capacity** (assume you hit your hours every day). A realistic ~30%
   buffer for review slippage and integration unknowns (Stripe SCA, Birdeye, Telegram bans) pushes the
   all-done date to **early–mid July 2026**.
@@ -45,7 +45,9 @@ The board tracks **planned vs actual** with two date-field pairs:
 | M8 — Query History | 17 | 06-14 → 06-16 |
 | M7 — Marketing live ticker | 10 | 06-16 → 06-19 |
 | M9 — Multi-Social Ingestion (v2) | 34 | 06-19 → 06-23 |
-| **Total remaining** (+ 5h loose) | **~183** | **05-25 → 06-23** |
+| M13 — Token Press Releases (v2) | 21 | 06-24 → 06-27 |
+| M14 — Token News & Articles (v2) | 17 | 06-27 → 06-29 |
+| **Total remaining** (+ 5h loose) | **~221** | **05-25 → 06-29** |
 
 Already shipped: M1 P2/P3 (Movers + Live feed UI), M1.5 P1–P4 (mobile responsive). M1.5 P5 (QA) pending.
 
@@ -153,6 +155,26 @@ M9 — Multi-Social Ingestion (v2):
 | 76 | P5 Discord ingestor | L | 6 | 06-21 | 06-22 |
 | 77 | P6 UI source filter chips + per-source quotas | M | 3 | 06-22 | 06-23 |
 | 78 | P7 TikTok / IG / FB (deferred/skipped) | XS | 1 | 06-23 | 06-23 |
+
+M13 — Token Press Releases:
+
+| # | Item | Size | Hrs | Start | Target |
+| - | - | - | - | - | - |
+| 136 | P1 Schema + project-metadata data layer | L | 5 | 06-24 | 06-25 |
+| 137 | P2 Links surfaced in UI (passive) | M | 4 | 06-25 | 06-26 |
+| 138 | P3 Press feed ingestion | L | 6 | 06-26 | 06-27 |
+| 139 | P4 Per-token press alerts (opt-in) | M | 3 | 06-27 | 06-27 |
+| 140 | P5 Aggregation + polish + user-submitted links | M | 3 | 06-27 | 06-27 |
+
+M14 — Token News & Articles:
+
+| # | Item | Size | Hrs | Start | Target |
+| - | - | - | - | - | - |
+| 141 | P1 News sourcing config + relevance keywords | S | 2 | 06-27 | 06-27 |
+| 142 | P2 News ingestion + relevance fan-out | L | 6 | 06-27 | 06-28 |
+| 143 | P3 News feed UI | M | 3 | 06-28 | 06-28 |
+| 144 | P4 Per-token news alerts (opt-in) | S | 2 | 06-28 | 06-28 |
+| 145 | P5 News aggregation + optional AI relevance/sentiment | M | 4 | 06-28 | 06-29 |
 
 ## Notes
 

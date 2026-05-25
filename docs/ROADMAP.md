@@ -22,8 +22,12 @@ Brainstormed product roadmap for the TokenBuzz application and marketing site. N
 | M7 | Marketing live ticker | v1 |
 | M8 | Query History | v1 |
 | M9 | Multi-Social Ingestion (v2) | v2 |
+| M13 | Token Press Releases | v2 |
+| M14 | Token News & Articles | v2 |
 
 See `docs/milestones/M*.md` for the detailed brief on each milestone (locked decisions, schema additions, phases).
+
+> Note: M10–M12 (BYOK, Automated Release History, Security & Compliance) and M13–M14 are tracked as GitHub milestones; this table historically listed only M1–M9. M10–M12 do not yet have `docs/milestones/` briefs.
 
 ## Dependency graph
 
