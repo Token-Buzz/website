@@ -1,6 +1,7 @@
 import { router } from "./router";
 import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey, twitterApiKey } from "./secrets";
 import { tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable } from "./db";
+import { byokKmsKey } from "./byok";
 
 const isProd = $app.stage === "production";
 const isPR = $app.stage.startsWith("pr-");
@@ -35,6 +36,13 @@ export const app = new sst.aws.Nextjs("Application", {
         NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: "/dashboard",
         OPENCAGE_API_KEY: opencageApiKey.value,
         TWITTER_API_KEY: twitterApiKey.value,
+        BYOK_KMS_KEY_ID: byokKmsKey.id,
     },
+    permissions: [
+        {
+            actions: ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"],
+            resources: [byokKmsKey.arn],
+        },
+    ],
     link: [tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable],
 });

@@ -93,6 +93,7 @@ function WatchlistItem({
 function ProfileFooter() {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const router = useRouter()
 
   useEffect(() => {
     if (!open) return
@@ -113,7 +114,7 @@ function ProfileFooter() {
           boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
         }}>
           <button
-            onClick={() => setOpen(false)}
+            onClick={() => { setOpen(false); router.push('/account') }}
             style={{
               display: 'flex', alignItems: 'center', gap: 10, width: '100%',
               padding: '10px 14px', border: 'none', background: 'transparent',

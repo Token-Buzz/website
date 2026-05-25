@@ -10,6 +10,8 @@
   "exports": {
     "./db/aggregates": "./src/db/aggregates.ts",
     "./db/bot-heuristic": "./src/db/bot-heuristic.ts",
+    "./db/byok": "./src/db/byok.ts",
+    "./db/byok-poll": "./src/db/byok-poll.ts",
     "./db/client": "./src/db/client.ts",
     "./db/geo": "./src/db/geo.ts",
     "./db/keys": "./src/db/keys.ts",
@@ -19,7 +21,9 @@
     "./db/user-data": "./src/db/user-data.ts",
     "./db/users": "./src/db/users.ts",
     "./live-feed": "./src/live-feed.ts",
+    "./lib/crypto": "./src/lib/crypto.ts",
     "./lib/enrich": "./src/lib/enrich.ts",
+    "./lib/poll-assignment": "./src/lib/poll-assignment.ts",
     "./lib/twitter": "./src/lib/twitter.ts",
     "./movers": "./src/movers.ts",
     "./*": [
@@ -29,6 +33,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3",
+    "@aws-sdk/client-kms": "^3",
     "@aws-sdk/lib-dynamodb": "^3",
     "node-rake": "^1.0.1",
     "sst": "*"

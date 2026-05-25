@@ -4,6 +4,12 @@ import { enrichRawTweet } from "@monorepo-template/core/lib/enrich";
 import { putTweet } from "@monorepo-template/core/db/tweets";
 import { computeBotScore } from "@monorepo-template/core/db/bot-heuristic";
 import { lookupLocation, type City, type GeoResult } from "@monorepo-template/core/db/geo";
+import {
+  getByokKey,
+  getByokKeyStatus,
+  markByokKeyInvalid,
+  TWITTER_PROVIDER,
+} from "@monorepo-template/core/db/byok";
 import citiesData from "@/lib/geo/cities5000.json";
 
 // Load offline city dataset once at module init.
@@ -71,11 +77,28 @@ export async function POST(req: Request) {
       ? Math.min(Math.max(1, rawMaxPages), 10)
       : 5;
 
+  // ── Gate on caller's BYOK key (status check first, decrypt only when active) ─
+  const keyStatus = await getByokKeyStatus(userId, TWITTER_PROVIDER);
+  if (!keyStatus) {
+    return Response.json({ error: "byok_required", reason: "missing" }, { status: 403 });
+  }
+  if (keyStatus.status === "invalid") {
+    return Response.json({ error: "byok_required", reason: "invalid" }, { status: 403 });
+  }
+  const stored = await getByokKey(userId, TWITTER_PROVIDER);
+  if (!stored) {
+    return Response.json({ error: "byok_required", reason: "missing" }, { status: 403 });
+  }
+
   // ── Fetch tweets from twitterapi.io ───────────────────────────────────────
   let rawTweets: Awaited<ReturnType<typeof searchTweets>>;
   try {
-    rawTweets = await searchTweets(query, { maxPages });
+    rawTweets = await searchTweets(stored.apiKey, query, { maxPages });
   } catch (err) {
+    if (err instanceof TwitterApiError && (err.status === 401 || err.status === 403)) {
+      await markByokKeyInvalid(userId, TWITTER_PROVIDER);
+      return Response.json({ error: "byok_required", reason: "invalid" }, { status: 403 });
+    }
     const detail = err instanceof Error ? err.message : String(err);
     if (err instanceof TwitterApiError && err.status === 429) {
       return Response.json(

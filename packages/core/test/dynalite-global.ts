@@ -143,10 +143,24 @@ const TABLES: CreateTableCommandInput[] = [
     AttributeDefinitions: [
       { AttributeName: 'pk', AttributeType: 'S' },
       { AttributeName: 'sk', AttributeType: 'S' },
+      { AttributeName: 'gsi1pk', AttributeType: 'S' },
+      { AttributeName: 'gsi1sk', AttributeType: 'S' },
     ],
     KeySchema: [
       { AttributeName: 'pk', KeyType: 'HASH' },
       { AttributeName: 'sk', KeyType: 'RANGE' },
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        // gsi1pk = BYOK#<provider>, gsi1sk = USER#<userId>
+        // Used by listKeyHolders to enumerate all users with a key for a provider.
+        IndexName: 'ByokHolders',
+        KeySchema: [
+          { AttributeName: 'gsi1pk', KeyType: 'HASH' },
+          { AttributeName: 'gsi1sk', KeyType: 'RANGE' },
+        ],
+        Projection: { ProjectionType: 'ALL' },
+      },
     ],
   },
 ]
