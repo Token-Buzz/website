@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useSignUp } from '@clerk/nextjs'
+import { useState, useEffect } from 'react'
+import { useSignUp, useAuth } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { AuthShell } from '../../_auth/AuthShell'
@@ -21,6 +21,11 @@ const SSO_CALLBACK_URL = '/sso-callback'
 export default function SignUpPage() {
   const { signUp } = useSignUp()
   const router = useRouter()
+  const { isLoaded, isSignedIn } = useAuth()
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) router.replace('/dashboard')
+  }, [isLoaded, isSignedIn, router])
 
   const [step, setStep] = useState<Step>('form')
   const [email, setEmail] = useState('')
