@@ -1,4 +1,4 @@
-import { DeleteCommand, GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
+import { DeleteCommand, GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from './client'
 import { byokKey } from './keys'
 import { encryptSecret, decryptSecret } from '../lib/crypto'
@@ -141,6 +141,35 @@ export async function getByokKeyStatus(
   )
   if (!Item) return null
   return { last4: Item.last4, validatedAt: Item.validatedAt, status: Item.status }
+}
+
+/**
+ * Marks a user's stored API key as `invalid` for the given provider.
+ * Called by the interactive query path when twitterapi.io rejects a key (HTTP 401/403),
+ * so the Account UI can surface the invalid state and prompt re-entry.
+ *
+ * Uses a conditional update so that if the row no longer exists (key was already
+ * removed) the call is a safe no-op rather than creating a phantom item.
+ * Only `status` is updated — GSI keys (gsi1pk/gsi1sk) are left untouched so
+ * `listKeyHolders` continues to find the row.
+ */
+export async function markByokKeyInvalid(userId: string, provider: string): Promise<void> {
+  try {
+    await ddb.send(
+      new UpdateCommand({
+        TableName: TableNames.userData,
+        Key: byokKey(userId, provider),
+        UpdateExpression: 'SET #s = :invalid',
+        ConditionExpression: 'attribute_exists(pk)',
+        ExpressionAttributeNames: { '#s': 'status' },
+        ExpressionAttributeValues: { ':invalid': 'invalid' },
+      }),
+    )
+  } catch (err) {
+    // No row to mark (key already removed) — treat as a no-op rather than error.
+    if ((err as { name?: string }).name === 'ConditionalCheckFailedException') return
+    throw err
+  }
 }
 
 /**

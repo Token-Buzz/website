@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Button, Icon } from "../_dashboard/primitives";
 
 interface SearchBarProps {
@@ -19,6 +20,7 @@ export function SearchBar({ onIngested }: SearchBarProps) {
   const [value, setValue] = useState(() => searchParams.get("q") ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsKey, setNeedsKey] = useState<null | "missing" | "invalid">(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -26,6 +28,7 @@ export function SearchBar({ onIngested }: SearchBarProps) {
     if (!trimmed) return;
 
     setError(null);
+    setNeedsKey(null);
     setLoading(true);
 
     // Update URL first so the query persists even if the POST fails.
@@ -44,6 +47,13 @@ export function SearchBar({ onIngested }: SearchBarProps) {
       });
 
       if (!res.ok) {
+        if (res.status === 403) {
+          const body = await res.json().catch(() => ({}));
+          if ((body as { error?: string }).error === "byok_required") {
+            setNeedsKey((body as { reason?: string }).reason === "invalid" ? "invalid" : "missing");
+            return;
+          }
+        }
         if (res.status === 429) {
           throw new Error("Server is busy — please try again in a moment.");
         }
@@ -137,6 +147,44 @@ export function SearchBar({ onIngested }: SearchBarProps) {
           {loading ? "Searching…" : "Search"}
         </Button>
       </form>
+
+      {needsKey && (
+        <div
+          style={{
+            marginTop: 8,
+            padding: "10px 14px",
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--accent, #6c63ff)",
+            borderRadius: 6,
+            font: "500 12px var(--font-sans)",
+            color: "var(--fg-1)",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <span style={{ flex: 1 }}>
+            {needsKey === "invalid"
+              ? "Your twitterapi.io API key was rejected — re-enter it to keep querying."
+              : "Add your twitterapi.io API key to run queries on your own quota."}
+          </span>
+          <Link
+            href="/account/api-keys"
+            style={{
+              flexShrink: 0,
+              padding: "5px 12px",
+              background: "var(--accent, #6c63ff)",
+              color: "#fff",
+              borderRadius: 6,
+              font: "600 12px var(--font-sans)",
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {needsKey === "invalid" ? "Update API key" : "Add API key"}
+          </Link>
+        </div>
+      )}
 
       {error && (
         <div

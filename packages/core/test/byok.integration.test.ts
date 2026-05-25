@@ -57,6 +57,7 @@ import {
   hasByokKey,
   listKeyHolders,
   getByokKeyStatus,
+  markByokKeyInvalid,
   TWITTER_PROVIDER,
 } from '@monorepo-template/core/db/byok'
 
@@ -203,6 +204,43 @@ describe('getByokKeyStatus', () => {
   })
 
   test('returns null when no key exists for that user/provider', async () => {
+    const result = await getByokKeyStatus('no_such_user', PROVIDER)
+    expect(result).toBeNull()
+  })
+})
+
+describe('markByokKeyInvalid', () => {
+  const USER_ID = 'user_invalidate_test'
+  const PROVIDER = TWITTER_PROVIDER
+  const API_KEY = 'twitterapiio_invalidtest1234'
+
+  test('changes status to invalid while preserving last4', async () => {
+    await putByokKey({ userId: USER_ID, provider: PROVIDER, apiKey: API_KEY })
+
+    await markByokKeyInvalid(USER_ID, PROVIDER)
+
+    const result = await getByokKeyStatus(USER_ID, PROVIDER)
+    expect(result).not.toBeNull()
+    expect(result!.status).toBe('invalid')
+    expect(result!.last4).toBe(API_KEY.slice(-4))
+  })
+
+  test('row remains visible to listKeyHolders after marking invalid (GSI keys preserved)', async () => {
+    await putByokKey({ userId: USER_ID, provider: PROVIDER, apiKey: API_KEY })
+
+    await markByokKeyInvalid(USER_ID, PROVIDER)
+
+    const holders = await listKeyHolders(PROVIDER)
+    const match = holders.find((h) => h.userId === USER_ID)
+    expect(match).toBeDefined()
+    expect(match!.status).toBe('invalid')
+  })
+
+  test('calling on a non-existent key does not throw and does not create a phantom row', async () => {
+    // No putByokKey — row does not exist.
+    await expect(markByokKeyInvalid('no_such_user', PROVIDER)).resolves.toBeUndefined()
+
+    // Must not have created a phantom item.
     const result = await getByokKeyStatus('no_such_user', PROVIDER)
     expect(result).toBeNull()
   })
