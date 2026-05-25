@@ -3,6 +3,9 @@ import { ddb, TableNames } from './client'
 import { byokKey } from './keys'
 import { encryptSecret, decryptSecret } from '../lib/crypto'
 
+// Canonical provider id for the only BYOK provider currently enabled (twitterapi.io).
+export const TWITTER_PROVIDER = 'twitter'
+
 export type ByokStatus = 'active' | 'invalid'
 
 export interface ByokRecord {
@@ -110,6 +113,34 @@ export async function hasByokKey(userId: string, provider: string): Promise<bool
     }),
   )
   return Item !== undefined
+}
+
+export interface ByokKeyStatus {
+  last4: string
+  validatedAt: string
+  status: ByokStatus
+}
+
+/**
+ * Returns the non-secret metadata for a stored API key without decrypting it.
+ * Uses a projected GetItem so the ciphertext is never fetched from DynamoDB
+ * and no KMS call is made — safe for display in the Account UI.
+ * Returns null if no key is stored for the given user/provider.
+ */
+export async function getByokKeyStatus(
+  userId: string,
+  provider: string,
+): Promise<ByokKeyStatus | null> {
+  const { Item } = await ddb.send(
+    new GetCommand({
+      TableName: TableNames.userData,
+      Key: byokKey(userId, provider),
+      ProjectionExpression: 'last4, validatedAt, #s',
+      ExpressionAttributeNames: { '#s': 'status' },
+    }),
+  )
+  if (!Item) return null
+  return { last4: Item.last4, validatedAt: Item.validatedAt, status: Item.status }
 }
 
 /**

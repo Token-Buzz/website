@@ -56,6 +56,8 @@ import {
   deleteByokKey,
   hasByokKey,
   listKeyHolders,
+  getByokKeyStatus,
+  TWITTER_PROVIDER,
 } from '@monorepo-template/core/db/byok'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -168,5 +170,40 @@ describe('BYOK DB layer (dynalite integration)', () => {
     const holders = await listKeyHolders(PROVIDER)
     expect(holders.length).toBeGreaterThan(0)
     expect(holders[0].userId).toBe(USER_ID)
+  })
+})
+
+describe('getByokKeyStatus', () => {
+  const USER_ID = 'user_status_test'
+  const PROVIDER = TWITTER_PROVIDER
+  const API_KEY = 'twitterapiio_statustest9876'
+
+  beforeEach(async () => {
+    // clearUserData is already called by the outer beforeEach; this scope
+    // inherits it. Re-declare a local beforeEach only if needed — the outer
+    // one already clears between tests.
+  })
+
+  test('returns last4, validatedAt, and status after putByokKey', async () => {
+    await putByokKey({ userId: USER_ID, provider: PROVIDER, apiKey: API_KEY })
+
+    const result = await getByokKeyStatus(USER_ID, PROVIDER)
+    expect(result).not.toBeNull()
+    expect(result!.last4).toBe(API_KEY.slice(-4))
+    expect(result!.status).toBe('active')
+    expect(result!.validatedAt).toBeTruthy()
+  })
+
+  test('returned object does NOT contain ciphertext (projection excludes the secret)', async () => {
+    await putByokKey({ userId: USER_ID, provider: PROVIDER, apiKey: API_KEY })
+
+    const result = await getByokKeyStatus(USER_ID, PROVIDER)
+    expect(result).not.toBeNull()
+    expect((result as unknown as Record<string, unknown>).ciphertext).toBeUndefined()
+  })
+
+  test('returns null when no key exists for that user/provider', async () => {
+    const result = await getByokKeyStatus('no_such_user', PROVIDER)
+    expect(result).toBeNull()
   })
 })
