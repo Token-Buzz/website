@@ -4,7 +4,8 @@ import { byokKey } from './keys'
 import { encryptSecret, decryptSecret } from '../lib/crypto'
 
 // Canonical provider id for the only BYOK provider currently enabled (twitterapi.io).
-export const TWITTER_PROVIDER = 'twitter'
+// Re-exported from the providers registry (the single source of truth).
+export { TWITTER_PROVIDER } from '../providers'
 
 export type ByokStatus = 'active' | 'invalid'
 

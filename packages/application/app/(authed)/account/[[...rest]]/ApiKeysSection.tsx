@@ -6,6 +6,7 @@ import { ContinueButton } from '@/app/_auth/ContinueButton'
 
 interface KeyStatus {
   provider: string
+  providerName: string
   configured: boolean
   last4: string | null
   validatedAt: string | null
@@ -90,9 +91,10 @@ export function ApiKeysSection() {
   }
 
   async function handleRemove() {
+    if (!keyStatus) return
     setRemoving(true)
     try {
-      await fetch('/api/account/keys/twitter', { method: 'DELETE' })
+      await fetch(`/api/account/keys/${keyStatus.provider}`, { method: 'DELETE' })
       setKeyStatus((prev) => prev ? { ...prev, configured: false, last4: null, validatedAt: null, status: null } : prev)
     } finally {
       setRemoving(false)
@@ -138,6 +140,14 @@ export function ApiKeysSection() {
     )
   }
 
+  if (!keyStatus) {
+    return (
+      <div style={{ color: 'var(--fg-3)', fontSize: 'var(--fs-small)' }}>
+        Couldn&apos;t load your API key settings. Refresh the page to try again.
+      </div>
+    )
+  }
+
   return (
     <div style={{ width: '100%', boxSizing: 'border-box' }}>
       <div style={{ marginBottom: 'var(--sp-5)' }}>
@@ -154,7 +164,7 @@ export function ApiKeysSection() {
           font: '400 var(--fs-small) / var(--lh-body) var(--font-sans)',
           color: 'var(--fg-3)',
         }}>
-          Connect your own twitterapi.io API key to run queries on your own quota.
+          {`Connect your own ${keyStatus.providerName} API key to run queries on your own quota.`}
         </p>
       </div>
 
@@ -175,7 +185,7 @@ export function ApiKeysSection() {
               color: 'var(--fg-1)',
               letterSpacing: '-0.005em',
             }}>
-              twitterapi.io
+              {keyStatus.providerName}
             </span>
             <span style={{
               fontFamily: 'var(--font-mono)',
@@ -307,7 +317,7 @@ export function ApiKeysSection() {
         /* ── Entry form ── */
         <form onSubmit={handleSave} className="tb-form">
           <TextField
-            label="twitterapi.io API key"
+            label={`${keyStatus.providerName} API key`}
             type={keyVisible ? 'text' : 'password'}
             value={apiKey}
             onChange={(v) => { setApiKey(v); setFieldError(undefined) }}

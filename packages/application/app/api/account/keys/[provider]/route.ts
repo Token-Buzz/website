@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
-import { deleteByokKey, TWITTER_PROVIDER } from "@monorepo-template/core/db/byok";
+import { deleteByokKey } from "@monorepo-template/core/db/byok";
+import { isEnabledProvider } from "@monorepo-template/core/providers";
 
 export async function DELETE(
   _req: Request,
@@ -10,7 +11,7 @@ export async function DELETE(
 
   const { provider } = await params;
 
-  if (provider !== TWITTER_PROVIDER) {
+  if (!isEnabledProvider(provider)) {
     return Response.json({ error: "Unknown provider" }, { status: 400 });
   }
 
