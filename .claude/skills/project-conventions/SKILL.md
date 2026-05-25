@@ -39,6 +39,15 @@ When dispatching, write the prompt as if briefing a smart colleague who just wal
 
 Parallel agents when work is independent. Use `run_in_background: true` to keep the conversation responsive.
 
+## Project board & cycle-time stamping
+
+The GitHub Project (number 1, owner `Token-Buzz`) is the source of truth for status. Keep it current as work lands, and stamp cycle time whenever you change an item's Status:
+
+- **Leaving `Backlog`** (work starts): `npm run -s stamp --prefix packages/scripts -- <issue> start` — sets `Actual Start` (date) + `Started At` (ISO), only if not already stamped.
+- **Reaching `Done`**: `npm run -s stamp --prefix packages/scripts -- <issue> done` — sets `Actual Finish` + `Completed At` and computes `Cycle Time` / `Cycle Minutes` from the start stamp.
+
+This replaced the old Toggl per-turn timer (#89, superseded by #98). Manual Status changes made in the GitHub UI won't be stamped — stamp from the session when you move an item.
+
 ## Technology stack
 
 | Component | Version / detail |

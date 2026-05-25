@@ -151,7 +151,7 @@ In Claude Code on the web, `gh` is installed and **authenticated** (as `jasonp23
 - **GitHub Projects (v2)**: use the `gh` CLI (`gh project ...`). The GitHub MCP server has no Projects tool, so `gh` is the only option.
 - **PRs, issues, comments, CI status, reviews, branches, releases, code search**: prefer the GitHub MCP tools (`mcp__github__*`) — they integrate with the PR-activity webhook subscriptions used to watch/autofix PRs. `gh` is a fine fallback for anything the MCP tools don't cover.
 
-**Keep the GitHub Project current as we make progress.** The ClickUp→GitHub migration is done — GitHub Projects/Issues is now the source of truth for the 9 milestones and their phases. When a phase or milestone moves forward (work starts, lands, or gets verified), update the matching Project item / issue in the same session — status column, checklists, and close the issue on completion — so the board reflects reality instead of drifting.
+**Keep the GitHub Project current as we make progress.** The ClickUp→GitHub migration is done — GitHub Projects/Issues is now the source of truth for the 9 milestones and their phases. When a phase or milestone moves forward (work starts, lands, or gets verified), update the matching Project item / issue in the same session — status column, checklists, and close the issue on completion — so the board reflects reality instead of drifting. Whenever you change an item's Status, also run the stamp helper: `start` when the issue leaves Backlog, `done` when it reaches Done (see the "Cycle-time tracking" section below).
 
 ## Session continuity & memory model
 
@@ -160,22 +160,38 @@ Each milestone is large and spans many fresh (often ephemeral web) sessions. Mem
 - **Durable knowledge** (architecture, conventions, testing, deploy, secrets) lives here in `CLAUDE.md` + the `project-conventions` skill.
 - **Per-milestone plans/specs** live in `docs/milestones/M*.md` and the milestone's **epic issue**.
 - **Live status** (done / in-flight / blockers / next steps / gotchas) lives in the **epic issue's "Status / Next steps / Gotchas" section** + the GitHub Project board Status column — that is the source of truth. Update the epic issue as work lands; don't let status drift into scratch files.
-- `handoff.md` is only a **pointer** to the above, never a status log.
 - A **SessionStart hook** (`.claude/hooks/session-start.sh`) auto-prints orientation (recent commits, open PRs, open milestones, recent issues) at the start of every session.
 
-## Time tracking (AI auto-logging — issue #89)
+## Cycle-time tracking (GitHub-native — issue #98)
 
-AI work time is logged to Toggl Track per GitHub issue via the `track` CLI in `packages/scripts` (entries tagged `ai`, named `#<n> <title>`). Logging is **per-turn**: a `UserPromptSubmit` hook (`track-resume.sh`) starts the timer each turn and a `Stop` hook (`track-pause.sh`) pauses it when the turn ends, so idle time isn't counted. Both hooks silently no-op unless `TOGGL_API_TOKEN` + `TOGGL_WORKSPACE_ID` are set **and** an active issue has been seeded.
+Cycle time is now tracked natively in the GitHub Project (#98). The Toggl integration (#89) has been retired; historical Toggl data is preserved in Toggl cloud but is no longer used.
 
-**To start logging: when you begin working on an issue, run it once —**
+### Field scheme
+
+The "Token Buzz Project" (number 1, owner `Token-Buzz`) has these fields for every issue:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `Actual Start` | DATE | Day-granularity start stamp (shown on the roadmap). |
+| `Actual Finish` | DATE | Day-granularity finish stamp (shown on the roadmap). |
+| `Started At` | TEXT | ISO-8601 datetime, second precision. Set when work begins. |
+| `Completed At` | TEXT | ISO-8601 datetime, second precision. Set when work is done. |
+| `Cycle Minutes` | NUMBER | Whole minutes from `Started At` to `Completed At`. **Derived.** |
+| `Cycle Time` | TEXT | Human-readable duration (e.g. "1d 4h 30m"). **Derived.** |
+
+### Stamping rule
+
+- **When an issue's Status first leaves `Backlog`** (work starts): set `Actual Start` = today and `Started At` = now, **only if `Actual Start` is currently empty** (idempotent).
+- **When an issue moves to `Done`**: set `Actual Finish` = today and `Completed At` = now; then compute `Cycle Minutes` = minutes between `Started At` and `Completed At`, and `Cycle Time` = human-readable form (e.g. "45m", "2h 30m", "1d 1h"). If `Started At` was never set, the finish stamps are still written but cycle time is skipped with a warning.
+
+### Stamp helper
 
 ```bash
-npm run -s track --prefix packages/scripts -- ai-start <issue>   # seeds .claude/.track-current.json + starts the timer
-npm run -s track --prefix packages/scripts -- ai-stop            # at end of task: stops + clears the active issue
-npm run -s track --prefix packages/scripts -- report             # weekly AI/human/other totals + issues/milestones closed
+npm run -s stamp --prefix packages/scripts -- <issue-number> start
+npm run -s stamp --prefix packages/scripts -- <issue-number> done
 ```
 
-`ai-start` is the only manual step; the hooks handle resume/pause for every subsequent turn. `ai-pause` only stops `ai`-tagged entries, so a human timer started in the Toggl app is never auto-stopped. The active-issue file (`.claude/.track-current.json`) is gitignored.
+The helper resolves all field/item IDs at runtime via the `gh` CLI — no hardcoded node IDs. Run `start` when you begin work on an issue; run `done` when it reaches Done.
 
 ## Conventions
 

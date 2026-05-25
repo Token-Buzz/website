@@ -36,4 +36,4 @@ echo
 echo "### Where to look"
 echo "- Live status: the current milestone's epic issue (Status section) + the GitHub Project board."
 echo "- Plans/specs: docs/milestones/*.md"
-echo "- Continuity model + active gotchas: handoff.md"
+echo "- Continuity model + active gotchas: the milestone's epic issue (Status section)"
