@@ -26,6 +26,7 @@
     "./lib/poll-assignment": "./src/lib/poll-assignment.ts",
     "./lib/twitter": "./src/lib/twitter.ts",
     "./movers": "./src/movers.ts",
+    "./providers": "./src/providers.ts",
     "./*": [
       "./src/*/index.ts",
       "./src/*.ts"
