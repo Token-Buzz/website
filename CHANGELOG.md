@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.6.2](https://github.com/Token-Buzz/website/compare/v0.6.1...v0.6.2) (2026-05-25)
+
+
+### 📝 Documentation
+
+* M13 (Token Press Releases) + M14 (Token News & Articles) milestones ([6b3092f](https://github.com/Token-Buzz/website/commit/6b3092ffe8e80b87a305d3019a195b428ec1f23a))
+
+
+### 🧰 Maintenance
+
+* release master ([2f2b741](https://github.com/Token-Buzz/website/commit/2f2b741eb138dcbc3e471868586578bd9b802cf6))
+* skip PR teardown for release-please branches ([3fff980](https://github.com/Token-Buzz/website/commit/3fff9802f28832bc17b1e63a51d7fcc923f5d009))
+* skip PR teardown for release-please branches ([c39e356](https://github.com/Token-Buzz/website/commit/c39e3562b6b64030a6296700fb36580f9a9060fb))
+
 ## [0.6.1](https://github.com/Token-Buzz/website/compare/v0.6.0...v0.6.1) (2026-05-25)
 
 
