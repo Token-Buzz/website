@@ -6,6 +6,7 @@ import {
   TWITTER_PROVIDER,
 } from "@monorepo-template/core/db/byok";
 import { validateKey } from "@monorepo-template/core/lib/twitter";
+import { getProvider } from "@monorepo-template/core/providers";
 
 export async function GET() {
   const { userId } = await auth();
@@ -14,6 +15,7 @@ export async function GET() {
   const status = await getByokKeyStatus(userId, TWITTER_PROVIDER);
   return Response.json({
     provider: TWITTER_PROVIDER,
+    providerName: getProvider(TWITTER_PROVIDER)!.name,
     configured: status !== null,
     last4: status?.last4 ?? null,
     validatedAt: status?.validatedAt ?? null,
@@ -47,7 +49,7 @@ export async function POST(req: Request) {
 
   if (!ok) {
     return Response.json(
-      { error: "That API key was rejected by twitterapi.io. Double-check it and try again." },
+      { error: `That API key was rejected by ${getProvider(TWITTER_PROVIDER)!.name}. Double-check it and try again.` },
       { status: 400 },
     );
   }
@@ -57,6 +59,7 @@ export async function POST(req: Request) {
 
   return Response.json({
     provider: TWITTER_PROVIDER,
+    providerName: getProvider(TWITTER_PROVIDER)!.name,
     configured: true,
     last4: saved!.last4,
     validatedAt: saved!.validatedAt,
@@ -97,6 +100,7 @@ export async function PATCH(req: Request) {
 
   return Response.json({
     provider: TWITTER_PROVIDER,
+    providerName: getProvider(TWITTER_PROVIDER)!.name,
     configured: true,
     last4: status.last4,
     validatedAt: status.validatedAt,

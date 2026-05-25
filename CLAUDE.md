@@ -118,6 +118,8 @@ Secrets to configure in Console (same names for both environments, different val
 
 `CHANGELOG_GITHUB_TOKEN` is read server-side by the marketing `/changelog` page to fetch this (private) repo's GitHub Releases. Use a **fine-grained PAT scoped to only `Token-Buzz/website` with `Contents: Read-only`** (least privilege). It's wired into the marketing app's `environment` in `infra/marketing.ts` (not `NEXT_PUBLIC_`, so it stays server-side).
 
+**Note on BYOK / twitterapi.io keys:** These are NOT `sst.Secret` entries. They are per-user, AWS-KMS-encrypted, and stored in the `UserData` DynamoDB table. The project-wide `TWITTER_API_KEY` secret was removed in M10 Phase 5. See `docs/milestones/M10-byok.md` for details.
+
 All `sst.Secret` names must use `SCREAMING_SNAKE_CASE` (e.g. `RESEND_API_KEY`, not `ResendApiKey`). This keeps secret names consistent with environment variable conventions and makes it obvious when a name needs updating.
 
 **Never give a required secret/config value an empty or placeholder fallback.** A missing required value (an `sst.Secret`, env var, etc.) must fail loudly at deploy/build/startup — do NOT paper over it with `new sst.Secret("X", "")` or any default that lets the app run misconfigured. Empty fallbacks hide misconfiguration and resurface as confusing runtime bugs later. The fix for an unset secret is to **seed the real value** (in both Console environments — production and the fallback env used by `pr-<N>` stages), never to soften the failure.
