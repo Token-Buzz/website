@@ -9,17 +9,48 @@ const BEDROCK_HAIKU_ARN = [
   "arn:aws:bedrock:us-east-1:*:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0",
 ];
 
-// 1. Tweet ingestion poller — every 2 minutes
-new sst.aws.Cron("TweetPoller", {
-  schedule: "rate(2 minutes)",
-  function: {
-    handler: "packages/jobs/src/poller.handler",
-    environment: { TWITTER_API_KEY: twitterApiKey.value },
-    link: allTables,
-    timeout: "90 seconds",
-    memory: "256 MB",
-  },
-});
+const isProd = $app.stage === "production";
+// Interim kill-switch — automatic twitterapi.io polling is off until ENABLE_POLLING=true in
+// production; superseded by M10 BYOK Phase 6 (#112).
+const POLLING_ENABLED = process.env.ENABLE_POLLING === "true";
+
+if (isProd && POLLING_ENABLED) {
+  // 1. Tweet ingestion poller — every 2 minutes
+  new sst.aws.Cron("TweetPoller", {
+    schedule: "rate(2 minutes)",
+    function: {
+      handler: "packages/jobs/src/poller.handler",
+      environment: { TWITTER_API_KEY: twitterApiKey.value },
+      link: allTables,
+      timeout: "90 seconds",
+      memory: "256 MB",
+    },
+  });
+
+  // 4. Follower snapshot — daily at 02:00 UTC
+  new sst.aws.Cron("FollowerSnapshot", {
+    schedule: "cron(0 2 * * ? *)",
+    function: {
+      handler: "packages/jobs/src/follower-snapshot.handler",
+      environment: { TWITTER_API_KEY: twitterApiKey.value },
+      link: allTables,
+      timeout: "300 seconds",
+      memory: "256 MB",
+    },
+  });
+
+  // 5. Engagement refresh — hourly
+  new sst.aws.Cron("EngagementSnapshot", {
+    schedule: "rate(1 hour)",
+    function: {
+      handler: "packages/jobs/src/engagement-snapshot.handler",
+      environment: { TWITTER_API_KEY: twitterApiKey.value },
+      link: allTables,
+      timeout: "300 seconds",
+      memory: "256 MB",
+    },
+  });
+}
 
 // 2. DDB Streams aggregator — INSERT fan-out to Aggregates table.
 // All four tables are linked because the shared db client (packages/core/src/db/client.ts)
@@ -53,30 +84,6 @@ tweetsTable.subscribe(
   },
   { filters: [{ eventName: ["INSERT"] }] },
 );
-
-// 4. Follower snapshot — daily at 02:00 UTC
-new sst.aws.Cron("FollowerSnapshot", {
-  schedule: "cron(0 2 * * ? *)",
-  function: {
-    handler: "packages/jobs/src/follower-snapshot.handler",
-    environment: { TWITTER_API_KEY: twitterApiKey.value },
-    link: allTables,
-    timeout: "300 seconds",
-    memory: "256 MB",
-  },
-});
-
-// 5. Engagement refresh — hourly
-new sst.aws.Cron("EngagementSnapshot", {
-  schedule: "rate(1 hour)",
-  function: {
-    handler: "packages/jobs/src/engagement-snapshot.handler",
-    environment: { TWITTER_API_KEY: twitterApiKey.value },
-    link: allTables,
-    timeout: "300 seconds",
-    memory: "256 MB",
-  },
-});
 
 // 6. Spike materializer — every 5 minutes
 new sst.aws.Cron("SpikeMaterializer", {
