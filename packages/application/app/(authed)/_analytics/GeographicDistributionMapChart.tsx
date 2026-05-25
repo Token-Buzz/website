@@ -5,20 +5,10 @@
 // regional indicator letters (U+1F1E6+code_point - 0x41 per letter).
 
 import { AnalyzingIndicator } from "./AnalyzingIndicator";
-import { useObjectPolling } from "./useAggregatePolling";
+import { useSummaryField } from "./SummaryProvider";
 import { BarList, type BarListItem } from "./BarList";
 
 type Props = { query: string };
-
-interface CountryEntry {
-  country: string;
-  count: number;
-}
-
-interface ApiResponse {
-  countries: CountryEntry[];
-  truncated: boolean;
-}
 
 // Convert ISO-2 code (e.g. "US") to flag emoji via regional indicator symbols
 function isoToFlag(iso2: string): string {
@@ -34,14 +24,8 @@ function isoToFlag(iso2: string): string {
   }
 }
 
-export function GeographicDistributionMapChart({ query }: Props) {
-  const url = query
-    ? `/api/analytics/geographic?query=${encodeURIComponent(query)}&window=24H`
-    : null;
-
-  const { data, loading, error } = useObjectPolling<ApiResponse>(url, {
-    isPopulated: (d) => d.countries.length > 0,
-  });
+export function GeographicDistributionMapChart({ query: _query }: Props) {
+  const { data, loading, error } = useSummaryField("geographic");
 
   if (error)
     return (

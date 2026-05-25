@@ -2,6 +2,10 @@
 
 const BASE_URL = "https://api.twitterapi.io";
 
+// Backoff delays between retry attempts (ms). Exported as a mutable array so
+// tests can set it to [0, 0] to skip actual waits without fake timers.
+export let RETRY_DELAYS_MS = [500, 1500];
+
 export class TwitterApiError extends Error {
   constructor(message: string, public readonly status: number) {
     super(message);
@@ -88,14 +92,61 @@ export async function searchTweets(
       url.searchParams.append("cursor", cursor);
     }
 
-    const response = await fetch(url.toString(), {
-      headers: { "X-API-Key": apiKey },
-    });
-    if (!response.ok) {
-      throw new TwitterApiError(`Twitter API error: ${response.status} ${response.statusText}`, response.status);
+    // Bounded retry: up to 2 retries (3 total attempts) for transient failures.
+    // 4xx errors are permanent — throw immediately without retrying.
+    let response: Response | undefined;
+    for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+      try {
+        response = await fetch(url.toString(), {
+          headers: { "X-API-Key": apiKey },
+        });
+      } catch (networkErr) {
+        // Network-level failure (DNS, TCP, etc.)
+        if (attempt < RETRY_DELAYS_MS.length) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, RETRY_DELAYS_MS[attempt]),
+          );
+          continue;
+        }
+        throw networkErr;
+      }
+
+      if (response.ok) {
+        break;
+      }
+
+      // 4xx → permanent failure, throw immediately (no retry)
+      if (response.status >= 400 && response.status < 500) {
+        throw new TwitterApiError(
+          `Twitter API error: ${response.status} ${response.statusText}`,
+          response.status,
+        );
+      }
+
+      // 5xx → transient; retry if budget remains
+      if (attempt < RETRY_DELAYS_MS.length) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, RETRY_DELAYS_MS[attempt]),
+        );
+        continue;
+      }
+
+      // Retry budget exhausted for 5xx
+      throw new TwitterApiError(
+        `Twitter API error: ${response.status} ${response.statusText}`,
+        response.status,
+      );
     }
 
-    const data = (await response.json()) as SearchResponse;
+    if (!response!.ok) {
+      // Should not be reached but satisfies type-narrowing
+      throw new TwitterApiError(
+        `Twitter API error: ${response!.status} ${response!.statusText}`,
+        response!.status,
+      );
+    }
+
+    const data = (await response!.json()) as SearchResponse;
     allTweets.push(...data.tweets);
     pageCount++;
 

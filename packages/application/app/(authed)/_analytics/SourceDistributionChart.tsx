@@ -1,21 +1,12 @@
 "use client";
 
-import { useAggregatePolling } from "./useAggregatePolling";
+import { useSummaryItems } from "./SummaryProvider";
 import { BarList } from "./BarList";
 
 type Props = { query: string };
 
-interface ApiItem {
-  source: string;
-  count: number;
-}
-
-export function SourceDistributionChart({ query }: Props) {
-  const url = query
-    ? `/api/analytics/source-distribution?query=${encodeURIComponent(query)}&window=7D`
-    : null;
-
-  const { items: rawItems, loading, error } = useAggregatePolling<ApiItem>(url);
+export function SourceDistributionChart({ query: _query }: Props) {
+  const { items: rawItems, loading, error } = useSummaryItems("sourceDistribution");
 
   if (error)
     return (

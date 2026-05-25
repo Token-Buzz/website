@@ -1,25 +1,9 @@
 "use client";
 
 import { AnalyzingIndicator } from "./AnalyzingIndicator";
-import { useObjectPolling } from "./useAggregatePolling";
+import { useSummaryField } from "./SummaryProvider";
 
 type Props = { query: string };
-
-interface TweetRow {
-  tweetId: string;
-  text: string;
-  authorUsername: string;
-  authorName: string;
-  createdAt: string;
-  likeCount: number;
-  retweetCount: number;
-  sentiment?: string;
-}
-
-interface ApiResponse {
-  tweets: TweetRow[];
-  query: string;
-}
 
 function fmtTime(iso: string | undefined): string {
   if (!iso) return "—";
@@ -61,14 +45,8 @@ const HEADER_STYLE: React.CSSProperties = {
   textAlign: "left",
 };
 
-export function TweetsResultsTable({ query }: Props) {
-  const url = query
-    ? `/api/tweets?query=${encodeURIComponent(query)}&limit=20`
-    : null;
-
-  const { data, loading, error } = useObjectPolling<ApiResponse>(url, {
-    isPopulated: (d) => d.tweets.length > 0,
-  });
+export function TweetsResultsTable({ query: _query }: Props) {
+  const { data, loading, error } = useSummaryField("tweets");
 
   if (error)
     return (

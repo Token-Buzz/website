@@ -1,29 +1,13 @@
 "use client";
 
 import { AnalyzingIndicator } from "./AnalyzingIndicator";
-import { useObjectPolling } from "./useAggregatePolling";
+import { useSummaryField } from "./SummaryProvider";
 import { Scatter, type ScatterPoint } from "./Scatter";
 
 type Props = { query: string };
 
-interface ScatterRawPoint {
-  length: number;
-  engagement: number;
-}
-
-interface ApiResponse {
-  points: ScatterRawPoint[];
-  truncated: boolean;
-}
-
-export function ContentLengthEngagementChart({ query }: Props) {
-  const url = query
-    ? `/api/analytics/content-length-engagement?query=${encodeURIComponent(query)}&window=24H`
-    : null;
-
-  const { data, loading, error } = useObjectPolling<ApiResponse>(url, {
-    isPopulated: (d) => d.points.length > 0,
-  });
+export function ContentLengthEngagementChart({ query: _query }: Props) {
+  const { data, loading, error } = useSummaryField("contentLengthEngagement");
 
   if (error)
     return (

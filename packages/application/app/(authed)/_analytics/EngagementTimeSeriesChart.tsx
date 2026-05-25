@@ -1,18 +1,10 @@
 "use client";
 
 import { AnalyzingIndicator } from "./AnalyzingIndicator";
-import { useAggregatePolling } from "./useAggregatePolling";
+import { useSummaryItems } from "./SummaryProvider";
 import { StackedAreaSVG, type StackedAreaRow } from "./StackedAreaSVG";
 
 type Props = { query: string };
-
-interface ApiRow {
-  bucket: string;
-  likes: number;
-  retweets: number;
-  replies: number;
-  quotes: number;
-}
 
 const SERIES = [
   { key: "likes", label: "Likes", color: "#f97316" },
@@ -21,12 +13,8 @@ const SERIES = [
   { key: "quotes", label: "Quotes", color: "#10b981" },
 ];
 
-export function EngagementTimeSeriesChart({ query }: Props) {
-  const url = query
-    ? `/api/analytics/engagement-timeseries?query=${encodeURIComponent(query)}&window=24H`
-    : null;
-
-  const { items, loading, error } = useAggregatePolling<ApiRow>(url);
+export function EngagementTimeSeriesChart({ query: _query }: Props) {
+  const { items, loading, error } = useSummaryItems("engagementTimeseries");
 
   if (error)
     return (

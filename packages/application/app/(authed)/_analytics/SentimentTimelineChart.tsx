@@ -1,17 +1,10 @@
 "use client";
 
 import { AnalyzingIndicator } from "./AnalyzingIndicator";
-import { useAggregatePolling } from "./useAggregatePolling";
+import { useSummaryItems } from "./SummaryProvider";
 import { StackedAreaSVG, type StackedAreaRow } from "./StackedAreaSVG";
 
 type Props = { query: string };
-
-interface ApiRow {
-  bucket: string;
-  positive: number;
-  neutral: number;
-  negative: number;
-}
 
 const SERIES = [
   { key: "positive", label: "Bull", color: "#22c55e" },
@@ -19,13 +12,8 @@ const SERIES = [
   { key: "negative", label: "Bear", color: "#ef4444" },
 ];
 
-export function SentimentTimelineChart({ query }: Props) {
-  // Polls independently of the page-level sentiment pending state
-  const url = query
-    ? `/api/analytics/sentiment-by-query?query=${encodeURIComponent(query)}&window=7D`
-    : null;
-
-  const { items, loading, error } = useAggregatePolling<ApiRow>(url);
+export function SentimentTimelineChart({ query: _query }: Props) {
+  const { items, loading, error } = useSummaryItems("sentimentByQuery");
 
   if (error)
     return (
