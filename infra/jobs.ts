@@ -118,6 +118,19 @@ new sst.aws.Cron("SpikeMaterializer", {
   },
 });
 
+// 8. Alert evaluator — fires on every Tokens buzz update (INSERT/MODIFY) and
+// checks active alert rules for that token, recording in-app triggers on match.
+tokensTable.subscribe(
+  "AlertEvaluator",
+  {
+    handler: "packages/jobs/src/alert-evaluator.handler",
+    link: allTables,
+    timeout: "60 seconds",
+    memory: "256 MB",
+  },
+  { filters: [{ eventName: ["INSERT", "MODIFY"] }] },
+);
+
 // 7. Daily rollup — 00:15 UTC
 new sst.aws.Cron("DailyRollup", {
   schedule: "cron(15 0 * * ? *)",
