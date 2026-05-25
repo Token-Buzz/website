@@ -168,7 +168,10 @@ M9 — Multi-Social Ingestion (v2):
   planned pair they ARE writable via the `updateProjectV2ItemFieldValue` mutation (i.e.
   `gh project item-edit --field-id <id> --date <YYYY-MM-DD>`). Backfill rule used for done issues:
   actual start = the closing PR's open date (or issue `createdAt` if no PR), actual finish = PR
-  `mergedAt` (or issue `closedAt`). Auto-filling actuals on every issue close is tracked in #98.
+  `mergedAt` (or issue `closedAt`). The stamping rule + helper (`npm run -s stamp --prefix
+  packages/scripts -- <issue> start|done`) that auto-fills these on every status change is
+  implemented in #98 — see the "Cycle-time tracking" section in `CLAUDE.md` for field scheme and
+  usage.
 - Completed issues carry no **planned** dates (they were done before this schedule existed), so the
   Roadmap's planned bars show only forward work; their **actual** dates are still populated.
 - Re-running the sequence with a 1.3× buffer is a one-line change if you want the dates to reflect

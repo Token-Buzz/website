@@ -7,9 +7,6 @@ node_modules
 # claude code worktrees
 .claude/worktrees/
 
-# time-tracking active-issue state (track CLI ai-start/ai-stop; issue #89)
-.claude/.track-current.json
-
 # tmp files
 .#*
 
