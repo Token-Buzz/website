@@ -2,9 +2,12 @@
   "name": "@monorepo-template/scripts",
   "version": "0.0.0",
   "type": "module",
-  "dependencies": {},
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.40"
+  },
   "scripts": {
     "stamp": "tsx src/stamp.ts",
+    "release-notes": "tsx src/release-notes.ts",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run"
   },
