@@ -48,6 +48,16 @@ The GitHub Project (number 1, owner `Token-Buzz`) is the source of truth for sta
 
 This replaced the old Toggl per-turn timer (#89, superseded by #98). Manual Status changes made in the GitHub UI won't be stamped — stamp from the session when you move an item.
 
+### Task sizing & size-aware execution
+
+Every issue gets a `Size` (XS/S/M/L/XL) — set it at creation, never leave it blank. Set it via the single-select `Size` field (`PVTSSF_lADOEQMpAc4BYiIzzhTnW_4`; options XS=`6c6483d2` S=`f784b110` M=`7515a9f1` L=`817d0097` XL=`db339eb2`) the same way you set Status. Scale execution to Size:
+
+- **XS/S** — direct or one subagent, one commit.
+- **M** — a couple of subagent tasks, checkpoint commits.
+- **L/XL** — decompose into phases first; one subagent per phase; commit + push after each phase; `/compact` or status-note the epic at phase boundaries so work survives compaction/ephemeral sessions.
+
+Full rubric + option IDs live in CLAUDE.md.
+
 ## Technology stack
 
 | Component | Version / detail |
