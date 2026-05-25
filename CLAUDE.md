@@ -151,7 +151,23 @@ In Claude Code on the web, `gh` is installed and **authenticated** (as `jasonp23
 - **GitHub Projects (v2)**: use the `gh` CLI (`gh project ...`). The GitHub MCP server has no Projects tool, so `gh` is the only option.
 - **PRs, issues, comments, CI status, reviews, branches, releases, code search**: prefer the GitHub MCP tools (`mcp__github__*`) — they integrate with the PR-activity webhook subscriptions used to watch/autofix PRs. `gh` is a fine fallback for anything the MCP tools don't cover.
 
-**Keep the GitHub Project current as we make progress.** The ClickUp→GitHub migration is done — GitHub Projects/Issues is now the source of truth for the 9 milestones and their phases. When a phase or milestone moves forward (work starts, lands, or gets verified), update the matching Project item / issue in the same session — status column, checklists, and close the issue on completion — so the board reflects reality instead of drifting. Whenever you change an item's Status, also run the stamp helper: `start` when the issue leaves Backlog, `done` when it reaches Done (see the "Cycle-time tracking" section below).
+**⚠️ Keep the GitHub Project board Status current — every session, every task. This is a standing requirement, not a nicety.** GitHub Projects/Issues is the source of truth for the milestones and their phases (the ClickUp→GitHub migration is done). **The moment you start, advance, or finish work on an issue, move its Project Status in the same turn** — do NOT batch it for "later" or leave the board lagging behind the actual work. If you touch a task, its Status must reflect reality before you end the turn.
+
+Status lifecycle (Project #1 "Token Buzz Project", single-select **Status** field):
+- **Backlog → In progress** the moment you begin work on an issue/phase.
+- **In progress → In review** when the work is implemented and pushed to a PR (code complete, not yet merged).
+- **In review → Done** when the PR merges and the change is verified. Also close the issue (`state: closed`) and tick the epic's phase checklist.
+- **Ready** = scoped/queued but not yet started.
+
+Mechanism — the GitHub MCP server has **no** Projects tool, so `gh` is the only option (it's authenticated in this environment as `GH_TOKEN`):
+```bash
+PID=PVT_kwDOEQMpAc4BYiIz                  # "Token Buzz Project" (number 1, owner Token-Buzz)
+FIELD=PVTSSF_lADOEQMpAc4BYiIzzhTnW_E      # the single-select "Status" field
+# Status option IDs: Backlog=f75ad846  Ready=61e4505c  In progress=47fc9ee4  In review=df73e18b  Done=98236657
+gh project item-list 1 --owner Token-Buzz --format json   # map an issue (content.number) → its item id
+gh project item-edit --project-id "$PID" --field-id "$FIELD" --id <ITEM_ID> --single-select-option-id <OPTION_ID>
+```
+If these IDs ever go stale, re-derive them with `gh project field-list 1 --owner Token-Buzz --format json`. Whenever you change Status, also run the stamp helper: `start` when an issue leaves Backlog, `done` when it reaches Done (see the "Cycle-time tracking" section below).
 
 ## Session continuity & memory model
 
