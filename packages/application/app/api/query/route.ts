@@ -72,9 +72,12 @@ export async function POST(req: Request) {
       : 5;
 
   // ── Fetch tweets from twitterapi.io ───────────────────────────────────────
+  const apiKey = process.env.TWITTER_API_KEY;
+  if (!apiKey) throw new Error("TWITTER_API_KEY environment variable not set");
+
   let rawTweets: Awaited<ReturnType<typeof searchTweets>>;
   try {
-    rawTweets = await searchTweets(query, { maxPages });
+    rawTweets = await searchTweets(apiKey, query, { maxPages });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     if (err instanceof TwitterApiError && err.status === 429) {

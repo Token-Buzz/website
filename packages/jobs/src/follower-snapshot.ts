@@ -3,6 +3,9 @@ import { listTrackedTokens, writeFollowerSnapshot } from "@monorepo-template/cor
 import { lookupUser } from "@monorepo-template/core/lib/twitter";
 
 export const handler: Handler = async () => {
+  const apiKey = process.env.TWITTER_API_KEY;
+  if (!apiKey) throw new Error("TWITTER_API_KEY environment variable not set");
+
   const trackedTokens = await listTrackedTokens();
   const snappedAt = new Date().toISOString();
   const dateStr = snappedAt.slice(0, 10);
@@ -11,7 +14,7 @@ export const handler: Handler = async () => {
     // Use the symbol without $ as username hint (approximate)
     const username = token.sym.replace(/^\$/, "");
     try {
-      const user = await lookupUser(username);
+      const user = await lookupUser(apiKey, username);
       if (!user) continue;
       await writeFollowerSnapshot({
         pk: `FOLLOWER#${user.userName}`,

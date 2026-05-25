@@ -21,10 +21,13 @@ export const handler: Handler = async () => {
     queries = ["$PEPE", "$SOL", "$MOG", "$WIF", "$BONK", "$DOGE"];
   }
 
+  const apiKey = process.env.TWITTER_API_KEY;
+  if (!apiKey) throw new Error("TWITTER_API_KEY environment variable not set");
+
   for (const query of queries) {
     try {
       const sinceId = (await getLatestTweetId(query)) ?? undefined;
-      const rawTweets = await searchTweets(query, { sinceId, maxPages: 3 });
+      const rawTweets = await searchTweets(apiKey, query, { sinceId, maxPages: 3 });
       for (const raw of rawTweets) {
         await putTweet(enrichRawTweet(raw, query));
       }

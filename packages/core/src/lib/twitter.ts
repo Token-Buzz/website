@@ -2,6 +2,9 @@
 
 const BASE_URL = "https://api.twitterapi.io";
 
+// Used to probe whether an API key is valid — a stable, well-known handle.
+const VALIDATION_HANDLE = "elonmusk";
+
 export class TwitterApiError extends Error {
   constructor(message: string, public readonly status: number) {
     super(message);
@@ -60,14 +63,10 @@ export type SearchResponse = {
 // Calls twitterapi.io advanced search. Returns up to maxPages pages of results.
 // If sinceId is provided, appends since_id:<sinceId> to the query.
 export async function searchTweets(
+  apiKey: string,
   query: string,
   opts: { sinceId?: string; maxPages?: number; queryType?: string }
 ): Promise<RawTweet[]> {
-  const apiKey = process.env.TWITTER_API_KEY;
-  if (!apiKey) {
-    throw new Error("TWITTER_API_KEY environment variable not set");
-  }
-
   const maxPages = opts.maxPages ?? 5;
   const queryType = opts.queryType ?? "Latest";
 
@@ -110,12 +109,7 @@ export async function searchTweets(
 }
 
 // Looks up a Twitter user by username.
-export async function lookupUser(username: string): Promise<TwitterAuthor | null> {
-  const apiKey = process.env.TWITTER_API_KEY;
-  if (!apiKey) {
-    throw new Error("TWITTER_API_KEY environment variable not set");
-  }
-
+export async function lookupUser(apiKey: string, username: string): Promise<TwitterAuthor | null> {
   const url = new URL(`${BASE_URL}/twitter/user/info`);
   url.searchParams.append("username", username);
 
@@ -132,4 +126,12 @@ export async function lookupUser(username: string): Promise<TwitterAuthor | null
   } catch {
     return null;
   }
+}
+
+// Validates an API key by probing a known-stable handle.
+// Returns ok=true if the probe succeeds, plus the last 4 chars of the key for display.
+export async function validateKey(apiKey: string): Promise<{ ok: boolean; last4: string }> {
+  const last4 = apiKey.slice(-4);
+  const user = await lookupUser(apiKey, VALIDATION_HANDLE);
+  return { ok: user !== null, last4 };
 }

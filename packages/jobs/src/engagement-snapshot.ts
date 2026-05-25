@@ -17,9 +17,12 @@ export const handler: Handler = async () => {
   // Using putTweet (PutCommand with ConditionExpression-less put) overwrites with fresh counts.
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
+  const apiKey = process.env.TWITTER_API_KEY;
+  if (!apiKey) throw new Error("TWITTER_API_KEY environment variable not set");
+
   for (const symbol of tokens) {
     try {
-      const raw = await searchTweets(symbol, { maxPages: 2 });
+      const raw = await searchTweets(apiKey, symbol, { maxPages: 2 });
       const recent = raw.filter((t) => t.createdAt > oneDayAgo);
       for (const tweet of recent) {
         await putTweet(enrichRawTweet(tweet, symbol));
