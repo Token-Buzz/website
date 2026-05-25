@@ -1,17 +1,9 @@
 "use client";
 
 import { AnalyzingIndicator } from "./AnalyzingIndicator";
-import { useObjectPolling } from "./useAggregatePolling";
+import { useSummaryField } from "./SummaryProvider";
 
 type Props = { query: string };
-
-interface ApiResponse {
-  positive: number;
-  neutral: number;
-  negative: number;
-  // averageScore: (positive - negative) / total × 100, range -100..+100
-  averageScore: number;
-}
 
 // Convert a score in -1..+1 (api returns float in that range) to 0..180 degrees.
 // Score -1 → 0° (leftmost / bear), 0 → 90° (top / neutral), +1 → 180° (rightmost / bull).
@@ -62,15 +54,8 @@ const ARCS = [
   { start: 120, end: 180, color: "#22c55e" },
 ];
 
-export function SentimentGaugeChart({ query }: Props) {
-  const url = query
-    ? `/api/analytics/sentiment-aggregation?query=${encodeURIComponent(query)}&window=7D`
-    : null;
-
-  const { data, loading, error } = useObjectPolling<ApiResponse>(url, {
-    // averageScore is -1..+1 float; totalTweets not in response — use sum of buckets
-    isPopulated: (d) => d.positive + d.neutral + d.negative > 0,
-  });
+export function SentimentGaugeChart({ query: _query }: Props) {
+  const { data, loading, error } = useSummaryField("sentimentAggregation");
 
   if (error)
     return (

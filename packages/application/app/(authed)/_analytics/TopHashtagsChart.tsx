@@ -1,21 +1,12 @@
 "use client";
 
 import { BarList } from "./BarList";
-import { useAggregatePolling } from "./useAggregatePolling";
+import { useSummaryItems } from "./SummaryProvider";
 
 type Props = { query: string };
 
-interface ApiItem {
-  hashtag: string;
-  count: number;
-}
-
-export function TopHashtagsChart({ query }: Props) {
-  const url = query
-    ? `/api/analytics/hashtags?query=${encodeURIComponent(query)}&window=7D`
-    : null;
-
-  const { items: rawItems, loading, error } = useAggregatePolling<ApiItem>(url);
+export function TopHashtagsChart({ query: _query }: Props) {
+  const { items: rawItems, loading, error } = useSummaryItems("hashtags");
   const items = rawItems.map((d) => ({ label: d.hashtag, value: d.count }));
 
   if (error)

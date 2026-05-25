@@ -1,16 +1,9 @@
 "use client";
 
 import { AnalyzingIndicator } from "./AnalyzingIndicator";
-import { useObjectPolling } from "./useAggregatePolling";
+import { useSummaryField } from "./SummaryProvider";
 
 type Props = { query: string };
-
-interface ApiResponse {
-  blue: number;
-  business: number;
-  government: number;
-  unverified: number;
-}
 
 const SEGMENTS = [
   { key: "blue" as const, label: "Blue", color: "#3b82f6" },
@@ -19,14 +12,8 @@ const SEGMENTS = [
   { key: "unverified" as const, label: "Unverified", color: "var(--fg-5, #9ca3af)" },
 ];
 
-export function VerificationBreakdownChart({ query }: Props) {
-  const url = query
-    ? `/api/analytics/verification-breakdown?query=${encodeURIComponent(query)}&window=24H`
-    : null;
-
-  const { data, loading, error } = useObjectPolling<ApiResponse>(url, {
-    isPopulated: (d) => d.blue + d.business + d.government + d.unverified > 0,
-  });
+export function VerificationBreakdownChart({ query: _query }: Props) {
+  const { data, loading, error } = useSummaryField("verificationBreakdown");
 
   if (error)
     return (

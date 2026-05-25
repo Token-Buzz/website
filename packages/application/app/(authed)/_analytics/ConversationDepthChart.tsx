@@ -1,28 +1,12 @@
 "use client";
 
 import { AnalyzingIndicator } from "./AnalyzingIndicator";
-import { useObjectPolling } from "./useAggregatePolling";
+import { useSummaryField } from "./SummaryProvider";
 
 type Props = { query: string };
 
-interface ThreadBin {
-  depth: string;
-  count: number;
-}
-
-interface ApiResponse {
-  threads: ThreadBin[];
-  truncated: boolean;
-}
-
-export function ConversationDepthChart({ query }: Props) {
-  const url = query
-    ? `/api/analytics/conversation-threads?query=${encodeURIComponent(query)}&window=24H`
-    : null;
-
-  const { data, loading, error } = useObjectPolling<ApiResponse>(url, {
-    isPopulated: (d) => d.threads.length > 0,
-  });
+export function ConversationDepthChart({ query: _query }: Props) {
+  const { data, loading, error } = useSummaryField("conversationThreads");
 
   if (error)
     return (

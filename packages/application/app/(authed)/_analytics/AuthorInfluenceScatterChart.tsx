@@ -1,27 +1,15 @@
 "use client";
 
 import { AnalyzingIndicator } from "./AnalyzingIndicator";
-import { useObjectPolling } from "./useAggregatePolling";
+import { useSummaryField } from "./SummaryProvider";
 import { BarList } from "./BarList";
 
 type Props = { query: string };
 
-interface ApiResponse {
-  low: number;
-  mid: number;
-  high: number;
-}
-
 // The author-influence endpoint returns a follower-tier histogram, not individual
 // scatter points. We render it as a labelled bar list with descriptive tier names.
-export function AuthorInfluenceScatterChart({ query }: Props) {
-  const url = query
-    ? `/api/analytics/author-influence?query=${encodeURIComponent(query)}&window=7D`
-    : null;
-
-  const { data, loading, error } = useObjectPolling<ApiResponse>(url, {
-    isPopulated: (d) => d.low + d.mid + d.high > 0,
-  });
+export function AuthorInfluenceScatterChart({ query: _query }: Props) {
+  const { data, loading, error } = useSummaryField("authorInfluence");
 
   if (error)
     return (
