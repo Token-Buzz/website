@@ -118,7 +118,7 @@ export function ApiKeysSection() {
           font: '400 var(--fs-small) / var(--lh-body) var(--font-sans)',
           color: 'var(--fg-3)',
         }}>
-          Connect your own API key to run queries on your own quota.
+          Connect your own twitterapi.io API key to run queries on your own quota.
         </p>
       </div>
 
@@ -196,13 +196,6 @@ export function ApiKeysSection() {
       ) : (
         /* ── Entry form ── */
         <form onSubmit={handleSave} className="tb-form">
-          <p style={{
-            margin: 0,
-            font: '400 var(--fs-small) / var(--lh-body) var(--font-sans)',
-            color: 'var(--fg-3)',
-          }}>
-            Add your own twitterapi.io API key to run queries on your own quota.
-          </p>
           <TextField
             label="twitterapi.io API key"
             type={keyVisible ? 'text' : 'password'}
