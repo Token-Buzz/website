@@ -1,5 +1,6 @@
 import { tweetsTable, aggregatesTable, tokensTable, userDataTable } from "./db";
-import { twitterApiKey } from "./secrets"
+import { clerkSecretKey, resendApiKey, contactFromAddress, webDomain } from "./secrets";
+import { byokKmsKey } from "./byok";
 
 
 const allTables = [tweetsTable, aggregatesTable, tokensTable, userDataTable];
@@ -10,20 +11,27 @@ const BEDROCK_HAIKU_ARN = [
 ];
 
 const isProd = $app.stage === "production";
-// Interim kill-switch — automatic twitterapi.io polling is off until ENABLE_POLLING=true in
-// production; superseded by M10 BYOK Phase 6 (#112).
-const POLLING_ENABLED = process.env.ENABLE_POLLING === "true";
+// The three polling crons no-op unless at least one key-holder has opted in
+// (backgroundPolling=true in their BYOK record), so polling is gated per-user
+// (default off) rather than by an env flag.
 
-if (isProd && POLLING_ENABLED) {
+if (isProd) {
   // 1. Tweet ingestion poller — every 2 minutes
   new sst.aws.Cron("TweetPoller", {
     schedule: "rate(2 minutes)",
     function: {
       handler: "packages/jobs/src/poller.handler",
-      environment: { TWITTER_API_KEY: twitterApiKey.value },
+      environment: {
+        BYOK_KMS_KEY_ID: byokKmsKey.id,
+        CLERK_SECRET_KEY: clerkSecretKey.value,
+        RESEND_API_KEY: resendApiKey.value,
+        CONTACT_FROM_ADDRESS: contactFromAddress.value,
+        WEB_DOMAIN: webDomain.value,
+      },
       link: allTables,
       timeout: "90 seconds",
       memory: "256 MB",
+      permissions: [{ actions: ["kms:Decrypt"], resources: [byokKmsKey.arn] }],
     },
   });
 
@@ -32,10 +40,17 @@ if (isProd && POLLING_ENABLED) {
     schedule: "cron(0 2 * * ? *)",
     function: {
       handler: "packages/jobs/src/follower-snapshot.handler",
-      environment: { TWITTER_API_KEY: twitterApiKey.value },
+      environment: {
+        BYOK_KMS_KEY_ID: byokKmsKey.id,
+        CLERK_SECRET_KEY: clerkSecretKey.value,
+        RESEND_API_KEY: resendApiKey.value,
+        CONTACT_FROM_ADDRESS: contactFromAddress.value,
+        WEB_DOMAIN: webDomain.value,
+      },
       link: allTables,
       timeout: "300 seconds",
       memory: "256 MB",
+      permissions: [{ actions: ["kms:Decrypt"], resources: [byokKmsKey.arn] }],
     },
   });
 
@@ -44,10 +59,17 @@ if (isProd && POLLING_ENABLED) {
     schedule: "rate(1 hour)",
     function: {
       handler: "packages/jobs/src/engagement-snapshot.handler",
-      environment: { TWITTER_API_KEY: twitterApiKey.value },
+      environment: {
+        BYOK_KMS_KEY_ID: byokKmsKey.id,
+        CLERK_SECRET_KEY: clerkSecretKey.value,
+        RESEND_API_KEY: resendApiKey.value,
+        CONTACT_FROM_ADDRESS: contactFromAddress.value,
+        WEB_DOMAIN: webDomain.value,
+      },
       link: allTables,
       timeout: "300 seconds",
       memory: "256 MB",
+      permissions: [{ actions: ["kms:Decrypt"], resources: [byokKmsKey.arn] }],
     },
   });
 }
