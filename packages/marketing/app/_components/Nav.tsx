@@ -1,14 +1,20 @@
+'use client'
+
+import { usePathname } from 'next/navigation'
 import Wordmark from './Wordmark'
 import Button from './Button'
 
 const NAV_LINKS = [
-  { label: 'Features',  href: '#features' },
-  { label: 'Pricing',   href: '#pricing' },
-  { label: 'FAQ',       href: '#faq' },
-  { label: 'Changelog', href: '/changelog' },
+  { label: 'Features',  href: '#features',  isSection: true },
+  { label: 'Pricing',   href: '#pricing',   isSection: true },
+  { label: 'FAQ',       href: '#faq',        isSection: true },
+  { label: 'Changelog', href: '/changelog', isSection: false },
 ]
 
 export default function Nav() {
+  const pathname = usePathname()
+  const onHome = pathname === '/'
+
   return (
     <nav
       style={{
@@ -25,17 +31,17 @@ export default function Nav() {
         gap: 24,
       }}
     >
-      <a href="#" style={{ textDecoration: 'none' }}>
+      <a href={onHome ? '#' : '/'} style={{ textDecoration: 'none' }}>
         <Wordmark size={18} suffix=".APP" />
       </a>
 
       <div style={{ flex: 1 }} />
 
       <div className="nav-links" style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
-        {NAV_LINKS.map(({ label, href }) => (
+        {NAV_LINKS.map(({ label, href, isSection }) => (
           <a
             key={label}
-            href={href}
+            href={isSection && !onHome ? `/${href}` : href}
             style={{
               font: '500 14px var(--font-sans)',
               color: 'var(--fg-2)',
