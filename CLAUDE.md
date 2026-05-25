@@ -130,6 +130,7 @@ Deployments run from `.github/workflows/deploy.yml` and `.github/workflows/teard
 - Open / update / reopen a PR → deploys ephemeral `pr-<number>` stage.
 - Close a PR → removes `pr-<number>` stage (`sst unlock` → `sst refresh` → `sst remove`).
 - Concurrency group per stage; in-progress runs are cancelled when a newer commit lands.
+- **`[skip deploy]` escape hatch (repo-custom, NOT a GitHub-native token):** putting `[skip deploy]` in the push head commit message (production path) or in the PR title (pr-`<N>` path) skips the four SST deploy steps (Configure AWS credentials, SST unlock, SST deploy, Surface deployment URLs) while still running lint/typecheck/unit/integration. Unlike `[skip ci]` (which would skip the entire workflow run including all gates), `[skip deploy]` only suppresses the deployment — the quality gates always run.
 
 Steps for a deploy run: checkout → setup Node 22 → `npm ci` → `npm run lint` → `npm run typecheck` → `npm run test:unit` → `npm run test:integration` → `aws-actions/configure-aws-credentials` → `npx sst unlock` (best-effort) → `npx sst deploy --stage <stage>`. The lint/typecheck/unit/integration steps all run before AWS credentials are configured, so they gate the deploy without needing AWS (dynalite is in-memory).
 
