@@ -10,6 +10,7 @@ interface KeyStatus {
   last4: string | null
   validatedAt: string | null
   status: 'active' | 'invalid' | null
+  backgroundPolling: boolean
 }
 
 function formatDate(iso: string): string {
@@ -37,6 +38,10 @@ export function ApiKeysSection() {
 
   // Remove state
   const [removing, setRemoving] = useState(false)
+
+  // Background polling toggle state
+  const [togglingPolling, setTogglingPolling] = useState(false)
+  const [pollingError, setPollingError] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     let cancelled = false
@@ -91,6 +96,37 @@ export function ApiKeysSection() {
       setKeyStatus((prev) => prev ? { ...prev, configured: false, last4: null, validatedAt: null, status: null } : prev)
     } finally {
       setRemoving(false)
+    }
+  }
+
+  async function handleTogglePolling(newValue: boolean) {
+    if (!keyStatus) return
+    setPollingError(undefined)
+
+    // Optimistic update
+    setKeyStatus((prev) => prev ? { ...prev, backgroundPolling: newValue } : prev)
+    setTogglingPolling(true)
+
+    try {
+      const res = await fetch('/api/account/keys', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ backgroundPolling: newValue }),
+      })
+      const data = await res.json() as KeyStatus & { error?: string }
+      if (!res.ok) {
+        // Revert optimistic change
+        setKeyStatus((prev) => prev ? { ...prev, backgroundPolling: !newValue } : prev)
+        setPollingError(data.error ?? 'Failed to update setting. Please try again.')
+      } else {
+        setKeyStatus(data)
+      }
+    } catch {
+      // Revert optimistic change
+      setKeyStatus((prev) => prev ? { ...prev, backgroundPolling: !newValue } : prev)
+      setPollingError('Network error. Please try again.')
+    } finally {
+      setTogglingPolling(false)
     }
   }
 
@@ -170,6 +206,80 @@ export function ApiKeysSection() {
               Validated {formatDate(keyStatus.validatedAt)}
             </p>
           )}
+
+          {/* ── Background polling toggle ── */}
+          <div style={{
+            borderTop: '1px solid var(--border)',
+            paddingTop: 'var(--sp-3)',
+            marginTop: 'var(--sp-1)',
+          }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 'var(--sp-3)',
+              cursor: togglingPolling ? 'not-allowed' : 'pointer',
+              opacity: togglingPolling ? 0.6 : 1,
+            }}>
+              <span style={{ position: 'relative', flexShrink: 0, marginTop: '1px' }}>
+                <input
+                  type="checkbox"
+                  checked={keyStatus.backgroundPolling}
+                  disabled={togglingPolling}
+                  onChange={(e) => handleTogglePolling(e.target.checked)}
+                  style={{
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    width: '36px',
+                    height: '20px',
+                    borderRadius: '10px',
+                    border: '1.5px solid var(--border-strong)',
+                    background: keyStatus.backgroundPolling ? 'var(--accent)' : 'var(--surface-2, var(--surface))',
+                    cursor: togglingPolling ? 'not-allowed' : 'pointer',
+                    outline: 'none',
+                    transition: 'background 0.15s, border-color 0.15s',
+                    display: 'block',
+                    position: 'relative',
+                  }}
+                  aria-label="Use my key for background polling"
+                />
+                <span style={{
+                  position: 'absolute',
+                  top: '3px',
+                  left: keyStatus.backgroundPolling ? '19px' : '3px',
+                  width: '14px',
+                  height: '14px',
+                  borderRadius: '50%',
+                  background: 'white',
+                  pointerEvents: 'none',
+                  transition: 'left 0.15s',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
+                }} />
+              </span>
+              <span style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{
+                  font: '500 var(--fs-small) / 1 var(--font-sans)',
+                  color: 'var(--fg-1)',
+                }}>
+                  Use my key for background polling
+                </span>
+                <span style={{
+                  font: '400 var(--fs-micro) / var(--lh-body) var(--font-sans)',
+                  color: 'var(--fg-3)',
+                }}>
+                  When on, TokenBuzz uses your key to refresh your watchlist tokens in the background — even when you&apos;re away.
+                </span>
+              </span>
+            </label>
+            {pollingError && (
+              <p style={{
+                margin: 'var(--sp-2) 0 0',
+                font: '400 var(--fs-micro) / var(--lh-body) var(--font-sans)',
+                color: 'var(--neg)',
+              }}>
+                {pollingError}
+              </p>
+            )}
+          </div>
 
           <div style={{ marginTop: 'var(--sp-2)' }}>
             <button

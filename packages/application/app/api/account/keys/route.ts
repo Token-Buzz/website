@@ -1,5 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
-import { getByokKeyStatus, putByokKey, TWITTER_PROVIDER } from "@monorepo-template/core/db/byok";
+import {
+  getByokKeyStatus,
+  putByokKey,
+  setByokBackgroundPolling,
+  TWITTER_PROVIDER,
+} from "@monorepo-template/core/db/byok";
 import { validateKey } from "@monorepo-template/core/lib/twitter";
 
 export async function GET() {
@@ -13,6 +18,7 @@ export async function GET() {
     last4: status?.last4 ?? null,
     validatedAt: status?.validatedAt ?? null,
     status: status?.status ?? null,
+    backgroundPolling: status?.backgroundPolling ?? false,
   });
 }
 
@@ -55,5 +61,46 @@ export async function POST(req: Request) {
     last4: saved!.last4,
     validatedAt: saved!.validatedAt,
     status: saved!.status,
+    backgroundPolling: saved!.backgroundPolling,
+  });
+}
+
+export async function PATCH(req: Request) {
+  const { userId } = await auth();
+  if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const backgroundPolling =
+    body !== null && typeof body === "object" && "backgroundPolling" in body
+      ? (body as Record<string, unknown>).backgroundPolling
+      : undefined;
+
+  if (typeof backgroundPolling !== "boolean") {
+    return Response.json(
+      { error: "backgroundPolling (boolean) required" },
+      { status: 400 },
+    );
+  }
+
+  await setByokBackgroundPolling(userId, TWITTER_PROVIDER, backgroundPolling);
+  const status = await getByokKeyStatus(userId, TWITTER_PROVIDER);
+
+  if (status === null) {
+    return Response.json({ error: "no key to update" }, { status: 404 });
+  }
+
+  return Response.json({
+    provider: TWITTER_PROVIDER,
+    configured: true,
+    last4: status.last4,
+    validatedAt: status.validatedAt,
+    status: status.status,
+    backgroundPolling: status.backgroundPolling,
   });
 }
