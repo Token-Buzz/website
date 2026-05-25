@@ -1,5 +1,5 @@
 import { router } from "./router";
-import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey, twitterApiKey } from "./secrets";
+import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey } from "./secrets";
 import { tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable } from "./db";
 import { byokKmsKey } from "./byok";
 
@@ -35,7 +35,6 @@ export const app = new sst.aws.Nextjs("Application", {
         NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: "/dashboard",
         NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: "/dashboard",
         OPENCAGE_API_KEY: opencageApiKey.value,
-        TWITTER_API_KEY: twitterApiKey.value,
         BYOK_KMS_KEY_ID: byokKmsKey.id,
     },
     permissions: [
