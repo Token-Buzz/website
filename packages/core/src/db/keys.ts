@@ -122,6 +122,11 @@ export const alertKey = (userId: string, alertId: string) => ({
   sk: `ALERT#${alertId}`,
 })
 
+export const byokKey = (userId: string, provider: string) => ({
+  pk: `USER#${userId}`,
+  sk: `BYOK#${provider}`,
+})
+
 // ── Analytics aggregate key builders (13 new types + range helper) ──────────
 // Each builder returns the { pk, sk } key for one Aggregates row.
 // At-least-once delivery from DynamoDB Streams means counts may slightly

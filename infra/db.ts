@@ -55,10 +55,17 @@ export const tokensTable = new sst.aws.Dynamo("Tokens", {
 
 export const userDataTable = new sst.aws.Dynamo("UserData", {
   fields: {
-    pk: "string",
-    sk: "string",
+    pk:     "string",
+    sk:     "string",
+    gsi1pk: "string",
+    gsi1sk: "string",
   },
   primaryIndex: { hashKey: "pk", rangeKey: "sk" },
+  globalIndexes: {
+    // gsi1pk = BYOK#<provider>, gsi1sk = USER#<userId>
+    // Enables Phase 6 jobs to enumerate all users holding a key for a provider.
+    ByokHolders: { hashKey: "gsi1pk", rangeKey: "gsi1sk" },
+  },
 });
 
 export const authorLocationsTable = new sst.aws.Dynamo("AuthorLocations", {

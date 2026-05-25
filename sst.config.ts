@@ -22,6 +22,7 @@ export default $config({
     await import("./infra/secrets");
     const { router } = await import("./infra/router");
     const { web: marketing } = await import("./infra/marketing");
+    const { byokKmsKey } = await import("./infra/byok");
     const { app: application } = await import("./infra/application");
     await import("./infra/clerk");
     await import("./infra/jobs");
