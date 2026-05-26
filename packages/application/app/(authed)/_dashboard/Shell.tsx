@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { UserButton, SignOutButton } from '@clerk/nextjs'
-import { Icon, Button, Eyebrow, BuzzDot, Avatar } from './primitives'
+import { Icon, Button, Eyebrow, Avatar } from './primitives'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import type { WatchlistGroup } from './types'
 
@@ -439,19 +439,12 @@ function MobileDrawer({
 
 // ── TopBar ─────────────────────────────────────────────────────────────────
 
-const TIME_WINDOWS = ['1H', '4H', '24H', '7D'] as const
-export type TimeWindow = typeof TIME_WINDOWS[number]
-
 function TopBar({
-  timeWindow,
-  setTimeWindow,
   humOpen,
   onAskHum,
   isMobile,
   onMenuOpen,
 }: {
-  timeWindow: TimeWindow
-  setTimeWindow: (w: TimeWindow) => void
   humOpen: boolean
   onAskHum: () => void
   isMobile: boolean
@@ -483,106 +476,89 @@ function TopBar({
             <Icon name="menu" size={22} />
           </button>
 
-          {/* Search — takes remaining space */}
-          <div style={{
-            flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8,
-            padding: '0 10px', height: 32,
-            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
-            color: 'var(--fg-3)',
-          }}>
-            <Icon name="search" size={14} style={{ flexShrink: 0 }} />
-            <input
-              placeholder="Search..."
+          {/* Spacer */}
+          <div style={{ flex: 1 }} />
+
+          {/* Right affordances */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {/* Search ⌘K — icon-only on mobile */}
+            <button
+              aria-label="Search"
               style={{
-                flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent',
-                font: '500 13px var(--font-sans)', color: 'var(--fg-1)',
+                display: 'flex', alignItems: 'center',
+                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
+                color: 'var(--fg-3)', cursor: 'pointer', lineHeight: 0,
+                padding: '6px 8px',
               }}
-            />
-          </div>
+            >
+              <Icon name="search" size={14} />
+            </button>
 
-          {/* Time pills — compact */}
-          <div style={{
-            display: 'inline-flex', background: 'var(--surface)',
-            border: '1px solid var(--border)', borderRadius: 999,
-            padding: 2, gap: 1, flexShrink: 0,
-          }}>
-            {TIME_WINDOWS.map((w) => (
-              <button
-                key={w}
-                onClick={() => setTimeWindow(w)}
-                style={{
-                  border: 'none', padding: '4px 7px', borderRadius: 999, cursor: 'pointer',
-                  font: '600 10px var(--font-sans)',
-                  background: timeWindow === w ? 'var(--bg-elevated)' : 'transparent',
-                  color: timeWindow === w ? 'var(--fg-1)' : 'var(--fg-2)',
-                  boxShadow: timeWindow === w ? '0 1px 2px rgba(0,0,0,0.12)' : 'none',
-                }}
-              >{w}</button>
-            ))}
-          </div>
+            {/* Quick add — icon-only */}
+            <button
+              aria-label="Quick add"
+              style={{
+                display: 'flex', alignItems: 'center',
+                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
+                color: 'var(--fg-3)', cursor: 'pointer', lineHeight: 0,
+                padding: '6px 8px',
+              }}
+            >
+              <Icon name="plus" size={14} />
+            </button>
 
-          {/* Ask Hum — icon-only on mobile */}
-          <button
-            onClick={onAskHum}
-            aria-label={humOpen ? 'Hum open' : 'Ask Hum'}
-            style={{
-              border: 'none', borderRadius: 4, cursor: 'pointer', lineHeight: 0,
-              padding: '6px',
-              background: humOpen ? 'var(--inv-bg)' : 'var(--buzz-500)',
-              color: humOpen ? 'var(--inv-fg)' : '#fff',
-              flexShrink: 0,
-            }}
-          >
-            <Icon name="sparkle" size={16} />
-          </button>
+            {/* Ask Hum — icon-only on mobile */}
+            <button
+              onClick={onAskHum}
+              aria-label={humOpen ? 'Hum open' : 'Ask Hum'}
+              style={{
+                border: 'none', borderRadius: 4, cursor: 'pointer', lineHeight: 0,
+                padding: '6px',
+                background: humOpen ? 'var(--inv-bg)' : 'var(--buzz-500)',
+                color: humOpen ? 'var(--inv-fg)' : '#fff',
+                flexShrink: 0,
+              }}
+            >
+              <Icon name="sparkle" size={16} />
+            </button>
+          </div>
         </>
       ) : (
-        // ── Desktop top bar (unchanged) ─────────────────────────────────────
+        // ── Desktop top bar ─────────────────────────────────────────────────
         <>
-          {/* Live ticker */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingRight: 16, borderRight: '1px solid var(--border)' }}>
-            <BuzzDot />
-            <span style={{ font: '600 11px var(--font-sans)', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--fg-2)' }}>Live</span>
-            <span style={{ font: '500 12px var(--font-mono)', color: 'var(--fg-3)' }}>2,140 mentions/m · 412 handles</span>
-          </div>
+          {/* Spacer — pushes right affordances to the right */}
+          <div style={{ flex: 1 }} />
 
-          {/* Search */}
-          <div style={{
-            flex: 1, maxWidth: 480, display: 'flex', alignItems: 'center', gap: 8,
-            padding: '0 12px', height: 32,
-            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
-            color: 'var(--fg-3)',
-          }}>
-            <Icon name="search" size={14} />
-            <input
-              placeholder="Search tokens, handles, narratives..."
-              style={{
-                flex: 1, border: 'none', outline: 'none', background: 'transparent',
-                font: '500 13px var(--font-sans)', color: 'var(--fg-1)',
-              }}
-            />
-          </div>
-
-          {/* Time window */}
-          <div style={{ display: 'inline-flex', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 999, padding: 3, gap: 2 }}>
-            {TIME_WINDOWS.map((w) => (
-              <button
-                key={w}
-                onClick={() => setTimeWindow(w)}
-                style={{
-                  border: 'none', padding: '5px 11px', borderRadius: 999, cursor: 'pointer',
-                  font: '600 11px var(--font-sans)',
-                  background: timeWindow === w ? 'var(--bg-elevated)' : 'transparent',
-                  color: timeWindow === w ? 'var(--fg-1)' : 'var(--fg-2)',
-                  boxShadow: timeWindow === w ? '0 1px 2px rgba(0,0,0,0.12)' : 'none',
-                }}
-              >{w}</button>
-            ))}
-          </div>
-
-          {/* Right actions */}
+          {/* Right affordances */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Button variant="ghost" size="sm" icon="bell">3</Button>
+            {/* Search ⌘K */}
+            <button
+              aria-label="Search"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
+                color: 'var(--fg-3)', font: '500 12px var(--font-sans)', cursor: 'pointer',
+                padding: '5px 10px',
+              }}
+            >
+              <Icon name="search" size={14} />
+              <span>Search</span>
+              <kbd style={{ font: '500 10px var(--font-mono)', background: 'var(--ink-100)', padding: '1px 5px', borderRadius: 3 }}>⌘K</kbd>
+            </button>
+
+            {/* Quick add */}
+            <button
+              aria-label="Quick add"
+              style={{
+                display: 'flex', alignItems: 'center',
+                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
+                color: 'var(--fg-3)', cursor: 'pointer', lineHeight: 0,
+                padding: '5px 8px',
+              }}
+            >
+              <Icon name="plus" size={14} />
+            </button>
+
             <Button
               variant={humOpen ? 'secondary' : 'primary'}
               size="sm"
@@ -602,7 +578,6 @@ function TopBar({
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [activeWatchlist, setActiveWatchlist] = useState('memecoins')
-  const [timeWindow, setTimeWindow] = useState<TimeWindow>('24H')
   const [humOpen, setHumOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -639,8 +614,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
         <TopBar
-          timeWindow={timeWindow}
-          setTimeWindow={setTimeWindow}
           humOpen={humOpen}
           onAskHum={() => setHumOpen((v) => !v)}
           isMobile={isMobile}
