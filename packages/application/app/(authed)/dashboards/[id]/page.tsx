@@ -41,8 +41,9 @@ function AddCardMenu({ onAdd, isMobile }: AddCardMenuProps) {
     ? {
         position: 'fixed',
         left: 12,
-        right: 12,
         top: 'auto',
+        width: 'max-content',
+        maxWidth: 'calc(100vw - 24px)',
         zIndex: 50,
         background: 'var(--bg-elevated)',
         border: '1px solid var(--border)',
