@@ -10,12 +10,13 @@ import type { WatchlistGroup } from './types'
 // ── Sidebar nav items ──────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Today',     icon: 'home'     as const, href: '/dashboard' },
-  { id: 'watchlist', label: 'Watchlist', icon: 'table'    as const, href: '/watchlist', count: '6' },
-  { id: 'movers',    label: 'Movers',    icon: 'movers'   as const, href: '/movers' },
-  { id: 'feed',      label: 'Live feed', icon: 'activity' as const, href: '/live-feed' },
-  { id: 'alerts',    label: 'Alerts',    icon: 'bell'     as const, href: '/alerts', count: '3' },
-  { id: 'analytics', label: 'Analytics', icon: 'trend'    as const, href: '/analytics' },
+  { id: 'dashboard',  label: 'Today',      icon: 'home'       as const, href: '/dashboard' },
+  { id: 'watchlist',  label: 'Watchlist',  icon: 'table'      as const, href: '/watchlist', count: '6' },
+  { id: 'dashboards', label: 'Dashboards', icon: 'grid'       as const, href: '/dashboards' },
+  { id: 'movers',     label: 'Movers',     icon: 'movers'     as const, href: '/movers' },
+  { id: 'feed',       label: 'Live feed',  icon: 'activity'   as const, href: '/live-feed' },
+  { id: 'alerts',     label: 'Alerts',     icon: 'bell'       as const, href: '/alerts', count: '3' },
+  { id: 'analytics',  label: 'Analytics',  icon: 'trend'      as const, href: '/analytics' },
 ]
 
 const DEFAULT_WATCHLISTS: WatchlistGroup[] = [
@@ -31,7 +32,7 @@ const DEFAULT_WATCHLISTS: WatchlistGroup[] = [
 function NavItem({
   icon, label, active, count, onClick,
 }: {
-  icon: 'home' | 'table' | 'movers' | 'activity' | 'bell' | 'trend'
+  icon: 'home' | 'table' | 'grid' | 'movers' | 'activity' | 'bell' | 'trend'
   label: string
   active: boolean
   count?: string
