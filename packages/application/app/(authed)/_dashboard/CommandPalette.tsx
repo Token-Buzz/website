@@ -28,9 +28,11 @@ export interface CommandSection {
 function CommandPaletteInner({
   onClose,
   sections,
+  contextual,
 }: {
   onClose: () => void
   sections: CommandSection[]
+  contextual?: (query: string) => CommandItem | null
 }) {
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
@@ -62,9 +64,14 @@ function CommandPaletteInner({
       }))
       .filter((section) => section.items.length > 0)
 
-    const flat: CommandItem[] = filtered.flatMap((s) => s.items)
-    return { filteredSections: filtered, flatItems: flat }
-  }, [query, sections])
+    const trimmed = query.trim()
+    const contextualItem = trimmed ? contextual?.(trimmed) ?? null : null
+    const sectionsOut = contextualItem
+      ? [{ id: '__contextual', heading: 'Hum', items: [contextualItem] }, ...filtered]
+      : filtered
+    const flat: CommandItem[] = sectionsOut.flatMap((s) => s.items)
+    return { filteredSections: sectionsOut, flatItems: flat }
+  }, [query, sections, contextual])
 
   // Clamp activeIndex to the current visible range with wrap-around
   const clampedIndex = flatItems.length > 0
@@ -292,11 +299,13 @@ export function CommandPalette({
   open,
   onClose,
   sections,
+  contextual,
 }: {
   open: boolean
   onClose: () => void
   sections: CommandSection[]
+  contextual?: (query: string) => CommandItem | null
 }) {
   if (!open) return null
-  return <CommandPaletteInner onClose={onClose} sections={sections} />
+  return <CommandPaletteInner onClose={onClose} sections={sections} contextual={contextual} />
 }

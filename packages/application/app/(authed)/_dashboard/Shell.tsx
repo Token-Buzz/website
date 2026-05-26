@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { UserButton, SignOutButton } from '@clerk/nextjs'
+import { UserButton, SignOutButton, useClerk } from '@clerk/nextjs'
 import { Icon, Button, Eyebrow, Avatar } from './primitives'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import { HumPanel } from './HumPanel'
@@ -10,6 +10,8 @@ import type { WatchlistGroup } from './types'
 import { CommandPalette } from './CommandPalette'
 import type { CommandSection } from './CommandPalette'
 import { HUM_OPEN_EVENT } from './humContext'
+import type { Dashboard } from '@monorepo-template/core/db/dashboards'
+import { swatchForId } from './commandSwatch'
 
 // ── Sidebar nav items ──────────────────────────────────────────────────────
 
@@ -682,9 +684,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [humOpen, setHumOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [dashboards, setDashboards] = useState<Dashboard[]>([])
 
   const isMobile = useIsMobile()
   const router = useRouter()
+  const { signOut } = useClerk()
 
   const openDrawer = useCallback(() => setDrawerOpen(true), [])
   const closeDrawer = useCallback(() => setDrawerOpen(false), [])
@@ -723,7 +727,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Minimal functional palette sections — Phase 3 will replace/expand
+  // Fetch dashboards each time the palette opens so newly-created ones show up
+  useEffect(() => {
+    if (!paletteOpen) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/dashboards')
+        if (!res.ok) return
+        const data = (await res.json()) as { dashboards?: Dashboard[] }
+        if (!cancelled) setDashboards(data.dashboards ?? [])
+      } catch { /* best-effort; palette still works without dashboards */ }
+    })()
+    return () => { cancelled = true }
+  }, [paletteOpen])
+
   const paletteSections: CommandSection[] = useMemo(() => [
     {
       id: 'navigate',
@@ -736,18 +754,56 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       })),
     },
     {
+      id: 'dashboards',
+      heading: 'Dashboards',
+      items: dashboards.map((d) => ({
+        id: `dash-${d.dashboardId}`,
+        label: d.name,
+        swatch: swatchForId(d.dashboardId),
+        keywords: [d.ticker, d.query].filter(Boolean).join(' '),
+        onSelect: () => router.push(`/dashboards/${d.dashboardId}`),
+      })),
+    },
+    {
       id: 'actions',
       heading: 'Actions',
       items: [
+        {
+          id: 'new-dashboard',
+          label: 'New dashboard',
+          icon: 'plus' as const,
+          onSelect: () => router.push('/dashboards'),
+        },
         {
           id: 'ask-hum',
           label: 'Ask Hum',
           icon: 'sparkle' as const,
           onSelect: () => setHumOpen(true),
         },
+        {
+          id: 'open-settings',
+          label: 'Open settings',
+          icon: 'settings' as const,
+          onSelect: () => router.push('/account'),
+        },
+        {
+          id: 'sign-out',
+          label: 'Sign out',
+          icon: 'logout' as const,
+          onSelect: () => void signOut(),
+        },
+        {
+          id: 'toggle-theme',
+          label: 'Toggle theme',
+          icon: 'contrast' as const,
+          onSelect: () => {
+            const el = document.documentElement
+            el.setAttribute('data-theme', el.getAttribute('data-theme') === 'light' ? 'dark' : 'light')
+          },
+        },
       ],
     },
-  ], [router])
+  ], [dashboards, router, signOut])
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
@@ -796,6 +852,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         open={paletteOpen}
         onClose={closePalette}
         sections={paletteSections}
+        contextual={(q) => ({
+          id: 'ask-hum-about',
+          label: `Ask Hum about "${q}"`,
+          icon: 'sparkle',
+          onSelect: () => setHumOpen(true),
+        })}
       />
     </div>
   )
