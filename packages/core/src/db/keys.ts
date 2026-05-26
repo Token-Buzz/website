@@ -153,6 +153,32 @@ export const dashboardKey = (userId: string, dashboardId: string) => ({
   sk: `DASHBOARD#${dashboardId}`,
 })
 
+/**
+ * Hum AI conversation key builders.
+ *
+ * Conversation-metadata rows use the `CONV#` prefix; message rows use the
+ * `MSG#` prefix. These two prefixes are entirely DISJOINT — neither is a
+ * prefix of the other — so:
+ *   begins_with(sk, 'CONV#')           → lists conversation rows only
+ *   begins_with(sk, 'MSG#<convId>#')   → lists one conversation's messages only
+ *
+ * This mirrors the ALERT# / TRIGGER# split in alerts.ts and prevents any
+ * begins_with query from accidentally returning the wrong row type.
+ */
+export const conversationKey = (userId: string, conversationId: string) => ({
+  pk: `USER#${userId}`,
+  sk: `CONV#${conversationId}`,
+})
+
+export const conversationMessageKey = (
+  userId: string,
+  conversationId: string,
+  timestamp: string,
+) => ({
+  pk: `USER#${userId}`,
+  sk: `MSG#${conversationId}#${timestamp}`,
+})
+
 // ── Analytics aggregate key builders (13 new types + range helper) ──────────
 // Each builder returns the { pk, sk } key for one Aggregates row.
 // At-least-once delivery from DynamoDB Streams means counts may slightly

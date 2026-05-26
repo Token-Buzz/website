@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { UserButton, SignOutButton } from '@clerk/nextjs'
 import { Icon, Button, Eyebrow, Avatar } from './primitives'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
+import { HumPanel } from './HumPanel'
 import type { WatchlistGroup } from './types'
 
 // ── Sidebar nav items ──────────────────────────────────────────────────────
@@ -574,6 +575,85 @@ function TopBar({
   )
 }
 
+// ── HumSlideOut ────────────────────────────────────────────────────────────
+// Always kept in the DOM so the slide animation plays. On mobile, renders a
+// backdrop scrim and locks body scroll; on desktop it is a non-modal panel.
+
+function HumSlideOut({
+  open,
+  onClose,
+  isMobile,
+}: {
+  open: boolean
+  onClose: () => void
+  isMobile: boolean
+}) {
+  // Body scroll lock (mobile only)
+  useEffect(() => {
+    if (!isMobile) return
+    if (open) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [open, isMobile])
+
+  // Esc-to-close
+  useEffect(() => {
+    if (!open) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, onClose])
+
+  return (
+    <>
+      {/* Backdrop scrim — mobile only */}
+      {isMobile && (
+        <div
+          aria-hidden="true"
+          onClick={onClose}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 55,
+            background: 'rgba(0,0,0,0.45)',
+            opacity: open ? 1 : 0,
+            pointerEvents: open ? 'auto' : 'none',
+            transition: 'opacity 250ms ease',
+          }}
+        />
+      )}
+
+      {/* Slide-out panel */}
+      <div
+        role="complementary"
+        aria-label="Hum AI assistant"
+        inert={!open}
+        style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: 'min(420px, 100vw)',
+          zIndex: 60,
+          transform: open ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 250ms cubic-bezier(0.32,0,0.16,1)',
+          pointerEvents: open ? 'auto' : 'none',
+        }}
+      >
+        <HumPanel open={open} onClose={onClose} />
+      </div>
+    </>
+  )
+}
+
 // ── AppShell ───────────────────────────────────────────────────────────────
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -623,6 +703,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      {/* Hum AI slide-out — always in DOM, slides from right edge */}
+      <HumSlideOut
+        open={humOpen}
+        onClose={() => setHumOpen(false)}
+        isMobile={isMobile}
+      />
     </div>
   )
 }

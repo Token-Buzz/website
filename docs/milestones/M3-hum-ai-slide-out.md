@@ -27,11 +27,15 @@ conversationKey(userId, conversationId) => {
 }
 // attrs: { title, createdAt, updatedAt, messageCount }
 
-messageKey(userId, conversationId, timestamp) => {
+conversationMessageKey(userId, conversationId, timestamp) => {
   pk: `USER#${userId}`,
-  sk: `CONV#${conversationId}#MSG#${timestamp}`,
+  sk: `MSG#${conversationId}#${timestamp}`,
 }
 // attrs: { role: 'user'|'assistant', text, contextItems[]?, model, tokensIn, tokensOut }
+// NOTE (Phase 1): messages use a `MSG#` root that is DISJOINT from the `CONV#`
+// conversation-metadata prefix, so begins_with(sk,'CONV#') lists conversations
+// only and begins_with(sk,'MSG#<id>#') lists one conversation's messages only —
+// no FilterExpression / over-read. Mirrors the ALERT#/TRIGGER# split in alerts.ts.
 ```
 
 ## Phases
