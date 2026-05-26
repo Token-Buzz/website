@@ -1,5 +1,5 @@
-export const HUM_DEFAULT_MODEL = "anthropic.claude-sonnet-4-6";
-export const HUM_MODELS = ["anthropic.claude-sonnet-4-6"] as const;
+export const HUM_DEFAULT_MODEL = "us.anthropic.claude-sonnet-4-6";
+export const HUM_MODELS = ["us.anthropic.claude-sonnet-4-6"] as const;
 export type HumModel = (typeof HUM_MODELS)[number];
 
 export function resolveModel(requested?: string): HumModel {

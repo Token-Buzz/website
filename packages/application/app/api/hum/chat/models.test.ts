@@ -14,8 +14,8 @@ describe("resolveModel", () => {
     expect(resolveModel("")).toBe(HUM_DEFAULT_MODEL);
   });
 
-  test("returns anthropic.claude-sonnet-4-6 when passed exactly", () => {
-    expect(resolveModel("anthropic.claude-sonnet-4-6")).toBe("anthropic.claude-sonnet-4-6");
+  test("returns us.anthropic.claude-sonnet-4-6 when passed exactly", () => {
+    expect(resolveModel("us.anthropic.claude-sonnet-4-6")).toBe("us.anthropic.claude-sonnet-4-6");
   });
 });
 
