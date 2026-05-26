@@ -7,6 +7,8 @@ import {
 } from '../_dashboard/primitives'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import type { Sentiment } from '../_dashboard/types'
+import { humDragProps } from '../_dashboard/humDragSource'
+import { fromToken } from '../_dashboard/humContext'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -157,6 +159,7 @@ function MoverRow({ mover }: { mover: Mover }) {
   const sentTone: 'bull' | 'bear' | 'neu' = mover.sentiment
   return (
     <div
+      {...humDragProps(fromToken({ sym: mover.symbol, mentions: mover.mentions, dbuzz: mover.buzzDelta, sent: mover.sentiment }))}
       style={{
         display: 'grid',
         gridTemplateColumns: GRID,
@@ -165,6 +168,7 @@ function MoverRow({ mover }: { mover: Mover }) {
         padding: '12px 20px',
         borderBottom: '1px solid var(--border-hairline)',
         transition: 'background 80ms',
+        cursor: 'grab',
       }}
       onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface)')}
       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -222,6 +226,7 @@ function MoverCard({ mover }: { mover: Mover }) {
   const sentTone: 'bull' | 'bear' | 'neu' = mover.sentiment
   return (
     <div
+      {...humDragProps(fromToken({ sym: mover.symbol, mentions: mover.mentions, dbuzz: mover.buzzDelta, sent: mover.sentiment }))}
       style={{
         padding: '14px 16px',
         borderBottom: '1px solid var(--border-hairline)',
@@ -229,6 +234,7 @@ function MoverCard({ mover }: { mover: Mover }) {
         flexDirection: 'column',
         gap: 8,
         minHeight: 44,
+        cursor: 'grab',
       }}
     >
       {/* Row 1: ticker + buzz delta */}

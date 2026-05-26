@@ -7,6 +7,8 @@ import {
 } from '../_dashboard/primitives'
 import type { Sentiment } from '../_dashboard/types'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
+import { humDragProps } from '../_dashboard/humDragSource'
+import { fromTweet } from '../_dashboard/humContext'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -52,10 +54,12 @@ function TweetCard({ tweet, isMobile }: { tweet: LiveFeedTweet; isMobile: boolea
   const sent = isSentiment(tweet.sentiment) ? tweet.sentiment : undefined
   return (
     <div
+      {...humDragProps(fromTweet({ handle: '@' + tweet.authorUsername, text: tweet.text, tick: tweet.tokenTags[0] }))}
       style={{
         padding: isMobile ? '10px 12px' : '14px 20px',
         borderBottom: '1px solid var(--border-hairline)',
         transition: 'background 80ms',
+        cursor: 'grab',
       }}
       onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface)')}
       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}

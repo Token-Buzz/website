@@ -1,4 +1,16 @@
 export const HUM_DEFAULT_MODEL = "us.anthropic.claude-sonnet-4-6";
+
+export function formatContextItems(
+  items: Array<{ label?: string; summary?: string }> | undefined,
+): string {
+  if (!items || items.length === 0) return "";
+  const bullets = items
+    .map((item) => item.summary ?? item.label)
+    .filter((text): text is string => text !== undefined && text !== "")
+    .map((text) => `- ${text}`)
+    .join("\n");
+  return bullets ? `Attached context:\n${bullets}\n` : "";
+}
 export const HUM_MODELS = ["us.anthropic.claude-sonnet-4-6"] as const;
 export type HumModel = (typeof HUM_MODELS)[number];
 

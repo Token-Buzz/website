@@ -9,6 +9,7 @@ import { HumPanel } from './HumPanel'
 import type { WatchlistGroup } from './types'
 import { CommandPalette } from './CommandPalette'
 import type { CommandSection } from './CommandPalette'
+import { HUM_OPEN_EVENT } from './humContext'
 import type { Dashboard } from '@monorepo-template/core/db/dashboards'
 import { swatchForId } from './commandSwatch'
 
@@ -713,6 +714,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // Open Hum panel when context is added via menu or hum:open event
+  useEffect(() => {
+    function openHum() { setHumOpen(true) }
+    window.addEventListener('hum:add-context', openHum)
+    window.addEventListener(HUM_OPEN_EVENT, openHum)
+    return () => {
+      window.removeEventListener('hum:add-context', openHum)
+      window.removeEventListener(HUM_OPEN_EVENT, openHum)
+    }
   }, [])
 
   // Fetch dashboards each time the palette opens so newly-created ones show up

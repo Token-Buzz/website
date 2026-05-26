@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Icon, Eyebrow } from './primitives'
 import type { HumMessage } from './types'
+import type { HumStagedContext } from './humContext'
+import { HUM_CONTEXT_MIME, parseContext, fromCardEvent } from './humContext'
 
 const INITIAL_MSG: HumMessage = {
   from: 'hum',
@@ -39,6 +41,13 @@ function HumBubble({ msg }: { msg: HumMessage }) {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingLeft: 4 }}>
           {msg.sources.map((s) => (
             <span key={s} style={{ font: '500 11px var(--font-mono)', color: 'var(--fg-3)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '2px 7px', borderRadius: 999 }}>{s}</span>
+          ))}
+        </div>
+      )}
+      {!isHum && msg.contextItems && msg.contextItems.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingRight: 4 }}>
+          {msg.contextItems.map((c, i) => (
+            <span key={i} style={{ font: '500 11px var(--font-mono)', color: 'var(--fg-3)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '2px 7px', borderRadius: 999 }}>{c.label}</span>
           ))}
         </div>
       )}
@@ -80,6 +89,8 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
   const [input, setInput] = useState('')
   const [thinking, setThinking] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(null)
+  const [stagedContext, setStagedContext] = useState<HumStagedContext[]>([])
+  const [dragHover, setDragHover] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevPreset = useRef<string | undefined>(undefined)
   const loadedRef = useRef(false)
@@ -142,9 +153,39 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
     }
   }, [msgs, thinking])
 
+  // ── Listen for hum:add-context events (click path from card menus) ────────
+  useEffect(() => {
+    function handler(e: Event) {
+      const detail = (e as CustomEvent).detail
+      const item = fromCardEvent(detail)
+      if (item) {
+        addStaged(item)
+      }
+    }
+    window.addEventListener('hum:add-context', handler)
+    return () => window.removeEventListener('hum:add-context', handler)
+  }, [])
+
+  function addStaged(item: HumStagedContext) {
+    setStagedContext((prev) => {
+      if (prev.some((s) => s.id === item.id)) return prev
+      return [...prev, item]
+    })
+  }
+
+  function removeStaged(id: string) {
+    setStagedContext((prev) => prev.filter((s) => s.id !== id))
+  }
+
   async function send(text: string) {
-    if (!text.trim()) return
-    const userMsg: HumMessage = { from: 'you', text }
+    if (!text.trim() && stagedContext.length === 0) return
+    const attached = stagedContext
+    setStagedContext([])
+    const userMsg: HumMessage = {
+      from: 'you',
+      text: text.trim() || '(context attached)',
+      ...(attached.length ? { contextItems: attached.map((i) => ({ label: i.label })) } : {}),
+    }
     setMsgs((m) => [...m, userMsg])
     setInput('')
     setThinking(true)
@@ -156,7 +197,7 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
         const createRes = await fetch('/api/hum/conversations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: text.slice(0, 60) }),
+          body: JSON.stringify({ title: (text || attached[0]?.label || 'Context').slice(0, 60) }),
         })
         if (createRes.ok) {
           const createData = await createRes.json() as { conversation: { conversationId: string } }
@@ -169,7 +210,11 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
         await fetch(`/api/hum/conversations/${activeConversationId}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role: 'user', text }),
+          body: JSON.stringify({
+            role: 'user',
+            text: text || '(context attached)',
+            ...(attached.length ? { contextItems: attached } : {}),
+          }),
         })
       }
     } catch {
@@ -180,7 +225,11 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
       const res = await fetch('/api/hum/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history: msgs }),
+        body: JSON.stringify({
+          message: text || '(context attached)',
+          history: msgs,
+          ...(attached.length ? { contextItems: attached } : {}),
+        }),
       })
 
       if (!res.ok) throw new Error('API error')
@@ -264,7 +313,46 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
   }
 
   return (
-    <aside style={{ width: '100%', height: '100%', flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+    <aside
+      style={{
+        width: '100%', height: '100%', flexShrink: 0,
+        borderLeft: '1px solid var(--border)', background: 'var(--bg)',
+        display: 'flex', flexDirection: 'column',
+        outline: dragHover ? '2px dashed var(--buzz-500)' : 'none',
+        outlineOffset: -2,
+        position: 'relative',
+      }}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes(HUM_CONTEXT_MIME)) {
+          e.preventDefault()
+          setDragHover(true)
+        }
+      }}
+      onDragLeave={() => setDragHover(false)}
+      onDrop={(e) => {
+        const raw = e.dataTransfer.getData(HUM_CONTEXT_MIME)
+        const item = parseContext(raw)
+        if (item) {
+          e.preventDefault()
+          addStaged(item)
+        }
+        setDragHover(false)
+      }}
+    >
+      {/* Drop overlay hint */}
+      {dragHover && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 10,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'color-mix(in srgb, var(--buzz-500) 8%, transparent)',
+          pointerEvents: 'none',
+        }}>
+          <span style={{ font: '600 13px var(--font-sans)', color: 'var(--buzz-500)', background: 'var(--bg)', padding: '8px 16px', borderRadius: 8, border: '1px dashed var(--buzz-500)' }}>
+            Drop to add context
+          </span>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         <div style={{ background: 'var(--inv-bg)', color: 'var(--inv-fg)', fontFamily: 'var(--font-display)', fontSize: 14, padding: '4px 8px 2px', lineHeight: 1 }}>HUM.</div>
@@ -300,6 +388,25 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
 
       {/* Composer */}
       <div style={{ padding: 14, borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+        {/* Staged context chips */}
+        {stagedContext.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+            {stagedContext.map((item) => (
+              <span
+                key={item.id}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '500 11px var(--font-mono)', color: 'var(--fg-3)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '2px 4px 2px 7px', borderRadius: 999 }}
+              >
+                {item.label}
+                <button
+                  onClick={() => removeStaged(item.id)}
+                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--fg-3)', fontSize: 12, lineHeight: 1, padding: 0 }}
+                  aria-label={`Remove ${item.label}`}
+                >×</button>
+              </span>
+            ))}
+          </div>
+        )}
+
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10 }}>
           <textarea
             value={input}
@@ -311,7 +418,7 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
           />
           <button
             onClick={() => send(input)}
-            style={{ background: input.trim() ? 'var(--buzz-500)' : 'var(--ink-300)', color: '#fff', border: 'none', borderRadius: 6, width: 28, height: 28, display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}
+            style={{ background: (input.trim() || stagedContext.length > 0) ? 'var(--buzz-500)' : 'var(--ink-300)', color: '#fff', border: 'none', borderRadius: 6, width: 28, height: 28, display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}
           >
             <Icon name="send" size={14} />
           </button>
