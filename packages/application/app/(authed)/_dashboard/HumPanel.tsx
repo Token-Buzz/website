@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { Icon, Eyebrow } from './primitives'
 import type { HumMessage } from './types'
 import type { HumStagedContext } from './humContext'
@@ -102,6 +103,7 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
   const [dragHover, setDragHover] = useState(false)
   const [activeTab, setActiveTab] = useState<'current' | 'previous'>('current')
   const [prevConversations, setPrevConversations] = useState<ConversationSummary[]>([])
+  const [quota, setQuota] = useState<{ allowed: boolean; used: number; limit: number | null; plan: string } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevPreset = useRef<string | undefined>(undefined)
   const loadedRef = useRef(false)
@@ -148,6 +150,15 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
     }
 
     restore()
+  }, [open])
+
+  // ── Fetch quota when panel opens ────────────────────────────────────────────
+  useEffect(() => {
+    if (!open) return
+    fetch('/api/hum/quota')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setQuota(data as { allowed: boolean; used: number; limit: number | null; plan: string }) })
+      .catch(() => { /* best-effort */ })
   }, [open])
 
   // ── Fetch previous conversations when the Previous Chats tab becomes active ─
@@ -297,6 +308,13 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
         }),
       })
 
+      if (res.status === 402) {
+        const body = await res.json() as { used: number; limit: number | null; plan: string }
+        setQuota({ allowed: false, used: body.used, limit: body.limit, plan: body.plan })
+        setThinking(false)
+        return
+      }
+
       if (!res.ok) throw new Error('API error')
 
       const reader = res.body?.getReader()
@@ -366,6 +384,11 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
         } catch {
           // best-effort
         }
+      }
+
+      // Optimistically reflect the usage decrement recorded server-side.
+      if (accumulated) {
+        setQuota((q) => q ? { ...q, used: q.used + 1, allowed: q.limit === null || q.used + 1 < q.limit } : q)
       }
     } catch {
       setThinking(false)
@@ -482,47 +505,69 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
             </div>
           )}
 
-          {/* Composer */}
-          <div style={{ padding: 14, borderTop: '1px solid var(--border)', flexShrink: 0 }}>
-            {/* Staged context chips */}
-            {stagedContext.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
-                {stagedContext.map((item) => (
-                  <span
-                    key={item.id}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '500 11px var(--font-mono)', color: 'var(--fg-3)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '2px 4px 2px 7px', borderRadius: 999 }}
-                  >
-                    {item.label}
-                    <button
-                      onClick={() => removeStaged(item.id)}
-                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--fg-3)', fontSize: 12, lineHeight: 1, padding: 0 }}
-                      aria-label={`Remove ${item.label}`}
-                    >×</button>
-                  </span>
-                ))}
+          {/* Composer / upgrade CTA */}
+          {quota && !quota.allowed ? (
+            <div style={{ padding: 16, borderTop: '1px solid var(--border)', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center', textAlign: 'center' }}>
+              <div style={{ font: '600 13px var(--font-sans)', color: 'var(--fg-1)' }}>
+                You&apos;ve reached your monthly Hum limit
               </div>
-            )}
-
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10 }}>
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }}
-                placeholder="Ask about a ticker, a handle, a narrative..."
-                rows={1}
-                style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontFamily: 'var(--font-sans)', fontSize: 13, lineHeight: 1.5, color: 'var(--fg-1)', maxHeight: 100 }}
-              />
-              <button
-                onClick={() => send(input)}
-                style={{ background: (input.trim() || stagedContext.length > 0) ? 'var(--buzz-500)' : 'var(--ink-300)', color: '#fff', border: 'none', borderRadius: 6, width: 28, height: 28, display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}
+              <div style={{ font: '400 12px var(--font-sans)', color: 'var(--fg-3)' }}>
+                {quota.used} / {quota.limit} queries used this month
+              </div>
+              <Link
+                href="/account"
+                style={{ background: 'var(--buzz-500)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', font: '600 13px var(--font-sans)', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}
               >
-                <Icon name="send" size={14} />
-              </button>
+                Upgrade plan
+              </Link>
             </div>
-            <div style={{ font: '500 10px var(--font-mono)', color: 'var(--fg-3)', marginTop: 8, textAlign: 'center' }}>
-              Hum cites every source. Always verify before you trade.
+          ) : (
+            <div style={{ padding: 14, borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+              {/* Staged context chips */}
+              {stagedContext.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                  {stagedContext.map((item) => (
+                    <span
+                      key={item.id}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '500 11px var(--font-mono)', color: 'var(--fg-3)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '2px 4px 2px 7px', borderRadius: 999 }}
+                    >
+                      {item.label}
+                      <button
+                        onClick={() => removeStaged(item.id)}
+                        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--fg-3)', fontSize: 12, lineHeight: 1, padding: 0 }}
+                        aria-label={`Remove ${item.label}`}
+                      >×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10 }}>
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }}
+                  placeholder="Ask about a ticker, a handle, a narrative..."
+                  rows={1}
+                  style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontFamily: 'var(--font-sans)', fontSize: 13, lineHeight: 1.5, color: 'var(--fg-1)', maxHeight: 100 }}
+                />
+                <button
+                  onClick={() => send(input)}
+                  style={{ background: (input.trim() || stagedContext.length > 0) ? 'var(--buzz-500)' : 'var(--ink-300)', color: '#fff', border: 'none', borderRadius: 6, width: 28, height: 28, display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}
+                >
+                  <Icon name="send" size={14} />
+                </button>
+              </div>
+              {quota && quota.limit !== null && (
+                <div style={{ font: '500 10px var(--font-mono)', color: 'var(--fg-3)', marginTop: 6, textAlign: 'center' }}>
+                  {quota.used} / {quota.limit} this month
+                </div>
+              )}
+              <div style={{ font: '500 10px var(--font-mono)', color: 'var(--fg-3)', marginTop: quota && quota.limit !== null ? 4 : 8, textAlign: 'center' }}>
+                Hum cites every source. Always verify before you trade.
+              </div>
             </div>
-          </div>
+          )}
         </>
       )}
 

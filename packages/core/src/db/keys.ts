@@ -153,6 +153,16 @@ export const dashboardKey = (userId: string, dashboardId: string) => ({
   sk: `DASHBOARD#${dashboardId}`,
 })
 
+export const planKey = (userId: string) => ({
+  pk: `USER#${userId}`,
+  sk: 'PLAN',
+})
+
+export const usageKey = (userId: string, yyyymm: string, kind: string) => ({
+  pk: `USER#${userId}`,
+  sk: `USAGE#${yyyymm}#${kind}`,
+})
+
 /**
  * Hum AI conversation key builders.
  *
