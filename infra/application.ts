@@ -3,6 +3,11 @@ import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey } from "
 import { tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable } from "./db";
 import { byokKmsKey } from "./byok";
 
+const BEDROCK_HUM_ARN = [
+  "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6*",
+  "arn:aws:bedrock:*:*:inference-profile/*anthropic.claude-sonnet-4-6*",
+];
+
 const isProd = $app.stage === "production";
 const isPR = $app.stage.startsWith("pr-");
 
@@ -41,6 +46,10 @@ export const app = new sst.aws.Nextjs("Application", {
         {
             actions: ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"],
             resources: [byokKmsKey.arn],
+        },
+        {
+            actions: ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
+            resources: BEDROCK_HUM_ARN,
         },
     ],
     link: [tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable],
