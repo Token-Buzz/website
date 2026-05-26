@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { UserButton, SignOutButton } from '@clerk/nextjs'
 import { Icon, Button, Eyebrow, Avatar } from './primitives'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import type { WatchlistGroup } from './types'
+import { CommandPalette } from './CommandPalette'
+import type { CommandSection } from './CommandPalette'
 
 // ── Sidebar nav items ──────────────────────────────────────────────────────
 
@@ -177,10 +179,12 @@ function SidebarContent({
   activeWatchlist,
   setActiveWatchlist,
   onNavClick,
+  onSearch,
 }: {
   activeWatchlist: string
   setActiveWatchlist: (id: string) => void
   onNavClick?: () => void
+  onSearch?: () => void
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -200,11 +204,17 @@ function SidebarContent({
       </div>
 
       {/* Search shortcut */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
-        background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
-        color: 'var(--fg-3)', font: '500 12px var(--font-sans)', cursor: 'pointer',
-      }}>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => { onSearch?.(); onNavClick?.() }}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSearch?.(); onNavClick?.() } }}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+          background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
+          color: 'var(--fg-3)', font: '500 12px var(--font-sans)', cursor: 'pointer',
+        }}
+      >
         <Icon name="search" size={14} />
         <span style={{ flex: 1 }}>Search tokens</span>
         <kbd style={{ font: '500 10px var(--font-mono)', background: 'var(--ink-100)', padding: '1px 5px', borderRadius: 3 }}>⌘K</kbd>
@@ -261,9 +271,11 @@ function SidebarContent({
 function Sidebar({
   activeWatchlist,
   setActiveWatchlist,
+  onSearch,
 }: {
   activeWatchlist: string
   setActiveWatchlist: (id: string) => void
+  onSearch?: () => void
 }) {
   return (
     <aside style={{
@@ -274,6 +286,7 @@ function Sidebar({
       <SidebarContent
         activeWatchlist={activeWatchlist}
         setActiveWatchlist={setActiveWatchlist}
+        onSearch={onSearch}
       />
     </aside>
   )
@@ -288,11 +301,13 @@ function MobileDrawer({
   onClose,
   activeWatchlist,
   setActiveWatchlist,
+  onSearch,
 }: {
   open: boolean
   onClose: () => void
   activeWatchlist: string
   setActiveWatchlist: (id: string) => void
+  onSearch?: () => void
 }) {
   const drawerRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
@@ -431,6 +446,7 @@ function MobileDrawer({
           activeWatchlist={activeWatchlist}
           setActiveWatchlist={setActiveWatchlist}
           onNavClick={onClose}
+          onSearch={onSearch}
         />
       </div>
     </>
@@ -444,11 +460,13 @@ function TopBar({
   onAskHum,
   isMobile,
   onMenuOpen,
+  onSearch,
 }: {
   humOpen: boolean
   onAskHum: () => void
   isMobile: boolean
   onMenuOpen: () => void
+  onSearch: () => void
 }) {
   return (
     <header style={{
@@ -484,6 +502,7 @@ function TopBar({
             {/* Search ⌘K — icon-only on mobile */}
             <button
               aria-label="Search"
+              onClick={onSearch}
               style={{
                 display: 'flex', alignItems: 'center',
                 background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
@@ -534,6 +553,7 @@ function TopBar({
             {/* Search ⌘K */}
             <button
               aria-label="Search"
+              onClick={onSearch}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
@@ -580,11 +600,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [activeWatchlist, setActiveWatchlist] = useState('memecoins')
   const [humOpen, setHumOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
 
   const isMobile = useIsMobile()
+  const router = useRouter()
 
   const openDrawer = useCallback(() => setDrawerOpen(true), [])
   const closeDrawer = useCallback(() => setDrawerOpen(false), [])
+  const openPalette = useCallback(() => setPaletteOpen(true), [])
+  const closePalette = useCallback(() => setPaletteOpen(false), [])
 
   // Ensure drawer closes if screen widens past breakpoint.
   // setState is called inside a microtask callback to avoid the synchronous
@@ -595,11 +619,53 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [isMobile, drawerOpen])
 
+  // Global ⌘K / Ctrl+K listener to open command palette
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen(true)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // Minimal functional palette sections — Phase 3 will replace/expand
+  const paletteSections: CommandSection[] = useMemo(() => [
+    {
+      id: 'navigate',
+      heading: 'Navigate',
+      items: NAV_ITEMS.map((item) => ({
+        id: item.id,
+        label: item.label,
+        icon: item.icon,
+        onSelect: () => router.push(item.href),
+      })),
+    },
+    {
+      id: 'actions',
+      heading: 'Actions',
+      items: [
+        {
+          id: 'ask-hum',
+          label: 'Ask Hum',
+          icon: 'sparkle' as const,
+          onSelect: () => setHumOpen(true),
+        },
+      ],
+    },
+  ], [router])
+
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
       {/* Desktop persistent sidebar — hidden on mobile */}
       {!isMobile && (
-        <Sidebar activeWatchlist={activeWatchlist} setActiveWatchlist={setActiveWatchlist} />
+        <Sidebar
+          activeWatchlist={activeWatchlist}
+          setActiveWatchlist={setActiveWatchlist}
+          onSearch={openPalette}
+        />
       )}
 
       {/* Mobile drawer overlay — only rendered when mobile */}
@@ -609,6 +675,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onClose={closeDrawer}
           activeWatchlist={activeWatchlist}
           setActiveWatchlist={setActiveWatchlist}
+          onSearch={openPalette}
         />
       )}
 
@@ -618,11 +685,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onAskHum={() => setHumOpen((v) => !v)}
           isMobile={isMobile}
           onMenuOpen={openDrawer}
+          onSearch={openPalette}
         />
         <main style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {children}
         </main>
       </div>
+
+      {/* Command palette overlay */}
+      <CommandPalette
+        open={paletteOpen}
+        onClose={closePalette}
+        sections={paletteSections}
+      />
     </div>
   )
 }
