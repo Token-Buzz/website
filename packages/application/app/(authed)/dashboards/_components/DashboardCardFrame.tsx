@@ -19,6 +19,10 @@ interface DashboardCardFrameProps {
   query: string
   /** Called when the user chooses "Remove from dashboard" */
   onRemove: () => void
+  /** Called when the user chooses "Add to context" (Hum M3) */
+  onAddToContext: () => void
+  /** Called when the user chooses "Add to dashboard" (opens picker modal) */
+  onAddToDashboard: () => void
 }
 
 export function DashboardCardFrame({
@@ -27,6 +31,8 @@ export function DashboardCardFrame({
   type,
   query,
   onRemove,
+  onAddToContext,
+  onAddToDashboard,
 }: DashboardCardFrameProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -120,6 +126,65 @@ export function DashboardCardFrame({
                 overflow: 'hidden',
               }}
             >
+              {/* Add to context */}
+              <button
+                onClick={() => {
+                  setMenuOpen(false)
+                  onAddToContext()
+                }}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '9px 14px',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  font: '500 13px/1.2 var(--font-sans)',
+                  color: 'var(--fg-1)',
+                  letterSpacing: '-0.005em',
+                }}
+                onMouseEnter={(e) => {
+                  ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-sunken)'
+                }}
+                onMouseLeave={(e) => {
+                  ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+                }}
+              >
+                Add to context
+              </button>
+
+              {/* Add to dashboard */}
+              <button
+                onClick={() => {
+                  setMenuOpen(false)
+                  onAddToDashboard()
+                }}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '9px 14px',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  font: '500 13px/1.2 var(--font-sans)',
+                  color: 'var(--fg-1)',
+                  letterSpacing: '-0.005em',
+                }}
+                onMouseEnter={(e) => {
+                  ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-sunken)'
+                }}
+                onMouseLeave={(e) => {
+                  ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+                }}
+              >
+                Add to dashboard
+              </button>
+
+              {/* Divider */}
+              <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+
               {/* Remove from dashboard */}
               <button
                 onClick={() => {
@@ -148,8 +213,6 @@ export function DashboardCardFrame({
               >
                 Remove from dashboard
               </button>
-
-              {/* Phase 4 will add "Add to context" / "Add to dashboard" items here */}
             </div>
           )}
         </div>

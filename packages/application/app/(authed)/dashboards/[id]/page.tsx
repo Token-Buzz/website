@@ -9,6 +9,8 @@ import { SummaryProvider } from '../../_analytics/SummaryProvider'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import { CARD_META, ALL_CARD_TYPES } from '../_components/registry'
 import { DashboardCardFrame } from '../_components/DashboardCardFrame'
+import { DashboardPickerModal } from '../_components/DashboardPickerModal'
+import { addHumContext, buildHumContextItem } from '../_components/cardActions'
 import { cardGridStyle, nextCardPosition, ROW_HEIGHT_PX } from '../_components/grid'
 import { dashboardScopeQuery } from '../_components/scope'
 
@@ -112,6 +114,8 @@ export default function DashboardDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [persistError, setPersistError] = useState<string | null>(null)
+  const [pickerCard, setPickerCard] = useState<DashboardCard | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   // ── Initial fetch ────────────────────────────────────────────────────────
 
@@ -182,6 +186,14 @@ export default function DashboardDetailPage() {
     }
   }
 
+  // ── Auto-dismiss notice ───────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!notice) return
+    const timer = setTimeout(() => setNotice(null), 4000)
+    return () => clearTimeout(timer)
+  }, [notice])
+
   // ── Event handlers ────────────────────────────────────────────────────────
 
   function handleAddCard(type: DashboardCardType) {
@@ -198,6 +210,24 @@ export default function DashboardDetailPage() {
   function handleRemoveCard(cardId: string) {
     if (!dashboard) return
     void persistCards(dashboard.cards.filter((c) => c.id !== cardId))
+  }
+
+  function handleAddToContext(card: DashboardCard) {
+    if (!dashboard) return
+    const label = CARD_META[card.type]?.label ?? card.type
+    addHumContext(
+      buildHumContextItem({
+        cardType: card.type,
+        label,
+        query: dashboardScopeQuery(dashboard),
+        ticker: dashboard.ticker,
+      }),
+    )
+    setNotice('Added "' + label + '" to Hum context')
+  }
+
+  function handleAddToDashboard(card: DashboardCard) {
+    setPickerCard(card)
   }
 
   // ── Render helpers ────────────────────────────────────────────────────────
@@ -399,6 +429,41 @@ export default function DashboardDetailPage() {
         </div>
       )}
 
+      {/* Notice banner */}
+      {notice && (
+        <div
+          style={{
+            padding: '10px 14px',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--buzz-500)',
+            borderRadius: 6,
+            font: '500 13px/1.4 var(--font-sans)',
+            color: 'var(--fg-1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
+          <span>{notice}</span>
+          <button
+            onClick={() => setNotice(null)}
+            aria-label="Dismiss"
+            style={{
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              color: 'inherit',
+              padding: 2,
+              lineHeight: 0,
+              flexShrink: 0,
+            }}
+          >
+            <Icon name="close" size={14} />
+          </button>
+        </div>
+      )}
+
       {/* ── Grid / Empty state ──────────────────────────────────────────── */}
       {cards.length === 0 ? (
         // Empty state
@@ -472,12 +537,27 @@ export default function DashboardDetailPage() {
                     type={card.type}
                     query={scopeQuery}
                     onRemove={() => handleRemoveCard(card.id)}
+                    onAddToContext={() => handleAddToContext(card)}
+                    onAddToDashboard={() => handleAddToDashboard(card)}
                   />
                 </div>
               )
             })}
           </div>
         </SummaryProvider>
+      )}
+
+      {/* Picker modal — "Add to dashboard" */}
+      {pickerCard && dashboard && (
+        <DashboardPickerModal
+          card={pickerCard}
+          currentDashboardId={dashboard.dashboardId}
+          onClose={() => setPickerCard(null)}
+          onAdded={(name) => {
+            setPickerCard(null)
+            setNotice('Added card to "' + name + '"')
+          }}
+        />
       )}
     </div>
   )
