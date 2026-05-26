@@ -51,6 +51,16 @@ describe('buildHumContextItem', () => {
     expect(item.source).toBe('dashboard-card')
     expect(item.cardType).toBe('sentiment')
   })
+
+  test('uses analytics-card source when source is explicitly passed as analytics-card', () => {
+    const item = buildHumContextItem({
+      cardType: 'mentions',
+      label: 'Analytics Mentions',
+      query: 'bitcoin',
+      source: 'analytics-card',
+    })
+    expect(item.source).toBe('analytics-card')
+  })
 })
 
 describe('copyCardForDashboard', () => {

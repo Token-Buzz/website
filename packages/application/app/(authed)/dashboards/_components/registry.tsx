@@ -7,29 +7,65 @@ import { TopHashtagsChart } from '../../_analytics/TopHashtagsChart'
 import { DomainDistributionChart } from '../../_analytics/DomainDistributionChart'
 import { LanguageDistributionChart } from '../../_analytics/LanguageDistributionChart'
 import { SourceDistributionChart } from '../../_analytics/SourceDistributionChart'
+import { BioDomainsChart } from '../../_analytics/BioDomainsChart'
+import { SymbolRateChart } from '../../_analytics/SymbolRateChart'
+import { EngagementTimeSeriesChart } from '../../_analytics/EngagementTimeSeriesChart'
+import { SentimentTimelineChart } from '../../_analytics/SentimentTimelineChart'
+import { KeywordWordCloudChart } from '../../_analytics/KeywordWordCloudChart'
+import { ConversationDepthChart } from '../../_analytics/ConversationDepthChart'
+import { GeographicDistributionMapChart } from '../../_analytics/GeographicDistributionMapChart'
+import { VerificationBreakdownChart } from '../../_analytics/VerificationBreakdownChart'
+import { BotRatioChart } from '../../_analytics/BotRatioChart'
+import { PostingHeatmapChart } from '../../_analytics/PostingHeatmapChart'
+import { ContentLengthEngagementChart } from '../../_analytics/ContentLengthEngagementChart'
+import { AuthorInfluenceScatterChart } from '../../_analytics/AuthorInfluenceScatterChart'
 
 // ── CARD_META ─────────────────────────────────────────────────────────────────
 
 export const CARD_META: Record<DashboardCardType, { label: string; meta: string }> = {
-  mentions:     { label: 'Top mentions',         meta: 'last 24h · by reach' },
-  sentiment:    { label: 'Sentiment gauge',      meta: 'avg score · 7D' },
-  hashtags:     { label: 'Top hashtags',         meta: 'last 24h' },
-  domains:      { label: 'Domain distribution',  meta: 'tweet URLs' },
-  languages:    { label: 'Language distribution',meta: 'tweet language' },
-  sources:      { label: 'Source distribution',  meta: 'Twitter client' },
-  'top-authors':{ label: 'Top authors',          meta: 'coming soon' },
-  candlestick:  { label: 'Candlestick',          meta: 'coming soon' },
+  mentions:             { label: 'Top mentions',                    meta: 'last 24h · by reach' },
+  sentiment:            { label: 'Sentiment gauge',                 meta: 'avg score · 7D' },
+  hashtags:             { label: 'Top hashtags',                    meta: 'last 24h' },
+  domains:              { label: 'Domain distribution',             meta: 'tweet URLs' },
+  languages:            { label: 'Language distribution',           meta: 'tweet language' },
+  sources:              { label: 'Source distribution',             meta: 'Twitter client' },
+  'top-authors':        { label: 'Top authors',                     meta: 'coming soon' },
+  candlestick:          { label: 'Candlestick',                     meta: 'coming soon' },
+  'bio-domains':        { label: 'Bio domains',                     meta: 'author bio links' },
+  'symbol-rate':        { label: 'Symbol rate',                     meta: 'tweets / hour' },
+  engagement:           { label: 'Engagement timeseries',           meta: 'likes · RT · replies · quotes' },
+  'sentiment-timeline': { label: 'Sentiment timeline',              meta: '% bull / bear / mixed' },
+  keywords:             { label: 'Keyword word cloud',              meta: 'top extracted terms' },
+  'conversation-depth': { label: 'Conversation depth',              meta: 'thread reply depth' },
+  geo:                  { label: 'Geographic distribution',         meta: 'author locations · top 15' },
+  verification:         { label: 'Verification breakdown',          meta: 'blue · business · government' },
+  'bot-ratio':          { label: 'Bot ratio',                       meta: 'automated vs human' },
+  'posting-heatmap':    { label: 'Posting heatmap',                 meta: 'day × hour · 7D' },
+  'content-length':     { label: 'Content length × engagement',     meta: 'text length vs engagement score' },
+  'author-influence':   { label: 'Author influence',                meta: 'followers vs engagement rate' },
 }
 
 // ── ALL_CARD_TYPES ─────────────────────────────────────────────────────────────
 
 export const ALL_CARD_TYPES: DashboardCardType[] = [
-  'mentions',
-  'sentiment',
   'hashtags',
+  'mentions',
   'domains',
+  'bio-domains',
+  'symbol-rate',
+  'engagement',
+  'sentiment',
+  'sentiment-timeline',
+  'keywords',
+  'conversation-depth',
+  'geo',
   'languages',
   'sources',
+  'verification',
+  'bot-ratio',
+  'posting-heatmap',
+  'content-length',
+  'author-influence',
   'top-authors',
   'candlestick',
 ]
@@ -64,6 +100,30 @@ export function CardBody({ type, query }: CardBodyProps) {
       return <LanguageDistributionChart query={query} />
     case 'sources':
       return <SourceDistributionChart query={query} />
+    case 'bio-domains':
+      return <BioDomainsChart query={query} />
+    case 'symbol-rate':
+      return <SymbolRateChart query={query} />
+    case 'engagement':
+      return <EngagementTimeSeriesChart query={query} />
+    case 'sentiment-timeline':
+      return <SentimentTimelineChart query={query} />
+    case 'keywords':
+      return <KeywordWordCloudChart query={query} />
+    case 'conversation-depth':
+      return <ConversationDepthChart query={query} />
+    case 'geo':
+      return <GeographicDistributionMapChart query={query} />
+    case 'verification':
+      return <VerificationBreakdownChart query={query} />
+    case 'bot-ratio':
+      return <BotRatioChart query={query} />
+    case 'posting-heatmap':
+      return <PostingHeatmapChart query={query} />
+    case 'content-length':
+      return <ContentLengthEngagementChart query={query} />
+    case 'author-influence':
+      return <AuthorInfluenceScatterChart query={query} />
     case 'top-authors':
     case 'candlestick':
       return <div style={comingSoonStyle}>Coming soon</div>
