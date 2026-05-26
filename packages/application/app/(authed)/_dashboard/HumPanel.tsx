@@ -244,7 +244,7 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
             body: JSON.stringify({
               role: 'assistant',
               text: accumulated,
-              model: replyMeta?.model ?? 'claude-sonnet-4-6',
+              model: replyMeta?.model ?? 'anthropic.claude-sonnet-4-6',
               ...(replyMeta?.tokensIn !== undefined ? { tokensIn: replyMeta.tokensIn } : {}),
               ...(replyMeta?.tokensOut !== undefined ? { tokensOut: replyMeta.tokensOut } : {}),
             }),

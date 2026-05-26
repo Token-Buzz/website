@@ -1,7 +1,12 @@
 import { router } from "./router";
-import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey, anthropicApiKey } from "./secrets";
+import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey } from "./secrets";
 import { tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable } from "./db";
 import { byokKmsKey } from "./byok";
+
+const BEDROCK_HUM_ARN = [
+  "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6*",
+  "arn:aws:bedrock:*:*:inference-profile/*anthropic.claude-sonnet-4-6*",
+];
 
 const isProd = $app.stage === "production";
 const isPR = $app.stage.startsWith("pr-");
@@ -35,13 +40,16 @@ export const app = new sst.aws.Nextjs("Application", {
         NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: "/dashboard",
         NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: "/dashboard",
         OPENCAGE_API_KEY: opencageApiKey.value,
-        ANTHROPIC_API_KEY: anthropicApiKey.value,
         BYOK_KMS_KEY_ID: byokKmsKey.id,
     },
     permissions: [
         {
             actions: ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"],
             resources: [byokKmsKey.arn],
+        },
+        {
+            actions: ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
+            resources: BEDROCK_HUM_ARN,
         },
     ],
     link: [tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable],
