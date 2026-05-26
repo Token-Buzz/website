@@ -56,3 +56,58 @@ export function nextCardPosition(
 
   return { x, y: Math.max(0, y), w, h }
 }
+
+// ── Layout conversion helpers ──────────────────────────────────────────────────
+
+/** A single react-grid-layout item (defined locally to avoid a direct dependency). */
+export interface GridLayoutItem {
+  i: string
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/**
+ * Converts an array of dashboard cards to a react-grid-layout `Layout` array.
+ * Preserves input order. Maps `card.id` → `i` and `card.position` → `x/y/w/h`.
+ */
+export function cardsToLayout(cards: DashboardCard[]): GridLayoutItem[] {
+  return cards.map((card) => ({
+    i: card.id,
+    x: card.position.x,
+    y: card.position.y,
+    w: card.position.w,
+    h: card.position.h,
+  }))
+}
+
+/**
+ * Applies an updated react-grid-layout `Layout` back onto a cards array.
+ *
+ * - Preserves the ORDER of `cards` (not the order of `layout`).
+ * - For each card, finds the layout item with `i === card.id` and replaces
+ *   `position` with sanitised values: x/y floored at 0, w/h floored at 1,
+ *   all rounded to the nearest integer.
+ * - Cards with no matching layout item are returned unchanged (same reference).
+ * - Pure: never mutates the input cards or their position objects.
+ */
+export function layoutToCards(
+  cards: DashboardCard[],
+  layout: GridLayoutItem[],
+): DashboardCard[] {
+  const byId = new Map(layout.map((item) => [item.i, item]))
+  return cards.map((card) => {
+    const item = byId.get(card.id)
+    if (!item) return card
+    return {
+      ...card,
+      position: {
+        x: Math.max(0, Math.round(item.x)),
+        y: Math.max(0, Math.round(item.y)),
+        w: Math.max(1, Math.round(item.w)),
+        h: Math.max(1, Math.round(item.h)),
+      },
+    }
+  })
+}
