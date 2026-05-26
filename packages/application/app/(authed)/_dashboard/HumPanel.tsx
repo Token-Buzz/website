@@ -92,9 +92,10 @@ interface HumPanelProps {
   onClose: () => void
   open: boolean
   presetQuestion?: string
+  onPresetConsumed?: () => void
 }
 
-export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
+export function HumPanel({ onClose, open, presetQuestion, onPresetConsumed }: HumPanelProps) {
   const [msgs, setMsgs] = useState<HumMessage[]>([INITIAL_MSG])
   const [input, setInput] = useState('')
   const [thinking, setThinking] = useState(false)
@@ -105,7 +106,7 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
   const [prevConversations, setPrevConversations] = useState<ConversationSummary[]>([])
   const [quota, setQuota] = useState<{ allowed: boolean; used: number; limit: number | null; plan: string } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const prevPreset = useRef<string | undefined>(undefined)
+  const composerRef = useRef<HTMLTextAreaElement>(null)
   const loadedRef = useRef(false)
 
   // ── Restore conversation on first open ──────────────────────────────────
@@ -182,10 +183,15 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
   }, [activeTab])
 
   useEffect(() => {
-    if (presetQuestion && presetQuestion !== prevPreset.current) {
-      prevPreset.current = presetQuestion
-      send(presetQuestion)
-    }
+    if (!presetQuestion) return
+    // setState inside a microtask to avoid the synchronous setState-in-effect lint rule
+    queueMicrotask(() => {
+      setActiveTab('current')
+      setInput(presetQuestion)
+      onPresetConsumed?.()
+    })
+    const t = setTimeout(() => composerRef.current?.focus(), 60)
+    return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetQuestion])
 
@@ -544,6 +550,7 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
 
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10 }}>
                 <textarea
+                  ref={composerRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }}
