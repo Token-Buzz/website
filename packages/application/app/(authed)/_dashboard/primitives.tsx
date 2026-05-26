@@ -24,6 +24,7 @@ const ICONS: Record<string, string[]> = {
   activity: ['M3 12h4l3-9 4 18 3-9h4'],
   movers:   ['M2 16l4-8 4 4 4-6 4 6 4-8'],
   logout:   ['M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4', 'M16 17l5-5-5-5', 'M21 12H9'],
+  contrast: ['M12 3a9 9 0 0 1 0 18 9 9 0 0 1 0-18z', 'M12 3v18'],
   menu:     ['M3 6h18', 'M3 12h18', 'M3 18h18'],
   grid:     ['M3 3h8v8H3z', 'M13 3h8v8h-8z', 'M3 13h8v8H3z', 'M13 13h8v8h-8z'],
 }
