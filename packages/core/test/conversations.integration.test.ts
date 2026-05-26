@@ -179,6 +179,39 @@ describe('getConversation — messageCount + updatedAt after appends', () => {
     const result = await getConversation(USER_ID, 'no-such-conv')
     expect(result).toBeNull()
   })
+
+  test('preview reflects the most recent appended message text, truncated to 140 chars', async () => {
+    const conv = await createConversation(USER_ID)
+
+    await appendMessage(USER_ID, conv.conversationId, {
+      role: 'user',
+      text: 'What is the capital of France?',
+      timestamp: '2026-01-01T00:00:01.000Z',
+    })
+    await appendMessage(USER_ID, conv.conversationId, {
+      role: 'assistant',
+      text: 'The capital of France is Paris.',
+      timestamp: '2026-01-01T00:00:02.000Z',
+    })
+
+    const fetched = await getConversation(USER_ID, conv.conversationId)
+    expect(fetched).not.toBeNull()
+    // preview must reflect the LAST appended message (assistant), not the first.
+    expect(fetched!.preview).toBe('The capital of France is Paris.')
+
+    // Append a message whose text exceeds 140 chars — preview must be truncated.
+    const longText = 'x'.repeat(200)
+    await appendMessage(USER_ID, conv.conversationId, {
+      role: 'user',
+      text: longText,
+      timestamp: '2026-01-01T00:00:03.000Z',
+    })
+
+    const fetched2 = await getConversation(USER_ID, conv.conversationId)
+    expect(fetched2).not.toBeNull()
+    expect(fetched2!.preview).toHaveLength(140)
+    expect(fetched2!.preview).toBe(longText.slice(0, 140))
+  })
 })
 
 // ── listConversations ─────────────────────────────────────────────────────────

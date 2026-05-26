@@ -40,6 +40,7 @@ export interface Conversation {
   createdAt: string
   updatedAt: string
   messageCount: number
+  preview?: string
 }
 
 export interface ConversationMessage {
@@ -190,19 +191,22 @@ export async function appendMessage(
 
   await ddb.send(new PutCommand({ TableName: TableNames.userData, Item: item }))
 
-  // Bump messageCount and advance updatedAt on the parent conversation.
-  // Swallow ConditionalCheckFailedException so a trigger for a deleted
-  // conversation still writes the message row above (best-effort parent update).
+  // Bump messageCount, advance updatedAt, and store a preview snippet on the
+  // parent conversation. Swallow ConditionalCheckFailedException so a trigger
+  // for a deleted conversation still writes the message row above (best-effort
+  // parent update).
+  const preview = msg.text.slice(0, 140)
   try {
     await ddb.send(
       new UpdateCommand({
         TableName: TableNames.userData,
         Key: conversationKey(userId, conversationId),
-        UpdateExpression: 'ADD messageCount :one SET updatedAt = :now',
+        UpdateExpression: 'ADD messageCount :one SET updatedAt = :now, preview = :preview',
         ConditionExpression: 'attribute_exists(pk)',
         ExpressionAttributeValues: {
           ':one': 1,
           ':now': updatedAt,
+          ':preview': preview,
         },
       }),
     )
