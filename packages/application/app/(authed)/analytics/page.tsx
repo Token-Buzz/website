@@ -1,10 +1,12 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { Card, SectionHead, Eyebrow } from "../_dashboard/primitives";
+import type { DashboardCard, DashboardCardType } from "@monorepo-template/core/db/dashboards";
+import { Card, SectionHead, Eyebrow, Icon } from "../_dashboard/primitives";
 import { SearchBar } from "../_analytics/SearchBar";
 import { ChartErrorBoundary } from "../_analytics/ChartErrorBoundary";
+import { AnalyticsCardFrame } from "../_analytics/AnalyticsCardFrame";
 import { useIsMobile } from "@/app/_hooks/useIsMobile";
 import { TopHashtagsChart } from "../_analytics/TopHashtagsChart";
 import { TopMentionsChart } from "../_analytics/TopMentionsChart";
@@ -26,6 +28,8 @@ import { PostingHeatmapChart } from "../_analytics/PostingHeatmapChart";
 import { GeographicDistributionMapChart } from "../_analytics/GeographicDistributionMapChart";
 import { ContentLengthEngagementChart } from "../_analytics/ContentLengthEngagementChart";
 import { SummaryProvider } from "../_analytics/SummaryProvider";
+import { DashboardPickerModal } from "../dashboards/_components/DashboardPickerModal";
+import { addHumContext, buildHumContextItem } from "../dashboards/_components/cardActions";
 
 // ── Analytics page ─────────────────────────────────────────────────────────
 
@@ -41,6 +45,30 @@ function AnalyticsPageInner() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") ?? "";
   const isMobile = useIsMobile();
+
+  const [pickerCard, setPickerCard] = useState<DashboardCard | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  // Auto-dismiss notice after 4000ms
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 4000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  function handleAddToContext(cardType: DashboardCardType, label: string) {
+    addHumContext(buildHumContextItem({ cardType, label, query, source: "analytics-card" }));
+    setNotice('Added "' + label + '" to Hum context');
+  }
+
+  function handleAddToDashboard(cardType: DashboardCardType) {
+    setPickerCard({
+      id: crypto.randomUUID(),
+      type: cardType,
+      position: { x: 0, y: 0, w: 6, h: 9 },
+      options: {},
+    });
+  }
 
   return (
     <div
@@ -71,6 +99,41 @@ function AnalyticsPageInner() {
         <SearchBar onIngested={() => {}} />
       </div>
 
+      {/* ── Notice banner ───────────────────────────────────────────────── */}
+      {notice && (
+        <div
+          style={{
+            padding: "10px 14px",
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--buzz-500)",
+            borderRadius: 6,
+            font: "500 13px/1.4 var(--font-sans)",
+            color: "var(--fg-1)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <span>{notice}</span>
+          <button
+            onClick={() => setNotice(null)}
+            aria-label="Dismiss"
+            style={{
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              color: "inherit",
+              padding: 2,
+              lineHeight: 0,
+              flexShrink: 0,
+            }}
+          >
+            <Icon name="close" size={14} />
+          </button>
+        </div>
+      )}
+
       {/* ── Summary data provider — one request for all charts ─────────── */}
       <SummaryProvider query={query}>
 
@@ -93,130 +156,166 @@ function AnalyticsPageInner() {
         }}
       >
         {/* Row 1 */}
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Top hashtags" meta="last 24h" />
-          <ChartErrorBoundary chartName="Top hashtags">
-            <TopHashtagsChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Top mentions" meta="last 24h · by reach" />
-          <ChartErrorBoundary chartName="Top mentions">
-            <TopMentionsChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
+        <AnalyticsCardFrame
+          label="Top hashtags"
+          meta="last 24h"
+          onAddToContext={() => handleAddToContext("hashtags", "Top hashtags")}
+          onAddToDashboard={() => handleAddToDashboard("hashtags")}
+        >
+          <TopHashtagsChart query={query} />
+        </AnalyticsCardFrame>
+        <AnalyticsCardFrame
+          label="Top mentions"
+          meta="last 24h · by reach"
+          onAddToContext={() => handleAddToContext("mentions", "Top mentions")}
+          onAddToDashboard={() => handleAddToDashboard("mentions")}
+        >
+          <TopMentionsChart query={query} />
+        </AnalyticsCardFrame>
 
         {/* Row 2 */}
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Domain distribution" meta="tweet URLs" />
-          <ChartErrorBoundary chartName="Domain distribution">
-            <DomainDistributionChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Bio domains" meta="author bio links" />
-          <ChartErrorBoundary chartName="Bio domains">
-            <BioDomainsChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
+        <AnalyticsCardFrame
+          label="Domain distribution"
+          meta="tweet URLs"
+          onAddToContext={() => handleAddToContext("domains", "Domain distribution")}
+          onAddToDashboard={() => handleAddToDashboard("domains")}
+        >
+          <DomainDistributionChart query={query} />
+        </AnalyticsCardFrame>
+        <AnalyticsCardFrame
+          label="Bio domains"
+          meta="author bio links"
+          onAddToContext={() => handleAddToContext("bio-domains", "Bio domains")}
+          onAddToDashboard={() => handleAddToDashboard("bio-domains")}
+        >
+          <BioDomainsChart query={query} />
+        </AnalyticsCardFrame>
 
         {/* Row 3 */}
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Symbol rate" meta="tweets / hour" />
-          <ChartErrorBoundary chartName="Symbol rate">
-            <SymbolRateChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Engagement timeseries" meta="likes · RT · replies · quotes" />
-          <ChartErrorBoundary chartName="Engagement timeseries">
-            <EngagementTimeSeriesChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
+        <AnalyticsCardFrame
+          label="Symbol rate"
+          meta="tweets / hour"
+          onAddToContext={() => handleAddToContext("symbol-rate", "Symbol rate")}
+          onAddToDashboard={() => handleAddToDashboard("symbol-rate")}
+        >
+          <SymbolRateChart query={query} />
+        </AnalyticsCardFrame>
+        <AnalyticsCardFrame
+          label="Engagement timeseries"
+          meta="likes · RT · replies · quotes"
+          onAddToContext={() => handleAddToContext("engagement", "Engagement timeseries")}
+          onAddToDashboard={() => handleAddToDashboard("engagement")}
+        >
+          <EngagementTimeSeriesChart query={query} />
+        </AnalyticsCardFrame>
 
         {/* Row 4 — sentiment */}
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Sentiment gauge" meta="avg score · 7D" />
-          <ChartErrorBoundary chartName="Sentiment gauge">
-            <SentimentGaugeChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Sentiment timeline" meta="% bull / bear / mixed" />
-          <ChartErrorBoundary chartName="Sentiment timeline">
-            <SentimentTimelineChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
+        <AnalyticsCardFrame
+          label="Sentiment gauge"
+          meta="avg score · 7D"
+          onAddToContext={() => handleAddToContext("sentiment", "Sentiment gauge")}
+          onAddToDashboard={() => handleAddToDashboard("sentiment")}
+        >
+          <SentimentGaugeChart query={query} />
+        </AnalyticsCardFrame>
+        <AnalyticsCardFrame
+          label="Sentiment timeline"
+          meta="% bull / bear / mixed"
+          onAddToContext={() => handleAddToContext("sentiment-timeline", "Sentiment timeline")}
+          onAddToDashboard={() => handleAddToDashboard("sentiment-timeline")}
+        >
+          <SentimentTimelineChart query={query} />
+        </AnalyticsCardFrame>
 
         {/* Row 5 */}
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Keyword word cloud" meta="top extracted terms" />
-          <ChartErrorBoundary chartName="Keyword word cloud">
-            <KeywordWordCloudChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Conversation depth" meta="thread reply depth" />
-          <ChartErrorBoundary chartName="Conversation depth">
-            <ConversationDepthChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
+        <AnalyticsCardFrame
+          label="Keyword word cloud"
+          meta="top extracted terms"
+          onAddToContext={() => handleAddToContext("keywords", "Keyword word cloud")}
+          onAddToDashboard={() => handleAddToDashboard("keywords")}
+        >
+          <KeywordWordCloudChart query={query} />
+        </AnalyticsCardFrame>
+        <AnalyticsCardFrame
+          label="Conversation depth"
+          meta="thread reply depth"
+          onAddToContext={() => handleAddToContext("conversation-depth", "Conversation depth")}
+          onAddToDashboard={() => handleAddToDashboard("conversation-depth")}
+        >
+          <ConversationDepthChart query={query} />
+        </AnalyticsCardFrame>
 
         {/* Row 6 */}
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Geographic distribution" meta="author locations · top 15" />
-          <ChartErrorBoundary chartName="Geographic distribution">
-            <GeographicDistributionMapChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Language distribution" meta="tweet language" />
-          <ChartErrorBoundary chartName="Language distribution">
-            <LanguageDistributionChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
+        <AnalyticsCardFrame
+          label="Geographic distribution"
+          meta="author locations · top 15"
+          onAddToContext={() => handleAddToContext("geo", "Geographic distribution")}
+          onAddToDashboard={() => handleAddToDashboard("geo")}
+        >
+          <GeographicDistributionMapChart query={query} />
+        </AnalyticsCardFrame>
+        <AnalyticsCardFrame
+          label="Language distribution"
+          meta="tweet language"
+          onAddToContext={() => handleAddToContext("languages", "Language distribution")}
+          onAddToDashboard={() => handleAddToDashboard("languages")}
+        >
+          <LanguageDistributionChart query={query} />
+        </AnalyticsCardFrame>
 
         {/* Row 7 */}
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Source distribution" meta="Twitter client" />
-          <ChartErrorBoundary chartName="Source distribution">
-            <SourceDistributionChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Verification breakdown" meta="blue · business · government" />
-          <ChartErrorBoundary chartName="Verification breakdown">
-            <VerificationBreakdownChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
+        <AnalyticsCardFrame
+          label="Source distribution"
+          meta="Twitter client"
+          onAddToContext={() => handleAddToContext("sources", "Source distribution")}
+          onAddToDashboard={() => handleAddToDashboard("sources")}
+        >
+          <SourceDistributionChart query={query} />
+        </AnalyticsCardFrame>
+        <AnalyticsCardFrame
+          label="Verification breakdown"
+          meta="blue · business · government"
+          onAddToContext={() => handleAddToContext("verification", "Verification breakdown")}
+          onAddToDashboard={() => handleAddToDashboard("verification")}
+        >
+          <VerificationBreakdownChart query={query} />
+        </AnalyticsCardFrame>
 
         {/* Row 8 */}
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Bot ratio" meta="automated vs human" />
-          <ChartErrorBoundary chartName="Bot ratio">
-            <BotRatioChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Posting heatmap" meta="day × hour · 7D" />
-          <ChartErrorBoundary chartName="Posting heatmap">
-            <PostingHeatmapChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
+        <AnalyticsCardFrame
+          label="Bot ratio"
+          meta="automated vs human"
+          onAddToContext={() => handleAddToContext("bot-ratio", "Bot ratio")}
+          onAddToDashboard={() => handleAddToDashboard("bot-ratio")}
+        >
+          <BotRatioChart query={query} />
+        </AnalyticsCardFrame>
+        <AnalyticsCardFrame
+          label="Posting heatmap"
+          meta="day × hour · 7D"
+          onAddToContext={() => handleAddToContext("posting-heatmap", "Posting heatmap")}
+          onAddToDashboard={() => handleAddToDashboard("posting-heatmap")}
+        >
+          <PostingHeatmapChart query={query} />
+        </AnalyticsCardFrame>
 
         {/* Row 9 */}
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Content length × engagement" meta="text length vs engagement score" />
-          <ChartErrorBoundary chartName="Content length × engagement">
-            <ContentLengthEngagementChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
-        <Card padding={20} style={{ display: "flex", flexDirection: "column" }}>
-          <SectionHead eyebrow="Author influence" meta="followers vs engagement rate" />
-          <ChartErrorBoundary chartName="Author influence">
-            <AuthorInfluenceScatterChart query={query} />
-          </ChartErrorBoundary>
-        </Card>
+        <AnalyticsCardFrame
+          label="Content length × engagement"
+          meta="text length vs engagement score"
+          onAddToContext={() => handleAddToContext("content-length", "Content length × engagement")}
+          onAddToDashboard={() => handleAddToDashboard("content-length")}
+        >
+          <ContentLengthEngagementChart query={query} />
+        </AnalyticsCardFrame>
+        <AnalyticsCardFrame
+          label="Author influence"
+          meta="followers vs engagement rate"
+          onAddToContext={() => handleAddToContext("author-influence", "Author influence")}
+          onAddToDashboard={() => handleAddToDashboard("author-influence")}
+        >
+          <AuthorInfluenceScatterChart query={query} />
+        </AnalyticsCardFrame>
       </div>
 
       {/* ── Footer ──────────────────────────────────────────────────────── */}
@@ -232,6 +331,19 @@ function AnalyticsPageInner() {
       </div>
 
       </SummaryProvider>
+
+      {/* Picker modal — "Add to dashboard" */}
+      {pickerCard && (
+        <DashboardPickerModal
+          card={pickerCard}
+          currentDashboardId=""
+          onClose={() => setPickerCard(null)}
+          onAdded={(name) => {
+            setPickerCard(null);
+            setNotice('Added card to "' + name + '"');
+          }}
+        />
+      )}
     </div>
   );
 }
