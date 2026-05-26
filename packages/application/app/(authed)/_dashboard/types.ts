@@ -69,6 +69,7 @@ export interface HumMessage {
   text: string
   sources?: string[]
   time?: string
+  contextItems?: { label: string }[]
 }
 
 export interface WatchlistGroup {

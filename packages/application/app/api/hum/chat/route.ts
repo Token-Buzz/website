@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { BedrockRuntimeClient, ConverseStreamCommand } from "@aws-sdk/client-bedrock-runtime";
-import { resolveModel, totalInputTokens, toConverseMessages } from "./models";
+import { resolveModel, totalInputTokens, toConverseMessages, formatContextItems } from "./models";
 
 const client = new BedrockRuntimeClient({ region: "us-east-1" });
 
@@ -19,10 +19,13 @@ export async function POST(req: Request) {
     message: string;
     history?: Array<{ from: string; text: string }>;
     model?: string;
+    contextItems?: Array<{ label?: string; summary?: string }>;
   };
 
   const model = resolveModel(body.model);
-  const messages = toConverseMessages(body.history, body.message);
+  const contextBlock = formatContextItems(body.contextItems);
+  const userText = contextBlock ? `${contextBlock}\n${body.message}` : body.message;
+  const messages = toConverseMessages(body.history, userText);
 
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
