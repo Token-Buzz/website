@@ -5,6 +5,7 @@ import { Icon, Eyebrow } from './primitives'
 import type { HumMessage } from './types'
 import type { HumStagedContext } from './humContext'
 import { HUM_CONTEXT_MIME, parseContext, fromCardEvent } from './humContext'
+import { formatRelativeTime } from './humTime'
 
 const INITIAL_MSG: HumMessage = {
   from: 'hum',
@@ -78,6 +79,14 @@ function Thinking() {
 
 // ── HumPanel ───────────────────────────────────────────────────────────────
 
+interface ConversationSummary {
+  conversationId: string
+  title: string
+  updatedAt: string
+  messageCount: number
+  preview?: string
+}
+
 interface HumPanelProps {
   onClose: () => void
   open: boolean
@@ -91,6 +100,8 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [stagedContext, setStagedContext] = useState<HumStagedContext[]>([])
   const [dragHover, setDragHover] = useState(false)
+  const [activeTab, setActiveTab] = useState<'current' | 'previous'>('current')
+  const [prevConversations, setPrevConversations] = useState<ConversationSummary[]>([])
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevPreset = useRef<string | undefined>(undefined)
   const loadedRef = useRef(false)
@@ -139,6 +150,26 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
     restore()
   }, [open])
 
+  // ── Fetch previous conversations when the Previous Chats tab becomes active ─
+  useEffect(() => {
+    if (activeTab !== 'previous') return
+
+    async function fetchConversations() {
+      try {
+        const res = await fetch('/api/hum/conversations')
+        if (!res.ok) return
+        const data = await res.json() as { conversations: ConversationSummary[] }
+        if (data.conversations) {
+          setPrevConversations(data.conversations)
+        }
+      } catch {
+        // best-effort — failure just shows empty state
+      }
+    }
+
+    fetchConversations()
+  }, [activeTab])
+
   useEffect(() => {
     if (presetQuestion && presetQuestion !== prevPreset.current) {
       prevPreset.current = presetQuestion
@@ -175,6 +206,40 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
 
   function removeStaged(id: string) {
     setStagedContext((prev) => prev.filter((s) => s.id !== id))
+  }
+
+  async function loadConversation(id: string) {
+    try {
+      const res = await fetch(`/api/hum/conversations/${id}`)
+      if (!res.ok) return
+      const data = await res.json() as {
+        conversation: { conversationId: string }
+        messages: Array<{ role: 'user' | 'assistant'; text: string; timestamp: string }>
+      }
+      const { messages } = data
+      if (!messages || messages.length === 0) return
+
+      const hydrated: HumMessage[] = messages.map((m) => ({
+        from: m.role === 'assistant' ? 'hum' : 'you',
+        text: m.text,
+        time: m.timestamp ? new Date(m.timestamp).toISOString().slice(11, 16) + ' UTC' : undefined,
+      }))
+
+      setConversationId(id)
+      setMsgs(hydrated)
+      loadedRef.current = true
+      setActiveTab('current')
+    } catch {
+      // best-effort
+    }
+  }
+
+  function startNewChat() {
+    setMsgs([INITIAL_MSG])
+    setConversationId(null)
+    setStagedContext([])
+    loadedRef.current = true
+    setActiveTab('current')
   }
 
   async function send(text: string) {
@@ -363,70 +428,194 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
         <Icon name="close" size={16} style={{ color: 'var(--fg-3)', cursor: 'pointer' }} onClick={onClose} />
       </div>
 
-      {/* Conversation */}
-      <div
-        ref={scrollRef}
-        style={{ flex: 1, minHeight: 0, padding: 16, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}
-      >
-        {msgs.map((m, i) => <HumBubble key={i} msg={m} />)}
-        {thinking && <Thinking />}
+      {/* Tab bar */}
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+        {(['current', 'previous'] as const).map((tab) => {
+          const isActive = activeTab === tab
+          const label = tab === 'current' ? 'Current chat' : 'Previous chats'
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                flex: 1,
+                background: 'transparent',
+                border: 'none',
+                borderBottom: isActive ? '2px solid var(--buzz-500)' : '2px solid transparent',
+                padding: '8px 12px',
+                cursor: 'pointer',
+                font: '500 11px var(--font-sans)',
+                color: isActive ? 'var(--fg-1)' : 'var(--fg-3)',
+                letterSpacing: '0.01em',
+                marginBottom: -1,
+              }}
+            >
+              {label}
+            </button>
+          )
+        })}
       </div>
 
-      {/* Suggestions */}
-      {msgs.length <= 2 && !thinking && (
-        <div style={{ padding: '0 16px 12px', display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
-          <Eyebrow style={{ marginBottom: 4 }}>Try</Eyebrow>
-          {SUGGESTIONS.map((s) => (
-            <button
-              key={s}
-              onClick={() => send(s)}
-              style={{ border: '1px solid var(--border)', background: 'var(--surface)', padding: '8px 12px', borderRadius: 999, cursor: 'pointer', font: '500 12px var(--font-sans)', color: 'var(--fg-2)', textAlign: 'left' }}
-            >{s}</button>
-          ))}
-        </div>
+      {/* Current chat tab */}
+      {activeTab === 'current' && (
+        <>
+          {/* Conversation */}
+          <div
+            ref={scrollRef}
+            style={{ flex: 1, minHeight: 0, padding: 16, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}
+          >
+            {msgs.map((m, i) => <HumBubble key={i} msg={m} />)}
+            {thinking && <Thinking />}
+          </div>
+
+          {/* Suggestions — only for a brand-new empty chat */}
+          {conversationId === null && msgs.length === 1 && !thinking && (
+            <div style={{ padding: '0 16px 12px', display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+              <Eyebrow style={{ marginBottom: 4 }}>Try</Eyebrow>
+              {SUGGESTIONS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => send(s)}
+                  style={{ border: '1px solid var(--border)', background: 'var(--surface)', padding: '8px 12px', borderRadius: 999, cursor: 'pointer', font: '500 12px var(--font-sans)', color: 'var(--fg-2)', textAlign: 'left' }}
+                >{s}</button>
+              ))}
+            </div>
+          )}
+
+          {/* Composer */}
+          <div style={{ padding: 14, borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+            {/* Staged context chips */}
+            {stagedContext.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                {stagedContext.map((item) => (
+                  <span
+                    key={item.id}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '500 11px var(--font-mono)', color: 'var(--fg-3)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '2px 4px 2px 7px', borderRadius: 999 }}
+                  >
+                    {item.label}
+                    <button
+                      onClick={() => removeStaged(item.id)}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--fg-3)', fontSize: 12, lineHeight: 1, padding: 0 }}
+                      aria-label={`Remove ${item.label}`}
+                    >×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10 }}>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }}
+                placeholder="Ask about a ticker, a handle, a narrative..."
+                rows={1}
+                style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontFamily: 'var(--font-sans)', fontSize: 13, lineHeight: 1.5, color: 'var(--fg-1)', maxHeight: 100 }}
+              />
+              <button
+                onClick={() => send(input)}
+                style={{ background: (input.trim() || stagedContext.length > 0) ? 'var(--buzz-500)' : 'var(--ink-300)', color: '#fff', border: 'none', borderRadius: 6, width: 28, height: 28, display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}
+              >
+                <Icon name="send" size={14} />
+              </button>
+            </div>
+            <div style={{ font: '500 10px var(--font-mono)', color: 'var(--fg-3)', marginTop: 8, textAlign: 'center' }}>
+              Hum cites every source. Always verify before you trade.
+            </div>
+          </div>
+        </>
       )}
 
-      {/* Composer */}
-      <div style={{ padding: 14, borderTop: '1px solid var(--border)', flexShrink: 0 }}>
-        {/* Staged context chips */}
-        {stagedContext.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
-            {stagedContext.map((item) => (
-              <span
-                key={item.id}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '500 11px var(--font-mono)', color: 'var(--fg-3)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '2px 4px 2px 7px', borderRadius: 999 }}
-              >
-                {item.label}
-                <button
-                  onClick={() => removeStaged(item.id)}
-                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--fg-3)', fontSize: 12, lineHeight: 1, padding: 0 }}
-                  aria-label={`Remove ${item.label}`}
-                >×</button>
-              </span>
-            ))}
+      {/* Previous chats tab */}
+      {activeTab === 'previous' && (
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          {/* New chat button */}
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+            <button
+              onClick={startNewChat}
+              style={{
+                width: '100%',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '8px 14px',
+                cursor: 'pointer',
+                font: '600 12px var(--font-sans)',
+                color: 'var(--fg-1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span>
+              New chat
+            </button>
           </div>
-        )}
 
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10 }}>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }}
-            placeholder="Ask about a ticker, a handle, a narrative..."
-            rows={1}
-            style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontFamily: 'var(--font-sans)', fontSize: 13, lineHeight: 1.5, color: 'var(--fg-1)', maxHeight: 100 }}
-          />
-          <button
-            onClick={() => send(input)}
-            style={{ background: (input.trim() || stagedContext.length > 0) ? 'var(--buzz-500)' : 'var(--ink-300)', color: '#fff', border: 'none', borderRadius: 6, width: 28, height: 28, display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}
-          >
-            <Icon name="send" size={14} />
-          </button>
+          {/* Conversations list */}
+          {prevConversations.length === 0 ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+              <span style={{ font: '400 13px var(--font-sans)', color: 'var(--fg-3)', textAlign: 'center' }}>
+                No previous chats yet.
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {prevConversations.map((conv) => {
+                const isActive = conv.conversationId === conversationId
+                return (
+                  <button
+                    key={conv.conversationId}
+                    onClick={() => loadConversation(conv.conversationId)}
+                    style={{
+                      background: isActive ? 'var(--surface-active, var(--surface))' : 'transparent',
+                      border: 'none',
+                      borderBottom: '1px solid var(--border)',
+                      padding: '12px 16px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 3,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <span style={{
+                        font: '600 13px var(--font-sans)',
+                        color: 'var(--fg-1)',
+                        flex: 1,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}>
+                        {conv.title}
+                      </span>
+                      <span style={{ font: '500 10px var(--font-mono)', color: 'var(--fg-3)', flexShrink: 0 }}>
+                        {formatRelativeTime(conv.updatedAt)}
+                      </span>
+                    </div>
+                    {conv.preview && (
+                      <span style={{
+                        font: '400 12px var(--font-sans)',
+                        color: 'var(--fg-3)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: 'block',
+                      }}>
+                        {conv.preview}
+                      </span>
+                    )}
+                    <span style={{ font: '500 10px var(--font-mono)', color: 'var(--fg-3)' }}>
+                      {conv.messageCount} {conv.messageCount === 1 ? 'message' : 'messages'}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
-        <div style={{ font: '500 10px var(--font-mono)', color: 'var(--fg-3)', marginTop: 8, textAlign: 'center' }}>
-          Hum cites every source. Always verify before you trade.
-        </div>
-      </div>
+      )}
     </aside>
   )
 }
