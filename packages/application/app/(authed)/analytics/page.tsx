@@ -30,6 +30,7 @@ import { ContentLengthEngagementChart } from "../_analytics/ContentLengthEngagem
 import { SummaryProvider } from "../_analytics/SummaryProvider";
 import { DashboardPickerModal } from "../dashboards/_components/DashboardPickerModal";
 import { addHumContext, buildHumContextItem } from "../dashboards/_components/cardActions";
+import { fromCard } from "../_dashboard/humContext";
 
 // ── Analytics page ─────────────────────────────────────────────────────────
 
@@ -161,6 +162,7 @@ function AnalyticsPageInner() {
           meta="last 24h"
           onAddToContext={() => handleAddToContext("hashtags", "Top hashtags")}
           onAddToDashboard={() => handleAddToDashboard("hashtags")}
+          dragItem={fromCard({ cardType: "hashtags", label: "Top hashtags", query })}
         >
           <TopHashtagsChart query={query} />
         </AnalyticsCardFrame>
@@ -169,6 +171,7 @@ function AnalyticsPageInner() {
           meta="last 24h · by reach"
           onAddToContext={() => handleAddToContext("mentions", "Top mentions")}
           onAddToDashboard={() => handleAddToDashboard("mentions")}
+          dragItem={fromCard({ cardType: "mentions", label: "Top mentions", query })}
         >
           <TopMentionsChart query={query} />
         </AnalyticsCardFrame>
@@ -179,6 +182,7 @@ function AnalyticsPageInner() {
           meta="tweet URLs"
           onAddToContext={() => handleAddToContext("domains", "Domain distribution")}
           onAddToDashboard={() => handleAddToDashboard("domains")}
+          dragItem={fromCard({ cardType: "domains", label: "Domain distribution", query })}
         >
           <DomainDistributionChart query={query} />
         </AnalyticsCardFrame>
@@ -187,6 +191,7 @@ function AnalyticsPageInner() {
           meta="author bio links"
           onAddToContext={() => handleAddToContext("bio-domains", "Bio domains")}
           onAddToDashboard={() => handleAddToDashboard("bio-domains")}
+          dragItem={fromCard({ cardType: "bio-domains", label: "Bio domains", query })}
         >
           <BioDomainsChart query={query} />
         </AnalyticsCardFrame>
@@ -197,6 +202,7 @@ function AnalyticsPageInner() {
           meta="tweets / hour"
           onAddToContext={() => handleAddToContext("symbol-rate", "Symbol rate")}
           onAddToDashboard={() => handleAddToDashboard("symbol-rate")}
+          dragItem={fromCard({ cardType: "symbol-rate", label: "Symbol rate", query })}
         >
           <SymbolRateChart query={query} />
         </AnalyticsCardFrame>
@@ -205,6 +211,7 @@ function AnalyticsPageInner() {
           meta="likes · RT · replies · quotes"
           onAddToContext={() => handleAddToContext("engagement", "Engagement timeseries")}
           onAddToDashboard={() => handleAddToDashboard("engagement")}
+          dragItem={fromCard({ cardType: "engagement", label: "Engagement timeseries", query })}
         >
           <EngagementTimeSeriesChart query={query} />
         </AnalyticsCardFrame>
@@ -215,6 +222,7 @@ function AnalyticsPageInner() {
           meta="avg score · 7D"
           onAddToContext={() => handleAddToContext("sentiment", "Sentiment gauge")}
           onAddToDashboard={() => handleAddToDashboard("sentiment")}
+          dragItem={fromCard({ cardType: "sentiment", label: "Sentiment gauge", query })}
         >
           <SentimentGaugeChart query={query} />
         </AnalyticsCardFrame>
@@ -223,6 +231,7 @@ function AnalyticsPageInner() {
           meta="% bull / bear / mixed"
           onAddToContext={() => handleAddToContext("sentiment-timeline", "Sentiment timeline")}
           onAddToDashboard={() => handleAddToDashboard("sentiment-timeline")}
+          dragItem={fromCard({ cardType: "sentiment-timeline", label: "Sentiment timeline", query })}
         >
           <SentimentTimelineChart query={query} />
         </AnalyticsCardFrame>
@@ -233,6 +242,7 @@ function AnalyticsPageInner() {
           meta="top extracted terms"
           onAddToContext={() => handleAddToContext("keywords", "Keyword word cloud")}
           onAddToDashboard={() => handleAddToDashboard("keywords")}
+          dragItem={fromCard({ cardType: "keywords", label: "Keyword word cloud", query })}
         >
           <KeywordWordCloudChart query={query} />
         </AnalyticsCardFrame>
@@ -241,6 +251,7 @@ function AnalyticsPageInner() {
           meta="thread reply depth"
           onAddToContext={() => handleAddToContext("conversation-depth", "Conversation depth")}
           onAddToDashboard={() => handleAddToDashboard("conversation-depth")}
+          dragItem={fromCard({ cardType: "conversation-depth", label: "Conversation depth", query })}
         >
           <ConversationDepthChart query={query} />
         </AnalyticsCardFrame>
@@ -251,6 +262,7 @@ function AnalyticsPageInner() {
           meta="author locations · top 15"
           onAddToContext={() => handleAddToContext("geo", "Geographic distribution")}
           onAddToDashboard={() => handleAddToDashboard("geo")}
+          dragItem={fromCard({ cardType: "geo", label: "Geographic distribution", query })}
         >
           <GeographicDistributionMapChart query={query} />
         </AnalyticsCardFrame>
@@ -259,6 +271,7 @@ function AnalyticsPageInner() {
           meta="tweet language"
           onAddToContext={() => handleAddToContext("languages", "Language distribution")}
           onAddToDashboard={() => handleAddToDashboard("languages")}
+          dragItem={fromCard({ cardType: "languages", label: "Language distribution", query })}
         >
           <LanguageDistributionChart query={query} />
         </AnalyticsCardFrame>
@@ -269,6 +282,7 @@ function AnalyticsPageInner() {
           meta="Twitter client"
           onAddToContext={() => handleAddToContext("sources", "Source distribution")}
           onAddToDashboard={() => handleAddToDashboard("sources")}
+          dragItem={fromCard({ cardType: "sources", label: "Source distribution", query })}
         >
           <SourceDistributionChart query={query} />
         </AnalyticsCardFrame>
@@ -277,6 +291,7 @@ function AnalyticsPageInner() {
           meta="blue · business · government"
           onAddToContext={() => handleAddToContext("verification", "Verification breakdown")}
           onAddToDashboard={() => handleAddToDashboard("verification")}
+          dragItem={fromCard({ cardType: "verification", label: "Verification breakdown", query })}
         >
           <VerificationBreakdownChart query={query} />
         </AnalyticsCardFrame>
@@ -287,6 +302,7 @@ function AnalyticsPageInner() {
           meta="automated vs human"
           onAddToContext={() => handleAddToContext("bot-ratio", "Bot ratio")}
           onAddToDashboard={() => handleAddToDashboard("bot-ratio")}
+          dragItem={fromCard({ cardType: "bot-ratio", label: "Bot ratio", query })}
         >
           <BotRatioChart query={query} />
         </AnalyticsCardFrame>
@@ -295,6 +311,7 @@ function AnalyticsPageInner() {
           meta="day × hour · 7D"
           onAddToContext={() => handleAddToContext("posting-heatmap", "Posting heatmap")}
           onAddToDashboard={() => handleAddToDashboard("posting-heatmap")}
+          dragItem={fromCard({ cardType: "posting-heatmap", label: "Posting heatmap", query })}
         >
           <PostingHeatmapChart query={query} />
         </AnalyticsCardFrame>
@@ -305,6 +322,7 @@ function AnalyticsPageInner() {
           meta="text length vs engagement score"
           onAddToContext={() => handleAddToContext("content-length", "Content length × engagement")}
           onAddToDashboard={() => handleAddToDashboard("content-length")}
+          dragItem={fromCard({ cardType: "content-length", label: "Content length × engagement", query })}
         >
           <ContentLengthEngagementChart query={query} />
         </AnalyticsCardFrame>
@@ -313,6 +331,7 @@ function AnalyticsPageInner() {
           meta="followers vs engagement rate"
           onAddToContext={() => handleAddToContext("author-influence", "Author influence")}
           onAddToDashboard={() => handleAddToDashboard("author-influence")}
+          dragItem={fromCard({ cardType: "author-influence", label: "Author influence", query })}
         >
           <AuthorInfluenceScatterChart query={query} />
         </AnalyticsCardFrame>

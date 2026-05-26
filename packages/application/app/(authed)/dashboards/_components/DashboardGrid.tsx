@@ -8,6 +8,7 @@ import { DashboardCardFrame } from './DashboardCardFrame'
 import { CARD_META } from './registry'
 import { cardsToLayout, layoutToCards, GRID_COLS, ROW_HEIGHT_PX } from './grid'
 import type { DashboardCard } from '@monorepo-template/core/db/dashboards'
+import { fromCard } from '../../_dashboard/humContext'
 
 // Create the width-aware grid ONCE at module scope
 const GridLayoutWithWidth = WidthProvider(GridLayout)
@@ -19,6 +20,7 @@ interface DashboardGridProps {
   query: string
   editing: boolean
   isMobile: boolean
+  ticker?: string
   onLayoutChange: (cards: DashboardCard[]) => void
   onRemoveCard: (cardId: string) => void
   onAddToContext: (card: DashboardCard) => void
@@ -32,6 +34,7 @@ export function DashboardGrid({
   query,
   editing,
   isMobile,
+  ticker,
   onLayoutChange,
   onRemoveCard,
   onAddToContext,
@@ -50,6 +53,7 @@ export function DashboardGrid({
       >
         {cards.map((card) => {
           const { label, meta } = CARD_META[card.type] ?? { label: card.type, meta: '' }
+          const dragItem = editing ? undefined : fromCard({ cardType: card.type, label, query, ticker })
           return (
             <div
               key={card.id}
@@ -63,6 +67,7 @@ export function DashboardGrid({
                 onRemove={() => onRemoveCard(card.id)}
                 onAddToContext={() => onAddToContext(card)}
                 onAddToDashboard={() => onAddToDashboard(card)}
+                dragItem={dragItem}
               />
             </div>
           )
@@ -99,6 +104,7 @@ export function DashboardGrid({
     >
       {cards.map((card) => {
         const { label, meta } = CARD_META[card.type] ?? { label: card.type, meta: '' }
+        const dragItem = editing ? undefined : fromCard({ cardType: card.type, label, query, ticker })
         return (
           <div key={card.id}>
             {/* inner wrapper fills the RGL-sized item; flex column so the drag handle sits above the card */}
@@ -137,6 +143,7 @@ export function DashboardGrid({
                   onRemove={() => onRemoveCard(card.id)}
                   onAddToContext={() => onAddToContext(card)}
                   onAddToDashboard={() => onAddToDashboard(card)}
+                  dragItem={dragItem}
                 />
               </div>
             </div>

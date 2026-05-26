@@ -549,6 +549,7 @@ export default function DashboardDetailPage() {
             query={scopeQuery}
             editing={editing}
             isMobile={isMobile}
+            ticker={dashboard.ticker}
             onLayoutChange={persistCards}
             onRemoveCard={handleRemoveCard}
             onAddToContext={handleAddToContext}
