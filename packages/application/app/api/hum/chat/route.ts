@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { resolveModel, totalInputTokens } from "./models";
 
 const client = new Anthropic();
 
@@ -17,7 +18,10 @@ export async function POST(req: Request) {
   const body = await req.json() as {
     message: string;
     history?: Array<{ from: string; text: string }>;
+    model?: string;
   };
+
+  const model = resolveModel(body.model);
 
   const priorMessages: Anthropic.Messages.MessageParam[] = (body.history ?? [])
     .filter(m => m.text?.trim())
@@ -35,10 +39,13 @@ export async function POST(req: Request) {
   const readable = new ReadableStream({
     async start(controller) {
       try {
+        // The system prompt is below the model's min cacheable token count today,
+        // so it won't cache yet — but Phase 3 context items grow the prefix past
+        // the threshold, at which point this cache_control kicks in automatically.
         const stream = client.messages.stream({
-          model: "claude-sonnet-4-6",
-          max_tokens: 512,
-          system: SYSTEM_PROMPT,
+          model,
+          max_tokens: 1024,
+          system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
           messages,
         });
         for await (const event of stream) {
@@ -51,6 +58,13 @@ export async function POST(req: Request) {
             );
           }
         }
+        const final = await stream.finalMessage();
+        const meta = {
+          model,
+          tokensIn: totalInputTokens(final.usage),
+          tokensOut: final.usage.output_tokens,
+        };
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ meta })}\n\n`));
       } catch {
         controller.enqueue(
           encoder.encode(

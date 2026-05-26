@@ -188,6 +188,7 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
       const reader = res.body?.getReader()
       const decoder = new TextDecoder()
       let accumulated = ''
+      let replyMeta: { model?: string; tokensIn?: number; tokensOut?: number } | null = null
       const humMsg: HumMessage = {
         from: 'hum',
         text: '',
@@ -223,6 +224,9 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
                     return updated
                   })
                 }
+                if (parsed.meta) {
+                  replyMeta = parsed.meta
+                }
               } catch {
                 // skip malformed SSE lines
               }
@@ -237,7 +241,13 @@ export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
           await fetch(`/api/hum/conversations/${activeConversationId}/messages`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ role: 'assistant', text: accumulated, model: 'claude-sonnet-4-6' }),
+            body: JSON.stringify({
+              role: 'assistant',
+              text: accumulated,
+              model: replyMeta?.model ?? 'claude-sonnet-4-6',
+              ...(replyMeta?.tokensIn !== undefined ? { tokensIn: replyMeta.tokensIn } : {}),
+              ...(replyMeta?.tokensOut !== undefined ? { tokensOut: replyMeta.tokensOut } : {}),
+            }),
           })
         } catch {
           // best-effort
