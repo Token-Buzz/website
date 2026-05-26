@@ -21,6 +21,8 @@ interface DashboardGridProps {
   isMobile: boolean
   onLayoutChange: (cards: DashboardCard[]) => void
   onRemoveCard: (cardId: string) => void
+  onAddToContext: (card: DashboardCard) => void
+  onAddToDashboard: (card: DashboardCard) => void
 }
 
 // ── DashboardGrid ──────────────────────────────────────────────────────────────
@@ -32,6 +34,8 @@ export function DashboardGrid({
   isMobile,
   onLayoutChange,
   onRemoveCard,
+  onAddToContext,
+  onAddToDashboard,
 }: DashboardGridProps) {
   // ── Mobile: simple stacked CSS grid ────────────────────────────────────────
   if (isMobile) {
@@ -57,6 +61,8 @@ export function DashboardGrid({
                 type={card.type}
                 query={query}
                 onRemove={() => onRemoveCard(card.id)}
+                onAddToContext={() => onAddToContext(card)}
+                onAddToDashboard={() => onAddToDashboard(card)}
               />
             </div>
           )
@@ -129,6 +135,8 @@ export function DashboardGrid({
                   type={card.type}
                   query={query}
                   onRemove={() => onRemoveCard(card.id)}
+                  onAddToContext={() => onAddToContext(card)}
+                  onAddToDashboard={() => onAddToDashboard(card)}
                 />
               </div>
             </div>
