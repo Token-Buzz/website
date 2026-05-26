@@ -15,6 +15,7 @@
     "./db/byok": "./src/db/byok.ts",
     "./db/byok-poll": "./src/db/byok-poll.ts",
     "./db/client": "./src/db/client.ts",
+    "./db/conversations": "./src/db/conversations.ts",
     "./db/dashboards": "./src/db/dashboards.ts",
     "./db/geo": "./src/db/geo.ts",
     "./db/keys": "./src/db/keys.ts",

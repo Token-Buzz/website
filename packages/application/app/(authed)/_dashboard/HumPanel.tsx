@@ -71,15 +71,62 @@ function Thinking() {
 
 interface HumPanelProps {
   onClose: () => void
+  open: boolean
   presetQuestion?: string
 }
 
-export function HumPanel({ onClose, presetQuestion }: HumPanelProps) {
+export function HumPanel({ onClose, open, presetQuestion }: HumPanelProps) {
   const [msgs, setMsgs] = useState<HumMessage[]>([INITIAL_MSG])
   const [input, setInput] = useState('')
   const [thinking, setThinking] = useState(false)
+  const [conversationId, setConversationId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevPreset = useRef<string | undefined>(undefined)
+  const loadedRef = useRef(false)
+
+  // ── Restore conversation on first open ──────────────────────────────────
+  useEffect(() => {
+    if (!open || loadedRef.current) return
+    loadedRef.current = true
+
+    async function restore() {
+      try {
+        const listRes = await fetch('/api/hum/conversations')
+        if (!listRes.ok) return
+        const listData = await listRes.json() as {
+          conversations: Array<{ conversationId: string; title: string; updatedAt: string; messageCount: number }>
+        }
+        const conversations = listData.conversations
+        if (!conversations || conversations.length === 0) return
+
+        // Take the most recent conversation (API returns newest-first)
+        const mostRecent = conversations[0]
+        const detailRes = await fetch(`/api/hum/conversations/${mostRecent.conversationId}`)
+        if (!detailRes.ok) return
+        const detailData = await detailRes.json() as {
+          conversation: { conversationId: string }
+          messages: Array<{ role: 'user' | 'assistant'; text: string; timestamp: string }>
+        }
+
+        const { messages } = detailData
+        if (!messages || messages.length === 0) return
+
+        // Hydrate msgs from persisted messages, replacing the canned greeting
+        const hydrated: HumMessage[] = messages.map((m) => ({
+          from: m.role === 'assistant' ? 'hum' : 'you',
+          text: m.text,
+          time: m.timestamp ? new Date(m.timestamp).toISOString().slice(11, 16) + ' UTC' : undefined,
+        }))
+
+        setConversationId(mostRecent.conversationId)
+        setMsgs(hydrated)
+      } catch {
+        // best-effort — a persistence failure must not break the chat UX
+      }
+    }
+
+    restore()
+  }, [open])
 
   useEffect(() => {
     if (presetQuestion && presetQuestion !== prevPreset.current) {
@@ -101,6 +148,33 @@ export function HumPanel({ onClose, presetQuestion }: HumPanelProps) {
     setMsgs((m) => [...m, userMsg])
     setInput('')
     setThinking(true)
+
+    // ── Ensure a conversation exists, persist the user message ─────────────
+    let activeConversationId = conversationId
+    try {
+      if (activeConversationId === null) {
+        const createRes = await fetch('/api/hum/conversations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: text.slice(0, 60) }),
+        })
+        if (createRes.ok) {
+          const createData = await createRes.json() as { conversation: { conversationId: string } }
+          activeConversationId = createData.conversation.conversationId
+          setConversationId(activeConversationId)
+        }
+      }
+
+      if (activeConversationId) {
+        await fetch(`/api/hum/conversations/${activeConversationId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: 'user', text }),
+        })
+      }
+    } catch {
+      // best-effort — persistence failure must not break chat UX
+    }
 
     try {
       const res = await fetch('/api/hum/chat', {
@@ -156,18 +230,31 @@ export function HumPanel({ onClose, presetQuestion }: HumPanelProps) {
           }
         }
       }
+
+      // ── Persist the assistant reply ──────────────────────────────────────
+      if (accumulated && activeConversationId) {
+        try {
+          await fetch(`/api/hum/conversations/${activeConversationId}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role: 'assistant', text: accumulated, model: 'claude-sonnet-4-6' }),
+          })
+        } catch {
+          // best-effort
+        }
+      }
     } catch {
       setThinking(false)
       setMsgs((m) => [...m, {
         from: 'hum',
-        text: "Sorry, I’m having trouble connecting right now. Try again in a moment.",
+        text: "Sorry, I'm having trouble connecting right now. Try again in a moment.",
         time: new Date().toISOString().slice(11, 16) + ' UTC',
       }])
     }
   }
 
   return (
-    <aside style={{ width: 380, height: '100%', flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+    <aside style={{ width: '100%', height: '100%', flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         <div style={{ background: 'var(--inv-bg)', color: 'var(--inv-fg)', fontFamily: 'var(--font-display)', fontSize: 14, padding: '4px 8px 2px', lineHeight: 1 }}>HUM.</div>
