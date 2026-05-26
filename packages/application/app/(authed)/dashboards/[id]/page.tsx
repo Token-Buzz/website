@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type CSSProperties } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import type { Dashboard, DashboardCard, DashboardCardType } from '@monorepo-template/core/db/dashboards'
@@ -18,9 +18,10 @@ import { DashboardGrid } from '../_components/DashboardGrid'
 
 interface AddCardMenuProps {
   onAdd: (type: DashboardCardType) => void
+  isMobile?: boolean
 }
 
-function AddCardMenu({ onAdd }: AddCardMenuProps) {
+function AddCardMenu({ onAdd, isMobile }: AddCardMenuProps) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -35,6 +36,34 @@ function AddCardMenu({ onAdd }: AddCardMenuProps) {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [open])
+
+  const menuStyle: CSSProperties = isMobile
+    ? {
+        position: 'fixed',
+        left: 12,
+        top: 'auto',
+        width: 'max-content',
+        maxWidth: 'calc(100vw - 24px)',
+        zIndex: 50,
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--r-3)',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
+        maxHeight: 'calc(100vh - 160px)',
+        overflowY: 'auto',
+      }
+    : {
+        position: 'absolute',
+        top: 'calc(100% + 6px)',
+        right: 0,
+        zIndex: 50,
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--r-3)',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
+        minWidth: 200,
+        overflow: 'hidden',
+      }
 
   return (
     <div ref={menuRef} style={{ position: 'relative' }}>
@@ -52,18 +81,7 @@ function AddCardMenu({ onAdd }: AddCardMenuProps) {
       {open && (
         <div
           role="menu"
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 6px)',
-            right: 0,
-            zIndex: 50,
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--r-3)',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
-            minWidth: 200,
-            overflow: 'hidden',
-          }}
+          style={menuStyle}
         >
           {ALL_CARD_TYPES.map((type) => {
             const { label } = CARD_META[type]
@@ -404,7 +422,7 @@ export default function DashboardDetailPage() {
               </Button>
             )
           )}
-          <AddCardMenu onAdd={handleAddCard} />
+          <AddCardMenu onAdd={handleAddCard} isMobile={isMobile} />
         </div>
       </div>
 
@@ -521,7 +539,7 @@ export default function DashboardDetailPage() {
           >
             Add your first card to start building your dashboard.
           </div>
-          <AddCardMenu onAdd={handleAddCard} />
+          <AddCardMenu onAdd={handleAddCard} isMobile={isMobile} />
         </Card>
       ) : (
         // Card grid wrapped in SummaryProvider

@@ -4,7 +4,7 @@ import { nextCardPosition } from './grid'
 export const HUM_ADD_CONTEXT_EVENT = 'hum:add-context'
 
 export interface HumContextItem {
-  source: 'dashboard-card'
+  source: 'dashboard-card' | 'analytics-card'
   cardType: DashboardCardType
   label: string
   query: string
@@ -20,10 +20,11 @@ export function buildHumContextItem(input: {
   label: string
   query: string
   ticker?: string
+  source?: 'dashboard-card' | 'analytics-card'
 }): HumContextItem {
   const ticker = input.ticker?.trim()
   const item: HumContextItem = {
-    source: 'dashboard-card',
+    source: input.source ?? 'dashboard-card',
     cardType: input.cardType,
     label: input.label.trim(),
     query: input.query.trim(),

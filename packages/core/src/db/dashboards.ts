@@ -8,6 +8,9 @@ import { dashboardKey } from './keys'
 export type DashboardCardType =
   | 'mentions' | 'sentiment' | 'hashtags' | 'domains'
   | 'languages' | 'sources' | 'top-authors' | 'candlestick'
+  | 'bio-domains' | 'symbol-rate' | 'engagement' | 'sentiment-timeline'
+  | 'keywords' | 'conversation-depth' | 'geo' | 'verification'
+  | 'bot-ratio' | 'posting-heatmap' | 'content-length' | 'author-influence'
 
 export interface DashboardCard {
   id: string
