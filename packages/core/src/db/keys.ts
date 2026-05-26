@@ -122,6 +122,27 @@ export const alertKey = (userId: string, alertId: string) => ({
   sk: `ALERT#${alertId}`,
 })
 
+/**
+ * GSI keys for the ByokHolders index scoped to alert rules by token symbol.
+ *
+ * Reuses the existing ByokHolders GSI (gsi1pk/gsi1sk on the UserData table)
+ * under a disjoint key space: BYOK rows use gsi1pk=`BYOK#<provider>` while
+ * alert rows use gsi1pk=`ALERTTOKEN#<SYMBOL>` — the distinct prefixes mean
+ * the two row types never collide in the same GSI partition.
+ *
+ * This lets `listAlertsForToken` discover all users' alert rules for a given
+ * symbol without requiring a new GSI or infra change.
+ */
+export const alertTokenGsi = (symbol: string, userId: string, alertId: string) => ({
+  gsi1pk: `ALERTTOKEN#${symbol.toUpperCase()}`,
+  gsi1sk: `USER#${userId}#${alertId}`,
+})
+
+export const alertTriggerKey = (userId: string, isoTs: string, triggerId: string) => ({
+  pk: `USER#${userId}`,
+  sk: `TRIGGER#${isoTs}#${triggerId}`,
+})
+
 export const byokKey = (userId: string, provider: string) => ({
   pk: `USER#${userId}`,
   sk: `BYOK#${provider}`,

@@ -8,7 +8,9 @@
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "exports": {
+    "./alerts-eval": "./src/alerts-eval.ts",
     "./db/aggregates": "./src/db/aggregates.ts",
+    "./db/alerts": "./src/db/alerts.ts",
     "./db/bot-heuristic": "./src/db/bot-heuristic.ts",
     "./db/byok": "./src/db/byok.ts",
     "./db/byok-poll": "./src/db/byok-poll.ts",

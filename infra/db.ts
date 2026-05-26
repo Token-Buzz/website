@@ -51,6 +51,7 @@ export const tokensTable = new sst.aws.Dynamo("Tokens", {
     SpikingByDelta24h:   { hashKey: "gsi3pk", rangeKey: "gsi3sk" },
     SpikingByDelta7d:    { hashKey: "gsi4pk", rangeKey: "gsi4sk" },
   },
+  stream: "new-and-old-images",
 });
 
 export const userDataTable = new sst.aws.Dynamo("UserData", {

@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3",
