@@ -8,11 +8,11 @@ import { Button, Eyebrow, Card, Icon, Ticker } from '../../_dashboard/primitives
 import { SummaryProvider } from '../../_analytics/SummaryProvider'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import { CARD_META, ALL_CARD_TYPES } from '../_components/registry'
-import { DashboardCardFrame } from '../_components/DashboardCardFrame'
 import { DashboardPickerModal } from '../_components/DashboardPickerModal'
 import { addHumContext, buildHumContextItem } from '../_components/cardActions'
-import { cardGridStyle, nextCardPosition, ROW_HEIGHT_PX } from '../_components/grid'
+import { nextCardPosition } from '../_components/grid'
 import { dashboardScopeQuery } from '../_components/scope'
+import { DashboardGrid } from '../_components/DashboardGrid'
 
 // ── AddCardMenu ───────────────────────────────────────────────────────────────
 
@@ -116,6 +116,7 @@ export default function DashboardDetailPage() {
   const [persistError, setPersistError] = useState<string | null>(null)
   const [pickerCard, setPickerCard] = useState<DashboardCard | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
 
   // ── Initial fetch ────────────────────────────────────────────────────────
 
@@ -390,8 +391,21 @@ export default function DashboardDetailPage() {
           </div>
         </div>
 
-        {/* Right: add card */}
-        <AddCardMenu onAdd={handleAddCard} />
+        {/* Right: edit layout toggle + add card */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {!isMobile && cards.length > 0 && (
+            editing ? (
+              <Button variant="primary" size="md" icon="grid" onClick={() => setEditing(false)}>
+                Done
+              </Button>
+            ) : (
+              <Button variant="secondary" size="md" icon="grid" onClick={() => setEditing(true)}>
+                Edit layout
+              </Button>
+            )
+          )}
+          <AddCardMenu onAdd={handleAddCard} />
+        </div>
       </div>
 
       {/* Persist error banner */}
@@ -512,38 +526,16 @@ export default function DashboardDetailPage() {
       ) : (
         // Card grid wrapped in SummaryProvider
         <SummaryProvider query={scopeQuery}>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr' : 'repeat(12, 1fr)',
-              gridAutoRows: `${ROW_HEIGHT_PX}px`,
-              gap: isMobile ? 12 : 16,
-            }}
-          >
-            {cards.map((card) => {
-              const { label, meta } = CARD_META[card.type] ?? {
-                label: card.type,
-                meta: '',
-              }
-              const gridStyle: React.CSSProperties = isMobile
-                ? { gridColumn: '1 / -1', gridRow: `span ${card.position.h}` }
-                : cardGridStyle(card.position)
-
-              return (
-                <div key={card.id} style={gridStyle}>
-                  <DashboardCardFrame
-                    label={label}
-                    meta={meta}
-                    type={card.type}
-                    query={scopeQuery}
-                    onRemove={() => handleRemoveCard(card.id)}
-                    onAddToContext={() => handleAddToContext(card)}
-                    onAddToDashboard={() => handleAddToDashboard(card)}
-                  />
-                </div>
-              )
-            })}
-          </div>
+          <DashboardGrid
+            cards={cards}
+            query={scopeQuery}
+            editing={editing}
+            isMobile={isMobile}
+            onLayoutChange={persistCards}
+            onRemoveCard={handleRemoveCard}
+            onAddToContext={handleAddToContext}
+            onAddToDashboard={handleAddToDashboard}
+          />
         </SummaryProvider>
       )}
 
