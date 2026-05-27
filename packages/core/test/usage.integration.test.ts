@@ -17,6 +17,9 @@ import {
   getHumUsage,
   canUseHum,
   recordHumUsage,
+  getIngestionUsage,
+  canIngestQuery,
+  recordIngestionUsage,
   currentPeriod,
 } from '@monorepo-template/core/db/usage'
 
@@ -108,6 +111,75 @@ describe('recordHumUsage', () => {
     expect(status.used).toBe(10)
     expect(status.plan).toBe('pro')
     expect(status.limit).toBe(500)
+    expect(status.allowed).toBe(true)
+  })
+})
+
+// ── getIngestionUsage ─────────────────────────────────────────────────────────
+
+describe('getIngestionUsage', () => {
+  test('returns 0 when no usage row exists', async () => {
+    const used = await getIngestionUsage('usage_test_ingest_no_usage', PERIOD)
+    expect(used).toBe(0)
+  })
+})
+
+// ── recordIngestionUsage + canIngestQuery ─────────────────────────────────────
+
+describe('recordIngestionUsage', () => {
+  test('increments counter on each call and canIngestQuery reflects it', async () => {
+    const userId = 'usage_test_ingest_increment'
+    const N = 3
+
+    for (let i = 1; i <= N; i++) {
+      const count = await recordIngestionUsage(userId, PERIOD)
+      expect(count).toBe(i)
+    }
+
+    const used = await getIngestionUsage(userId, PERIOD)
+    expect(used).toBe(N)
+
+    const status = await canIngestQuery(userId)
+    expect(status.used).toBe(N)
+    expect(status.plan).toBe('free')
+    expect(status.limit).toBe(5)
+    expect(status.allowed).toBe(true)
+  })
+
+  test('free user is blocked once used reaches 5', async () => {
+    const userId = 'usage_test_ingest_free_blocked'
+
+    for (let i = 0; i < 5; i++) {
+      await recordIngestionUsage(userId, PERIOD)
+    }
+
+    const status = await canIngestQuery(userId)
+    expect(status.used).toBe(5)
+    expect(status.plan).toBe('free')
+    expect(status.limit).toBe(5)
+    expect(status.allowed).toBe(false)
+  })
+
+  test('after writing a pro PLAN row, same usage count is allowed with limit=50', async () => {
+    const userId = 'usage_test_ingest_pro_plan'
+
+    // Record 5 uses — would block a free user.
+    for (let i = 0; i < 5; i++) {
+      await recordIngestionUsage(userId, PERIOD)
+    }
+
+    // Write PLAN row directly.
+    await ddb.send(
+      new PutCommand({
+        TableName: TableNames.userData,
+        Item: { ...planKey(userId), plan: 'pro' },
+      }),
+    )
+
+    const status = await canIngestQuery(userId)
+    expect(status.used).toBe(5)
+    expect(status.plan).toBe('pro')
+    expect(status.limit).toBe(50)
     expect(status.allowed).toBe(true)
   })
 })

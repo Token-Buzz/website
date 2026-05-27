@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { TIERS, DEFAULT_PLAN, evaluateHumQuota, PAID_PLANS, BILLING_INTERVALS, stripePriceId } from './tiers'
+import { TIERS, DEFAULT_PLAN, evaluateHumQuota, evaluateIngestionQuota, PAID_PLANS, BILLING_INTERVALS, stripePriceId } from './tiers'
 
 describe('TIERS', () => {
   test('free tier has humMonthly=10, label=Free', () => {
@@ -107,6 +107,57 @@ describe('stripePriceId', () => {
         process.env.STRIPE_PRICE_PRO_MONTH = original
       }
     }
+  })
+})
+
+describe('evaluateIngestionQuota', () => {
+  test('free: allowed when used is below limit (used=0)', () => {
+    const result = evaluateIngestionQuota('free', 0)
+    expect(result.allowed).toBe(true)
+    expect(result.limit).toBe(5)
+  })
+
+  test('free: allowed when used=4 (one below limit)', () => {
+    const result = evaluateIngestionQuota('free', 4)
+    expect(result.allowed).toBe(true)
+    expect(result.limit).toBe(5)
+  })
+
+  test('free: blocked at limit (used=5)', () => {
+    const result = evaluateIngestionQuota('free', 5)
+    expect(result.allowed).toBe(false)
+    expect(result.limit).toBe(5)
+  })
+
+  test('free: blocked over limit (used=6)', () => {
+    const result = evaluateIngestionQuota('free', 6)
+    expect(result.allowed).toBe(false)
+    expect(result.limit).toBe(5)
+  })
+
+  test('pro: allowed when used=0', () => {
+    const result = evaluateIngestionQuota('pro', 0)
+    expect(result.allowed).toBe(true)
+    expect(result.limit).toBe(50)
+  })
+
+  test('pro: allowed when used=49 (one below limit)', () => {
+    const result = evaluateIngestionQuota('pro', 49)
+    expect(result.allowed).toBe(true)
+    expect(result.limit).toBe(50)
+  })
+
+  test('pro: blocked at limit (used=50)', () => {
+    const result = evaluateIngestionQuota('pro', 50)
+    expect(result.allowed).toBe(false)
+    expect(result.limit).toBe(50)
+  })
+
+  test('alpha: always allowed regardless of usage, limit=null', () => {
+    expect(evaluateIngestionQuota('alpha', 0).allowed).toBe(true)
+    expect(evaluateIngestionQuota('alpha', 10000).allowed).toBe(true)
+    expect(evaluateIngestionQuota('alpha', 0).limit).toBeNull()
+    expect(evaluateIngestionQuota('alpha', 10000).limit).toBeNull()
   })
 })
 

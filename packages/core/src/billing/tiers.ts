@@ -57,6 +57,15 @@ export function evaluateHumQuota(
   return { allowed, limit }
 }
 
+export function evaluateIngestionQuota(
+  plan: Plan,
+  used: number,
+): { allowed: boolean; limit: number | null } {
+  const limit = TIERS[plan].ingestionMonthly
+  const allowed = limit === null || used < limit
+  return { allowed, limit }
+}
+
 /**
  * Resolve the Stripe Price ID for a paid plan × interval from the environment.
  * Throws when the env var is unset — billing config must fail loudly, never
