@@ -1,7 +1,7 @@
 import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from './client'
 import { planKey, usageKey } from './keys'
-import { type Plan, DEFAULT_PLAN, evaluateHumQuota } from '../billing/tiers'
+import { type Plan, DEFAULT_PLAN, evaluateHumQuota, evaluateIngestionQuota } from '../billing/tiers'
 
 export type { Plan }
 
@@ -57,6 +57,55 @@ export async function recordHumUsage(
     new UpdateCommand({
       TableName: TableNames.userData,
       Key: usageKey(userId, period, 'hum'),
+      UpdateExpression: 'ADD #count :one SET updatedAt = :now',
+      ExpressionAttributeNames: { '#count': 'count' },
+      ExpressionAttributeValues: {
+        ':one': 1,
+        ':now': new Date().toISOString(),
+      },
+      ReturnValues: 'ALL_NEW',
+    }),
+  )
+  return (Attributes?.count as number) ?? 0
+}
+
+export interface IngestionQuotaStatus {
+  allowed: boolean
+  used: number
+  limit: number | null
+  plan: Plan
+}
+
+export async function getIngestionUsage(
+  userId: string,
+  period = currentPeriod(),
+): Promise<number> {
+  const { Item } = await ddb.send(
+    new GetCommand({
+      TableName: TableNames.userData,
+      Key: usageKey(userId, period, 'queries'),
+    }),
+  )
+  return (Item?.count as number) ?? 0
+}
+
+export async function canIngestQuery(userId: string): Promise<IngestionQuotaStatus> {
+  const [{ plan }, used] = await Promise.all([
+    getUserPlan(userId),
+    getIngestionUsage(userId),
+  ])
+  const { allowed, limit } = evaluateIngestionQuota(plan, used)
+  return { allowed, used, limit, plan }
+}
+
+export async function recordIngestionUsage(
+  userId: string,
+  period = currentPeriod(),
+): Promise<number> {
+  const { Attributes } = await ddb.send(
+    new UpdateCommand({
+      TableName: TableNames.userData,
+      Key: usageKey(userId, period, 'queries'),
       UpdateExpression: 'ADD #count :one SET updatedAt = :now',
       ExpressionAttributeNames: { '#count': 'count' },
       ExpressionAttributeValues: {
