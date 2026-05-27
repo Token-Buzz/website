@@ -79,7 +79,7 @@ describe('cache-through', () => {
 
   test('first call invokes resolve and fetchOHLCV, writes to DDB, returns bars', async () => {
     provider = makeFakeProvider(bars)
-    const result = await getOHLCV(SYM, INTERVAL, T0, T1, provider)
+    const { bars: result } = await getOHLCV(SYM, INTERVAL, T0, T1, provider)
 
     expect(provider.resolveCalls).toBe(1)
     expect(provider.fetchCalls).toBe(1)
@@ -95,7 +95,7 @@ describe('cache-through', () => {
   test('second call over the same range does NOT call fetchOHLCV again', async () => {
     // provider already has fetchCalls=1 from the first test above;
     // re-use to check the counter stays at 1.
-    const result = await getOHLCV(SYM, INTERVAL, T0, T1, provider)
+    const { bars: result } = await getOHLCV(SYM, INTERVAL, T0, T1, provider)
 
     expect(provider.fetchCalls).toBe(1) // unchanged
     expect(result).toHaveLength(2)
@@ -197,7 +197,7 @@ describe('graceful degradation', () => {
     }
 
     // Should NOT throw; should return the cached bar (T0 is within [T0, T1]).
-    const result = await getOHLCV(SYM, INTERVAL, T0, T1, throwingProvider)
+    const { bars: result } = await getOHLCV(SYM, INTERVAL, T0, T1, throwingProvider)
     expect(result.some((b) => b.ts === T0)).toBe(true)
   })
 
@@ -210,7 +210,7 @@ describe('graceful degradation', () => {
       async fetchOHLCV(): Promise<OHLCVBar[]> { throw new Error('API down') },
     }
 
-    const result = await getOHLCV(SYM2, INTERVAL, T0, T1, throwingProvider)
+    const { bars: result } = await getOHLCV(SYM2, INTERVAL, T0, T1, throwingProvider)
     expect(result).toEqual([])
   })
 })
