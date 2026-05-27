@@ -445,6 +445,17 @@ export default function DashboardsPage() {
   // Incrementing this triggers a fresh fetch (used by the Retry button).
   const [fetchSeq, setFetchSeq] = useState(0)
 
+  // Deep-link: ?new=1 auto-opens the create modal (e.g. from the command palette)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.has('new')) {
+      params.delete('new')
+      const qs = params.toString()
+      window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash)
+      queueMicrotask(() => setShowCreate(true))
+    }
+  }, [])
+
   useEffect(() => {
     let cancelled = false
 

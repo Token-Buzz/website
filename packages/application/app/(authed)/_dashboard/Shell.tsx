@@ -685,7 +685,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const closePalette = useCallback(() => setPaletteOpen(false), [])
 
   const askHum = useCallback((preset?: string) => {
-    if (preset) setHumPreset(preset)
+    setHumPreset(preset ?? '')
     setHumOpen(true)
   }, [])
 
@@ -754,7 +754,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       id: 'new-dashboard',
       label: 'New dashboard',
       icon: 'plus' as const,
-      onSelect: () => router.push('/dashboards'),
+      onSelect: () => router.push('/dashboards?new=1'),
     },
     {
       id: 'ask-hum',
@@ -766,7 +766,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       id: 'new-alert-via-hum',
       label: 'New alert via Hum',
       icon: 'bell' as const,
-      onSelect: () => askHum(),
+      onSelect: () => askHum('Help me set up a new alert.'),
     },
     {
       id: 'open-settings',
