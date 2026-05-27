@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/Token-Buzz/website/compare/v0.16.0...v0.17.0) (2026-05-27)
+
+
+### 🚀 Features
+
+* **billing:** Stripe secrets + full tier config (M5 P1) ([#199](https://github.com/Token-Buzz/website/issues/199)) ([11d15d2](https://github.com/Token-Buzz/website/commit/11d15d2882e1b73a40b62e0e8f5195e32669d65a))
+
 ## [0.16.0](https://github.com/Token-Buzz/website/compare/v0.15.0...v0.16.0) (2026-05-27)
 
 
