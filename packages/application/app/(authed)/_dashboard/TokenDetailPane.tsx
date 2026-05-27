@@ -3,6 +3,8 @@
 import { Icon, Button, Eyebrow, Ticker, Pill, BuzzDot, Avatar, Delta, fmtCount, fmtPrice } from './primitives'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import type { Token, Mention } from './types'
+import { CandleChart } from './CandleChart'
+import { fromChart } from './humContext'
 
 const SAMPLE_MENTIONS: Mention[] = [
   { handle: '@cobie',       followers: '812k', time: '4m',  sent: 'bull', text: 'watching $PEPE accumulate again. four wallets I tagged in march are buying. not advice, just pattern.' },
@@ -36,51 +38,6 @@ function SentimentMeter({ score, width = 200 }: { score: number; width?: number 
         <circle r="4" fill="var(--fg-1)" />
       </g>
     </svg>
-  )
-}
-
-// ── Price Chart ────────────────────────────────────────────────────────────
-
-function PriceChart({ token }: { token: Token }) {
-  const pts = token.spark.flatMap((v, i, arr) => {
-    if (i === arr.length - 1) return [v]
-    return [v, (v + arr[i + 1]) / 2]
-  })
-  const w = 700, h = 200
-  const min = Math.min(...pts), max = Math.max(...pts)
-  const range = max - min || 1
-  const xs = pts.length - 1
-  const path = pts.map((p, i) => {
-    const x = (i / xs) * w
-    const y = h - ((p - min) / range) * (h - 20) - 10
-    return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`
-  }).join(' ')
-  const fillPath = `${path} L${w},${h} L0,${h} Z`
-  const lineColor = token.d24 >= 0 ? '#7BC47F' : '#E0664E'
-  return (
-    <div style={{ background: 'var(--data-bg)', borderRadius: 10, padding: 16, color: 'var(--data-fg)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <Eyebrow style={{ color: '#A39378' }}>Price · 24h · UTC</Eyebrow>
-        <div style={{ display: 'inline-flex', gap: 8 }}>
-          {['1H','4H','24H','7D','30D'].map((w, i) => (
-            <span key={w} style={{ font: '600 11px var(--font-mono)', padding: '3px 8px', borderRadius: 4, background: i === 2 ? 'rgba(255,179,71,0.15)' : 'transparent', color: i === 2 ? '#FFB347' : '#A39378', cursor: 'pointer' }}>{w}</span>
-          ))}
-        </div>
-      </div>
-      <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={200} preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="cf" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={lineColor} stopOpacity="0.28" />
-            <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {[0.25, 0.5, 0.75].map((f) => (
-          <line key={f} x1="0" x2={w} y1={h * f} y2={h * f} stroke="#2A2620" strokeWidth="1" strokeDasharray="2,4" />
-        ))}
-        <path d={fillPath} fill="url(#cf)" />
-        <path d={path} stroke={lineColor} strokeWidth="1.8" fill="none" strokeLinejoin="round" />
-      </svg>
-    </div>
   )
 }
 
@@ -138,7 +95,11 @@ export function TokenDetailPane({ token, onClose, onAskHum, mentions = SAMPLE_ME
         <div style={{ flex: 1 }} />
         {/* On mobile, show icon-only to avoid crowding the 390px header row */}
         <Button variant="ghost" size="sm" icon="bell">{isMobile ? null : 'Set alert'}</Button>
-        <Button variant="primary" size="sm" icon="sparkle" onClick={() => onAskHum?.(`What's driving $${token.sym} buzz?`)}>{isMobile ? null : 'Ask Hum'}</Button>
+        <Button variant="primary" size="sm" icon="sparkle" onClick={() => {
+          const ctx = fromChart({ symbol: token.sym, interval: '1h' })
+          window.dispatchEvent(new CustomEvent('hum:add-context', { detail: ctx }))
+          onAskHum?.(`What's driving $${token.sym} buzz?`)
+        }}>{isMobile ? null : 'Ask Hum'}</Button>
         <Button variant="quiet" size="sm" icon="close" onClick={onClose} />
       </div>
 
@@ -190,7 +151,7 @@ export function TokenDetailPane({ token, onClose, onAskHum, mentions = SAMPLE_ME
         gap: 16,
         flexShrink: 0,
       }}>
-        <PriceChart token={token} />
+        <CandleChart symbol={token.sym} height={260} />
         <div style={{
           background: 'var(--surface)',
           border: '1px solid var(--border)',

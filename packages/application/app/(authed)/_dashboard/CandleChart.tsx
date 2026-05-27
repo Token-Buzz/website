@@ -39,6 +39,7 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
   const [showEma, setShowEma] = useState(false)
   const [showSocial, setShowSocial] = useState(true)
   const [selectedEvents, setSelectedEvents] = useState<SelectedEvents | null>(null)
+  const [livePrice, setLivePrice] = useState<number | null>(null)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -364,11 +365,49 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
     tfRef.current = tf
   }, [tf])
 
+  // Live-price polling effect — updates the header tick every 15 seconds
+  useEffect(() => {
+    let unmounted = false
+
+    // Defer the reset so it isn't synchronous at the top of the effect body
+    Promise.resolve().then(() => {
+      if (!unmounted) setLivePrice(null)
+    }).catch(() => { /* guard */ })
+
+    const fetchLive = async () => {
+      try {
+        const res = await fetch(`/api/price/${encodeURIComponent(symbol)}/live`)
+        if (!res.ok || unmounted) return
+        const data = (await res.json()) as { price: number | null }
+        if (!unmounted && typeof data.price === 'number') {
+          setLivePrice(data.price)
+        }
+      } catch {
+        // silently ignore — best-effort tick
+      }
+    }
+
+    void fetchLive()
+    const id = window.setInterval(() => { void fetchLive() }, 15_000)
+    return () => {
+      unmounted = true
+      window.clearInterval(id)
+    }
+  }, [symbol])
+
   return (
     <div style={{ background: 'var(--data-bg)', borderRadius: 10, padding: 16, color: 'var(--data-fg)', position: 'relative' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <Eyebrow style={{ color: '#A39378' }}>{symbol.toUpperCase()} · price</Eyebrow>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Eyebrow style={{ color: '#A39378' }}>{symbol.toUpperCase()}</Eyebrow>
+            {livePrice !== null && (
+              <span style={{ font: '600 13px var(--font-mono)', color: 'var(--data-fg)', fontVariantNumeric: 'tabular-nums' }}>
+                {fmtPrice(livePrice)}
+              </span>
+            )}
+            <span style={{ font: '500 10px var(--font-mono)', color: '#A39378' }}>· live</span>
+          </div>
         <div style={{ display: 'inline-flex', gap: 8 }}>
           {PRICE_INTERVALS.map((p) => (
             <span

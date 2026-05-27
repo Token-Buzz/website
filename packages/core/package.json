@@ -37,6 +37,7 @@
     "./movers": "./src/movers.ts",
     "./providers": "./src/providers.ts",
     "./providers/geckoterminal": "./src/providers/geckoterminal.ts",
+    "./providers/jupiter": "./src/providers/jupiter.ts",
     "./providers/price": "./src/providers/price.ts",
     "./*": [
       "./src/*/index.ts",
