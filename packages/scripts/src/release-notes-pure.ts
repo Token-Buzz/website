@@ -78,6 +78,22 @@ export function parseCommitSubjects(gitLogOutput: string): string[] {
 }
 
 /**
+ * Parse the JSON output of `gh pr list --json number` (an array of objects
+ * each with a numeric `number` field) and return the PR numbers. Returns []
+ * for empty/blank input; ignores non-array input and items lacking a numeric
+ * `number`.
+ */
+export function parsePrNumbers(jsonText: string): number[] {
+  const trimmed = jsonText.trim()
+  if (trimmed.length === 0) return []
+  const parsed = JSON.parse(trimmed) as unknown
+  if (!Array.isArray(parsed)) return []
+  return parsed
+    .map((item) => (item && typeof item === 'object' ? (item as Record<string, unknown>)['number'] : undefined))
+    .filter((n): n is number => typeof n === 'number' && Number.isInteger(n))
+}
+
+/**
  * Build the system + user messages for calling Claude to generate release notes.
  *
  * The system prompt encodes style rules and a reference example (v0.1.0).

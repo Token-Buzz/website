@@ -118,6 +118,19 @@ new sst.aws.Cron("SpikeMaterializer", {
   },
 });
 
+// 9. Social events materializer — every 5 minutes
+// Detects volume spikes and sentiment spikes from the trailing 3-hour PULSE
+// series, and writes SOCIAL_SPIKE / SENTIMENT_SPIKE social events for the UI.
+new sst.aws.Cron("SocialEventsMaterializer", {
+  schedule: "rate(5 minutes)",
+  function: {
+    handler: "packages/jobs/src/social-events-materializer.handler",
+    link: allTables,
+    timeout: "120 seconds",
+    memory: "256 MB",
+  },
+});
+
 // 8. Alert evaluator — fires on every Tokens buzz update (INSERT/MODIFY) and
 // checks active alert rules for that token, recording in-app triggers on match.
 tokensTable.subscribe(

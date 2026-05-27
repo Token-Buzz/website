@@ -13,6 +13,8 @@ import {
   incrementHourlyDomains,
 } from "@monorepo-template/core/db/aggregates";
 import { hourBucket as toHourBucket } from "@monorepo-template/core/db/keys";
+import { isKolHandle, kolPostEvent } from "@monorepo-template/core/social-events";
+import { writeSocialEvent } from "@monorepo-template/core/db/social-events";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -410,6 +412,22 @@ export const handler: DynamoDBStreamHandler = async (event) => {
       await aggregateSentimentByQuery(sentiment, query, hourBucket);
     } catch (err) {
       console.error("[aggregator] sentimentByQuery error:", err);
+    }
+
+    // 14. KOL_POST — write a social event for tweets from curated KOL handles.
+    // Passing tweetId as the id makes re-inserts idempotent (PutCommand replaces).
+    try {
+      const tweetId = img.tweetId?.S;
+      const text = img.text?.S ?? "";
+      if (tweetId && isKolHandle(authorUsername)) {
+        const tsSec = Math.floor(ts.getTime() / 1000);
+        await writeSocialEvent(
+          kolPostEvent(query, tsSec, { tweetId, handle: authorUsername, text }),
+          tweetId,
+        );
+      }
+    } catch (err) {
+      console.error("[aggregator] kolPost error:", err);
     }
   }
 };

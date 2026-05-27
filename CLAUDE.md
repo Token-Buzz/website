@@ -254,6 +254,7 @@ The helper resolves all field/item IDs at runtime via the `gh` CLI — no hardco
 ## Git Workflow
 
 - Provide a commit message to the user for any changes made to code.
+- **Conventional Commits are required.** Every commit message — and every PR title (squash-merge uses the PR title as the commit message) — must start with a Conventional Commit type (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, etc.), optionally scoped (e.g. `feat(application): …`). Release-please parses these on every push to `master` to build the changelog and decide the version bump; a non-conforming message is silently omitted from the release.
 - Never commit or push directly to `master`. Always work on a feature branch; if checked out on `master`, branch off before staging.
 - **Name the branch after what it delivers.** For milestone work, use `m<N>-phase-<P>-<slug>` (e.g. `m4-phase-2-command-palette`); for a whole milestone with no single phase, `m<N>-<slug>`. For anything that isn't milestone/phase work, name it after the issue/bug/task it resolves — `issue-<N>-<slug>` (or `fix-<slug>` / `chore-<slug>` when there's no issue number). Keep the slug short and kebab-case. (When the harness provides a pre-assigned branch — e.g. a `claude/…` name with a random suffix — develop on that branch as instructed rather than renaming it.)
 - Run `npm run typecheck` and `npm run lint` from the repo root before every commit and before the final push. Both must exit 0. Never use `--no-verify` to bypass hooks — the same checks run in CI.

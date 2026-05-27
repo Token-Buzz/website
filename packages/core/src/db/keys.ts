@@ -32,6 +32,33 @@ export const aggregateTopKGsi = (type: string, score: number, scope: string) => 
   gsi1sk: `${score.toString().padStart(10, '0')}#${scope}`,
 })
 
+// ── Social event keys ───────────────────────────────────────────────────────
+
+/**
+ * Key builder for social event rows on the Aggregates table.
+ * pk = `AGG#<type>#<SYMBOL>`, sk = `EVT#<11-digit-ts>[#<id>]`.
+ * Using a plain string for `type` (instead of SocialEventType) avoids
+ * importing the union here and mirrors the aggregateKey convention.
+ */
+export function socialEventKey(symbol: string, type: string, ts: number, id?: string) {
+  return {
+    pk: `AGG#${type}#${symbol.toUpperCase()}`,
+    sk: `EVT#${ts.toString().padStart(11, '0')}${id ? `#${id}` : ''}`,
+  }
+}
+
+// ── OHLCV / price keys ──────────────────────────────────────────────────────
+
+export const ohlcvKey = (symbol: string, interval: string, ts: number) => ({
+  pk: `TOKEN#${symbol.toUpperCase()}`,
+  sk: `OHLCV#${interval}#${ts.toString().padStart(11, '0')}`,
+})
+
+export const tokenRefKey = (symbol: string) => ({
+  pk: `TOKEN#${symbol.toUpperCase()}`,
+  sk: 'REF',
+})
+
 // ── Token keys ──────────────────────────────────────────────────────────────
 
 export const tokenKey = (symbol: string) => ({

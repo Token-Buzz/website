@@ -217,6 +217,35 @@ export async function sumPulse(
   return (Items as Array<{ count?: number }>).reduce((s, i) => s + (i.count ?? 0), 0)
 }
 
+/**
+ * Returns per-minute PULSE counts for a single scope between two minute buckets
+ * (inclusive), ascending. Buckets use the slice(0,16) form written by the
+ * aggregator, e.g. "2026-05-27T15:43" (NO seconds, NO Z).
+ *
+ * Mirrors sumPulse but returns individual buckets instead of a sum — used by
+ * the social-events materializer to feed detectVolumeSpikes.
+ */
+export async function readPulseSeries(
+  scope: string,
+  fromMinute: string,  // slice(0,16) form, e.g. "2026-05-27T15:43"
+  toMinute: string,
+): Promise<Array<{ bucket: string; count: number }>> {
+  const { Items = [] } = await ddb.send(new QueryCommand({
+    TableName: TableNames.aggregates,
+    KeyConditionExpression: 'pk = :pk AND sk BETWEEN :from AND :to',
+    ExpressionAttributeValues: {
+      ':pk': `PULSE#${scope}`,
+      ':from': `BUCKET#${fromMinute}`,
+      ':to': `BUCKET#${toMinute}`,
+    },
+    ScanIndexForward: true, // ascending by sk → ascending by time
+  }))
+  return (Items as Array<{ sk: string; count?: number }>).map((item) => ({
+    bucket: item.sk.replace('BUCKET#', ''),
+    count: item.count ?? 0,
+  }))
+}
+
 export async function getDomains(
   scope: string,
   window: '1H' | '4H' | '24H' | '7D' = '24H',

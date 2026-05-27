@@ -8,7 +8,9 @@ import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import { HumPanel } from './HumPanel'
 import type { WatchlistGroup } from './types'
 import { CommandPalette } from './CommandPalette'
-import type { CommandSection } from './CommandPalette'
+import type { CommandItem, CommandSection } from './CommandPalette'
+import { pickById } from './commandRegistry'
+import { QuickAddMenu } from './QuickAddMenu'
 import { HUM_OPEN_EVENT } from './humContext'
 import type { Dashboard } from '@monorepo-template/core/db/dashboards'
 import { swatchForId } from './commandSwatch'
@@ -465,12 +467,14 @@ function TopBar({
   isMobile,
   onMenuOpen,
   onSearch,
+  quickAddItems,
 }: {
   humOpen: boolean
   onAskHum: () => void
   isMobile: boolean
   onMenuOpen: () => void
   onSearch: () => void
+  quickAddItems: CommandItem[]
 }) {
   return (
     <header style={{
@@ -518,17 +522,7 @@ function TopBar({
             </button>
 
             {/* Quick add — icon-only */}
-            <button
-              aria-label="Quick add"
-              style={{
-                display: 'flex', alignItems: 'center',
-                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
-                color: 'var(--fg-3)', cursor: 'pointer', lineHeight: 0,
-                padding: '6px 8px',
-              }}
-            >
-              <Icon name="plus" size={14} />
-            </button>
+            <QuickAddMenu items={quickAddItems} isMobile={true} />
 
             {/* Ask Hum — icon-only on mobile */}
             <button
@@ -571,17 +565,7 @@ function TopBar({
             </button>
 
             {/* Quick add */}
-            <button
-              aria-label="Quick add"
-              style={{
-                display: 'flex', alignItems: 'center',
-                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
-                color: 'var(--fg-3)', cursor: 'pointer', lineHeight: 0,
-                padding: '5px 8px',
-              }}
-            >
-              <Icon name="plus" size={14} />
-            </button>
+            <QuickAddMenu items={quickAddItems} isMobile={false} />
 
             <Button
               variant={humOpen ? 'secondary' : 'primary'}
@@ -701,7 +685,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const closePalette = useCallback(() => setPaletteOpen(false), [])
 
   const askHum = useCallback((preset?: string) => {
-    if (preset) setHumPreset(preset)
+    setHumPreset(preset ?? '')
     setHumOpen(true)
   }, [])
 
@@ -765,6 +749,53 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true }
   }, [paletteOpen])
 
+  const actionCommands: CommandItem[] = useMemo(() => [
+    {
+      id: 'new-dashboard',
+      label: 'New dashboard',
+      icon: 'plus' as const,
+      onSelect: () => router.push('/dashboards?new=1'),
+    },
+    {
+      id: 'ask-hum',
+      label: 'Ask Hum',
+      icon: 'sparkle' as const,
+      onSelect: () => askHum(),
+    },
+    {
+      id: 'new-alert-via-hum',
+      label: 'New alert via Hum',
+      icon: 'bell' as const,
+      onSelect: () => askHum('Help me set up a new alert.'),
+    },
+    {
+      id: 'open-settings',
+      label: 'Open settings',
+      icon: 'settings' as const,
+      onSelect: () => router.push('/account'),
+    },
+    {
+      id: 'sign-out',
+      label: 'Sign out',
+      icon: 'logout' as const,
+      onSelect: () => void signOut(),
+    },
+    {
+      id: 'toggle-theme',
+      label: 'Toggle theme',
+      icon: 'contrast' as const,
+      onSelect: () => {
+        const el = document.documentElement
+        el.setAttribute('data-theme', el.getAttribute('data-theme') === 'light' ? 'dark' : 'light')
+      },
+    },
+  ], [router, signOut, askHum])
+
+  const quickAddItems: CommandItem[] = useMemo(
+    () => pickById(actionCommands, ['new-dashboard', 'ask-hum', 'new-alert-via-hum']),
+    [actionCommands],
+  )
+
   const paletteSections: CommandSection[] = useMemo(() => [
     {
       id: 'navigate',
@@ -790,43 +821,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     {
       id: 'actions',
       heading: 'Actions',
-      items: [
-        {
-          id: 'new-dashboard',
-          label: 'New dashboard',
-          icon: 'plus' as const,
-          onSelect: () => router.push('/dashboards'),
-        },
-        {
-          id: 'ask-hum',
-          label: 'Ask Hum',
-          icon: 'sparkle' as const,
-          onSelect: () => askHum(),
-        },
-        {
-          id: 'open-settings',
-          label: 'Open settings',
-          icon: 'settings' as const,
-          onSelect: () => router.push('/account'),
-        },
-        {
-          id: 'sign-out',
-          label: 'Sign out',
-          icon: 'logout' as const,
-          onSelect: () => void signOut(),
-        },
-        {
-          id: 'toggle-theme',
-          label: 'Toggle theme',
-          icon: 'contrast' as const,
-          onSelect: () => {
-            const el = document.documentElement
-            el.setAttribute('data-theme', el.getAttribute('data-theme') === 'light' ? 'dark' : 'light')
-          },
-        },
-      ],
+      items: pickById(actionCommands, ['new-dashboard', 'ask-hum', 'open-settings', 'sign-out', 'toggle-theme']),
     },
-  ], [dashboards, router, signOut, askHum])
+  ], [actionCommands, dashboards, router])
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
@@ -857,6 +854,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           isMobile={isMobile}
           onMenuOpen={openDrawer}
           onSearch={openPalette}
+          quickAddItems={quickAddItems}
         />
         <main style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {children}

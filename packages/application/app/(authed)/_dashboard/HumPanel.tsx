@@ -183,7 +183,7 @@ export function HumPanel({ onClose, open, presetQuestion, onPresetConsumed }: Hu
   }, [activeTab])
 
   useEffect(() => {
-    if (!presetQuestion) return
+    if (presetQuestion === undefined) return
     // setState inside a microtask to avoid the synchronous setState-in-effect lint rule
     queueMicrotask(() => {
       setActiveTab('current')
