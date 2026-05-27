@@ -204,7 +204,6 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
       emaSeriesRef.current = null
       markersPluginRef.current = null
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [height])
 
   // Data-load effect — re-runs when symbol or timeframe changes
