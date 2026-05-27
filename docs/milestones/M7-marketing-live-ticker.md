@@ -8,7 +8,7 @@ Replaces the hardcoded `TICKER_DATA` in `packages/marketing/app/_components/Live
 
 ## Locked decisions
 
-- **Solana tokens only** (consistent with M6's Birdeye choice — keeps the data pipeline single-track).
+- **Solana tokens only** (consistent with M6's GeckoTerminal choice — keeps the data pipeline single-track).
 - **Public S3 snapshot behind CloudFront** as the delivery mechanism. Marketing fetches a same-origin JSON file; no cross-subdomain calls, no DB access from marketing (which is forbidden by the existing layering rules).
 - **Buzz metric = hour-over-hour mentions delta**.
 - **Click → `/signup?token=<SYM>`** deep-link captured by the app post-auth, routing the new user to that token's detail page.
@@ -46,8 +46,8 @@ Replaces the hardcoded `TICKER_DATA` in `packages/marketing/app/_components/Live
 
 ### Phase 5 — Cost guardrails
 
-- 9 tokens × 1 Birdeye call every 30s ≈ 26k calls/day — most absorbed by the M6 cache (cache-through with 5-min TTL on recent buckets).
-- DynamoDB atomic counter alarms if Birdeye calls/min exceeds budget.
+- 9 tokens refreshed every 30s — almost entirely absorbed by the M6 cache (cache-through with 5-min TTL on recent buckets), so GeckoTerminal calls stay far below its keyless 30 req/min free cap.
+- DynamoDB atomic counter alarms if GeckoTerminal calls/min approach the free-tier cap (shared with M6 Phase 6's guardrail).
 
 ## Dependencies
 

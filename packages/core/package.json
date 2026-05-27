@@ -17,6 +17,7 @@
     "./db/byok-poll": "./src/db/byok-poll.ts",
     "./db/client": "./src/db/client.ts",
     "./db/conversations": "./src/db/conversations.ts",
+    "./db/ohlcv": "./src/db/ohlcv.ts",
     "./db/usage": "./src/db/usage.ts",
     "./db/dashboards": "./src/db/dashboards.ts",
     "./db/geo": "./src/db/geo.ts",
@@ -33,6 +34,8 @@
     "./lib/twitter": "./src/lib/twitter.ts",
     "./movers": "./src/movers.ts",
     "./providers": "./src/providers.ts",
+    "./providers/geckoterminal": "./src/providers/geckoterminal.ts",
+    "./providers/price": "./src/providers/price.ts",
     "./*": [
       "./src/*/index.ts",
       "./src/*.ts"

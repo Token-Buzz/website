@@ -32,6 +32,18 @@ export const aggregateTopKGsi = (type: string, score: number, scope: string) => 
   gsi1sk: `${score.toString().padStart(10, '0')}#${scope}`,
 })
 
+// ── OHLCV / price keys ──────────────────────────────────────────────────────
+
+export const ohlcvKey = (symbol: string, interval: string, ts: number) => ({
+  pk: `TOKEN#${symbol.toUpperCase()}`,
+  sk: `OHLCV#${interval}#${ts.toString().padStart(11, '0')}`,
+})
+
+export const tokenRefKey = (symbol: string) => ({
+  pk: `TOKEN#${symbol.toUpperCase()}`,
+  sk: 'REF',
+})
+
 // ── Token keys ──────────────────────────────────────────────────────────────
 
 export const tokenKey = (symbol: string) => ({
