@@ -3,13 +3,16 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   createChart, CandlestickSeries, HistogramSeries, LineSeries, ColorType, CrosshairMode,
+  createSeriesMarkers,
   type IChartApi, type ISeriesApi, type UTCTimestamp, type CandlestickData, type HistogramData,
+  type SeriesMarker, type ISeriesMarkersPluginApi, type Time,
 } from 'lightweight-charts'
-import { PRICE_INTERVALS, type PriceInterval, type OHLCVBar } from '@monorepo-template/core/providers/price'
+import { PRICE_INTERVALS, INTERVAL_SECONDS, type PriceInterval, type OHLCVBar } from '@monorepo-template/core/providers/price'
+import type { SocialEvent } from '@monorepo-template/core/social-events'
 import { Eyebrow, fmtPrice } from './primitives'
 import {
   UP_COLOR, DOWN_COLOR, SMA_COLOR, EMA_COLOR, SMA_PERIOD, EMA_PERIOD,
-  toCandleData, toVolumeData, pollIntervalMs, sma, ema,
+  toCandleData, toVolumeData, pollIntervalMs, sma, ema, toChartMarkers,
   type CandlePoint,
 } from './candleChart'
 
@@ -17,6 +20,11 @@ export interface CandleChartProps {
   symbol: string
   interval?: PriceInterval
   height?: number
+}
+
+interface SelectedEvents {
+  events: SocialEvent[]
+  point: { x: number; y: number }
 }
 
 export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleChartProps) {
@@ -29,6 +37,8 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
   const [showVolume, setShowVolume] = useState(true)
   const [showSma, setShowSma] = useState(false)
   const [showEma, setShowEma] = useState(false)
+  const [showSocial, setShowSocial] = useState(true)
+  const [selectedEvents, setSelectedEvents] = useState<SelectedEvents | null>(null)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -40,6 +50,12 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
   const barsRef = useRef<OHLCVBar[]>([])
   // Track the last loaded bar time so polling updates only append/overwrite in-place
   const lastBarTimeRef = useRef<number>(0)
+  // Social event refs
+  const socialEventsRef = useRef<SocialEvent[]>([])
+  const markersPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
+  // Mirror the active timeframe in a ref so the click handler (created once in
+  // the chart-setup effect) snaps event times with the current, not stale, tf.
+  const tfRef = useRef<PriceInterval>(tf)
 
   // Chart creation effect — runs once (height changes apply via applyOptions)
   useEffect(() => {
@@ -95,6 +111,10 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
       visible: false,
     })
 
+    // Create the series markers plugin attached to the candle series
+    const markersPlugin = createSeriesMarkers(candleSeries, [])
+    markersPluginRef.current = markersPlugin
+
     chartRef.current = chart
     candleSeriesRef.current = candleSeries
     volumeSeriesRef.current = volumeSeries
@@ -127,6 +147,42 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
     }
     chart.subscribeCrosshairMove(crosshairHandler)
 
+    // Click handler: resolve markers → selectedEvents card
+    const clickHandler = (param: Parameters<Parameters<typeof chart.subscribeClick>[0]>[0]) => {
+      if (!param.point) {
+        setSelectedEvents(null)
+        return
+      }
+
+      const allEvents = socialEventsRef.current
+      const intervalSecs = INTERVAL_SECONDS[tfRef.current]
+
+      // Primary: match by hoveredObjectId (reliable when user clicks exactly on a marker)
+      if (param.hoveredObjectId) {
+        const id = param.hoveredObjectId as string
+        const matched = allEvents.filter((ev) => `${ev.type}:${ev.ts}` === id)
+        if (matched.length > 0) {
+          setSelectedEvents({ events: matched, point: param.point })
+          return
+        }
+      }
+
+      // Fallback: match all events whose snapped ts === param.time
+      if (param.time) {
+        const clickedTs = param.time as number
+        const matched = allEvents.filter(
+          (ev) => Math.floor(ev.ts / intervalSecs) * intervalSecs === clickedTs,
+        )
+        if (matched.length > 0) {
+          setSelectedEvents({ events: matched, point: param.point })
+          return
+        }
+      }
+
+      setSelectedEvents(null)
+    }
+    chart.subscribeClick(clickHandler)
+
     const observer = new ResizeObserver(() => {
       const w = container.clientWidth
       chart.applyOptions({ width: w })
@@ -138,6 +194,7 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
 
     return () => {
       chart.unsubscribeCrosshairMove(crosshairHandler)
+      chart.unsubscribeClick(clickHandler)
       observer.disconnect()
       chart.remove()
       chartRef.current = null
@@ -145,6 +202,7 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
       volumeSeriesRef.current = null
       smaSeriesRef.current = null
       emaSeriesRef.current = null
+      markersPluginRef.current = null
     }
   }, [height])
 
@@ -229,12 +287,82 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
     }
   }, [symbol, tf])
 
+  // Social events effect — re-runs when symbol or timeframe changes
+  useEffect(() => {
+    let cancelled = false
+
+    const bars = barsRef.current
+    const fromParam = bars.length > 0 ? bars[0].ts : undefined
+    const toParam = bars.length > 0 ? bars[bars.length - 1].ts : undefined
+
+    const url = fromParam !== undefined && toParam !== undefined
+      ? `/api/social-events/${encodeURIComponent(symbol)}?from=${fromParam}&to=${toParam}`
+      : `/api/social-events/${encodeURIComponent(symbol)}`
+
+    fetch(url)
+      .then(async (res) => {
+        if (!res.ok || cancelled) return
+        const data = (await res.json()) as { events: SocialEvent[] }
+        if (cancelled) return
+        const events = data.events ?? []
+        socialEventsRef.current = events
+
+        if (markersPluginRef.current) {
+          const intervalSecs = INTERVAL_SECONDS[tf]
+          const chartMarkers = toChartMarkers(events, intervalSecs)
+          markersPluginRef.current.setMarkers(
+            chartMarkers.map((m) => ({
+              time: m.time as UTCTimestamp,
+              position: m.position,
+              shape: m.shape,
+              color: m.color,
+              id: m.id,
+              ...(m.text !== undefined ? { text: m.text } : {}),
+            })) as SeriesMarker<Time>[],
+          )
+        }
+      })
+      .catch(() => {
+        // Social events are non-critical; silently fail
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [symbol, tf])
+
   // Visibility effect — sync series visibility with toggle state
   useEffect(() => {
     volumeSeriesRef.current?.applyOptions({ visible: showVolume })
     smaSeriesRef.current?.applyOptions({ visible: showSma })
     emaSeriesRef.current?.applyOptions({ visible: showEma })
   }, [showVolume, showSma, showEma])
+
+  // Social toggle effect — show/hide markers without refetching
+  useEffect(() => {
+    if (!markersPluginRef.current) return
+    if (!showSocial) {
+      markersPluginRef.current.setMarkers([])
+    } else {
+      const intervalSecs = INTERVAL_SECONDS[tf]
+      const chartMarkers = toChartMarkers(socialEventsRef.current, intervalSecs)
+      markersPluginRef.current.setMarkers(
+        chartMarkers.map((m) => ({
+          time: m.time as UTCTimestamp,
+          position: m.position,
+          shape: m.shape,
+          color: m.color,
+          id: m.id,
+          ...(m.text !== undefined ? { text: m.text } : {}),
+        })) as SeriesMarker<UTCTimestamp>[],
+      )
+    }
+  }, [showSocial, tf])
+
+  // Keep tfRef current for the click handler's stale closure
+  useEffect(() => {
+    tfRef.current = tf
+  }, [tf])
 
   return (
     <div style={{ background: 'var(--data-bg)', borderRadius: 10, padding: 16, color: 'var(--data-fg)', position: 'relative' }}>
@@ -267,6 +395,7 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
           { label: 'Volume', active: showVolume, toggle: () => setShowVolume((v) => !v), swatch: null },
           { label: 'SMA 20', active: showSma, toggle: () => setShowSma((v) => !v), swatch: SMA_COLOR },
           { label: 'EMA 50', active: showEma, toggle: () => setShowEma((v) => !v), swatch: EMA_COLOR },
+          { label: 'Social', active: showSocial, toggle: () => setShowSocial((v) => !v), swatch: '#FFB347' },
         ].map(({ label, active, toggle, swatch }) => (
           <span
             key={label}
@@ -362,6 +491,102 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
             </div>
             <div style={{ color: '#A39378' }}>
               Vol {tooltip.volume.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </div>
+          </div>
+        )}
+
+        {/* Social event click card */}
+        {selectedEvents && (
+          <div
+            style={{
+              position: 'absolute',
+              pointerEvents: 'auto',
+              left: Math.min(selectedEvents.point.x + 12, containerWidth - 220),
+              top: Math.max(8, selectedEvents.point.y - 20),
+              background: 'var(--data-bg)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              padding: '10px 12px',
+              font: '500 11px var(--font-mono)',
+              zIndex: 10,
+              lineHeight: '1.6',
+              maxWidth: 210,
+              minWidth: 160,
+            }}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setSelectedEvents(null)}
+              style={{
+                position: 'absolute',
+                top: 6,
+                right: 8,
+                background: 'transparent',
+                border: 'none',
+                color: '#A39378',
+                cursor: 'pointer',
+                font: '600 13px var(--font-mono)',
+                lineHeight: 1,
+                padding: 0,
+              }}
+            >
+              ✕
+            </button>
+
+            {selectedEvents.events.map((ev, i) => (
+              <div
+                key={`${ev.type}:${ev.ts}`}
+                style={{
+                  marginBottom: i < selectedEvents.events.length - 1 ? 8 : 0,
+                  paddingBottom: i < selectedEvents.events.length - 1 ? 8 : 0,
+                  borderBottom: i < selectedEvents.events.length - 1 ? '1px solid var(--border)' : 'none',
+                }}
+              >
+                {/* Event title */}
+                <div style={{ color: 'var(--fg-1)', fontWeight: 600, marginBottom: 2, paddingRight: 16 }}>
+                  {ev.title}
+                </div>
+
+                {/* Magnitude line */}
+                {ev.magnitude !== undefined && (
+                  <div style={{ color: '#A39378', marginBottom: 2 }}>
+                    {ev.type === 'SOCIAL_SPIKE'
+                      ? `${ev.magnitude}σ spike`
+                      : `Δ${ev.magnitude}`}
+                  </div>
+                )}
+
+                {/* Tweet samples */}
+                {ev.tweets && ev.tweets.length > 0 && (
+                  <div style={{ marginTop: 4 }}>
+                    {ev.tweets.map((t) => (
+                      <div key={t.tweetId} style={{ marginBottom: 3 }}>
+                        <span style={{ color: '#5B8DEF', fontWeight: 600 }}>@{t.handle}</span>
+                        {' '}
+                        <span style={{ color: '#A39378' }}>
+                          {t.text.length > 60 ? t.text.slice(0, 60) + '…' : t.text}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Footer link to live feed */}
+            <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
+              <a
+                href={`/live-feed?token=${encodeURIComponent(symbol)}`}
+                style={{
+                  color: '#FFB347',
+                  textDecoration: 'none',
+                  fontWeight: 600,
+                  fontSize: 10,
+                  letterSpacing: '0.03em',
+                }}
+              >
+                View in live feed →
+              </a>
             </div>
           </div>
         )}

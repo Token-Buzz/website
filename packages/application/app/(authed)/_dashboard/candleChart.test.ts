@@ -3,8 +3,9 @@ import { PRICE_INTERVALS } from '@monorepo-template/core/providers/price'
 import {
   UP_COLOR, DOWN_COLOR,
   toCandleData, toVolumeData, pollIntervalMs,
-  sma, ema,
+  sma, ema, toChartMarkers,
 } from './candleChart'
+import type { SocialEvent } from '@monorepo-template/core/social-events'
 
 const bar = (ts: number, open: number, high: number, low: number, close: number, volume: number) =>
   ({ ts, open, high, low, close, volume })
@@ -134,6 +135,95 @@ describe('ema', () => {
     const bars = Array.from({ length: 10 }, (_, i) => bar((i + 1) * 1000, 0, 2, 0, i + 1, 100))
     expect(ema(bars, 3)).toHaveLength(8)
     expect(ema(bars, 10)).toHaveLength(1)
+  })
+})
+
+describe('toChartMarkers', () => {
+  const INTERVAL = 3600 // 1h in seconds
+
+  function ev(overrides: Partial<SocialEvent> & Pick<SocialEvent, 'type' | 'ts'>): SocialEvent {
+    return {
+      symbol: 'BTC',
+      marker: 'up',
+      title: 'Test event',
+      ...overrides,
+    }
+  }
+
+  it('SOCIAL_SPIKE → arrowUp, aboveBar, amber #FFB347', () => {
+    const events = [ev({ type: 'SOCIAL_SPIKE', ts: 1000 })]
+    const [m] = toChartMarkers(events, INTERVAL)
+    expect(m.shape).toBe('arrowUp')
+    expect(m.position).toBe('aboveBar')
+    expect(m.color).toBe('#FFB347')
+  })
+
+  it('SENTIMENT_SPIKE positive → arrowUp, aboveBar, green #7BC47F', () => {
+    const events = [ev({ type: 'SENTIMENT_SPIKE', ts: 1000, direction: 'positive' })]
+    const [m] = toChartMarkers(events, INTERVAL)
+    expect(m.shape).toBe('arrowUp')
+    expect(m.position).toBe('aboveBar')
+    expect(m.color).toBe('#7BC47F')
+  })
+
+  it('SENTIMENT_SPIKE negative → arrowDown, belowBar, red #E0664E', () => {
+    const events = [ev({ type: 'SENTIMENT_SPIKE', ts: 1000, direction: 'negative' })]
+    const [m] = toChartMarkers(events, INTERVAL)
+    expect(m.shape).toBe('arrowDown')
+    expect(m.position).toBe('belowBar')
+    expect(m.color).toBe('#E0664E')
+  })
+
+  it('SENTIMENT_SPIKE with no direction → arrowDown, belowBar (defaults to negative)', () => {
+    const events = [ev({ type: 'SENTIMENT_SPIKE', ts: 1000 })]
+    const [m] = toChartMarkers(events, INTERVAL)
+    expect(m.shape).toBe('arrowDown')
+    expect(m.position).toBe('belowBar')
+    expect(m.color).toBe('#E0664E')
+  })
+
+  it('KOL_POST → circle, belowBar, blue #5B8DEF', () => {
+    const events = [ev({ type: 'KOL_POST', ts: 1000, marker: 'dot' })]
+    const [m] = toChartMarkers(events, INTERVAL)
+    expect(m.shape).toBe('circle')
+    expect(m.position).toBe('belowBar')
+    expect(m.color).toBe('#5B8DEF')
+  })
+
+  it('id uses original ts (not snapped)', () => {
+    // ts=3700 snapped to 3600 for 1h interval, but id should use original 3700
+    const events = [ev({ type: 'SOCIAL_SPIKE', ts: 3700 })]
+    const [m] = toChartMarkers(events, INTERVAL)
+    expect(m.id).toBe('SOCIAL_SPIKE:3700')
+    expect(m.time).toBe(3600) // snapped
+  })
+
+  it('snaps event time to interval floor', () => {
+    const events = [ev({ type: 'KOL_POST', ts: 4000, marker: 'dot' })]
+    const [m] = toChartMarkers(events, 3600)
+    // floor(4000 / 3600) * 3600 = 1 * 3600 = 3600
+    expect(m.time).toBe(3600)
+  })
+
+  it('returns results sorted ascending by snapped time', () => {
+    const events = [
+      ev({ type: 'SOCIAL_SPIKE', ts: 7250 }),  // snaps to 3600
+      ev({ type: 'KOL_POST', ts: 100, marker: 'dot' }),   // snaps to 0
+      ev({ type: 'SENTIMENT_SPIKE', ts: 3800, direction: 'positive' }), // snaps to 3600
+    ]
+    const markers = toChartMarkers(events, 3600)
+    expect(markers[0].time).toBeLessThanOrEqual(markers[1].time)
+    expect(markers[1].time).toBeLessThanOrEqual(markers[2].time)
+  })
+
+  it('returns empty array for empty input', () => {
+    expect(toChartMarkers([], 3600)).toEqual([])
+  })
+
+  it('id format is `${type}:${ts}`', () => {
+    const events = [ev({ type: 'KOL_POST', ts: 12345, marker: 'dot' })]
+    const [m] = toChartMarkers(events, 3600)
+    expect(m.id).toBe('KOL_POST:12345')
   })
 })
 

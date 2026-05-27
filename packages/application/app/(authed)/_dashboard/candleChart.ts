@@ -1,4 +1,5 @@
 import { INTERVAL_SECONDS, type PriceInterval, type OHLCVBar } from '@monorepo-template/core/providers/price'
+import type { SocialEvent } from '@monorepo-template/core/social-events'
 
 export const UP_COLOR = '#7BC47F'
 export const DOWN_COLOR = '#E0664E'
@@ -74,4 +75,59 @@ export function ema(bars: OHLCVBar[], period: number): LinePoint[] {
 // (300s is the recent-bucket cache TTL so the forming candle stays fresh even on long frames)
 export function pollIntervalMs(interval: PriceInterval): number {
   return Math.min(Math.max(INTERVAL_SECONDS[interval], 30), 300) * 1000
+}
+
+// ── Social event markers ──────────────────────────────────────────────────────
+
+export interface ChartMarker {
+  time: number            // snapped unix seconds (floor to interval bucket)
+  position: 'aboveBar' | 'belowBar' | 'inBar'
+  shape: 'arrowUp' | 'arrowDown' | 'circle' | 'square'
+  color: string
+  id: string              // `${type}:${ts}` using original ts — unique per event
+  text?: string
+}
+
+/**
+ * Converts SocialEvent[] into ChartMarker[] ready for lightweight-charts.
+ * Each event time is snapped to the nearest interval bucket (floor division).
+ * Results are sorted ascending by snapped time.
+ * No lightweight-charts import — pure data transformation, unit-testable.
+ */
+export function toChartMarkers(events: SocialEvent[], intervalSeconds: number): ChartMarker[] {
+  const markers: ChartMarker[] = events.map((ev) => {
+    const snappedTime = Math.floor(ev.ts / intervalSeconds) * intervalSeconds
+
+    if (ev.type === 'SOCIAL_SPIKE') {
+      return {
+        time: snappedTime,
+        position: 'aboveBar' as const,
+        shape: 'arrowUp' as const,
+        color: '#FFB347',
+        id: `${ev.type}:${ev.ts}`,
+      }
+    }
+
+    if (ev.type === 'SENTIMENT_SPIKE') {
+      const isPositive = ev.direction === 'positive'
+      return {
+        time: snappedTime,
+        position: (isPositive ? 'aboveBar' : 'belowBar') as 'aboveBar' | 'belowBar',
+        shape: (isPositive ? 'arrowUp' : 'arrowDown') as 'arrowUp' | 'arrowDown',
+        color: isPositive ? '#7BC47F' : '#E0664E',
+        id: `${ev.type}:${ev.ts}`,
+      }
+    }
+
+    // KOL_POST
+    return {
+      time: snappedTime,
+      position: 'belowBar' as const,
+      shape: 'circle' as const,
+      color: '#5B8DEF',
+      id: `${ev.type}:${ev.ts}`,
+    }
+  })
+
+  return markers.sort((a, b) => a.time - b.time)
 }
