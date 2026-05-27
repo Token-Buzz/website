@@ -19,6 +19,7 @@ import { BotRatioChart } from '../../_analytics/BotRatioChart'
 import { PostingHeatmapChart } from '../../_analytics/PostingHeatmapChart'
 import { ContentLengthEngagementChart } from '../../_analytics/ContentLengthEngagementChart'
 import { AuthorInfluenceScatterChart } from '../../_analytics/AuthorInfluenceScatterChart'
+import { CandleChart } from '../../_dashboard/CandleChart'
 
 // ── CARD_META ─────────────────────────────────────────────────────────────────
 
@@ -30,7 +31,7 @@ export const CARD_META: Record<DashboardCardType, { label: string; meta: string 
   languages:            { label: 'Language distribution',           meta: 'tweet language' },
   sources:              { label: 'Source distribution',             meta: 'Twitter client' },
   'top-authors':        { label: 'Top authors',                     meta: 'coming soon' },
-  candlestick:          { label: 'Candlestick',                     meta: 'coming soon' },
+  candlestick:          { label: 'Candlestick',                     meta: 'OHLCV · social overlays' },
   'bio-domains':        { label: 'Bio domains',                     meta: 'author bio links' },
   'symbol-rate':        { label: 'Symbol rate',                     meta: 'tweets / hour' },
   engagement:           { label: 'Engagement timeseries',           meta: 'likes · RT · replies · quotes' },
@@ -69,6 +70,17 @@ export const ALL_CARD_TYPES: DashboardCardType[] = [
   'top-authors',
   'candlestick',
 ]
+
+// ── CandleChartCard ───────────────────────────────────────────────────────────
+
+function CandleChartCard({ query }: { query: string }) {
+  // query is the token symbol (same convention as other cards that use it as a ticker)
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <CandleChart symbol={query} interval="1h" height={240} />
+    </div>
+  )
+}
 
 // ── CardBody ──────────────────────────────────────────────────────────────────
 
@@ -125,8 +137,9 @@ export function CardBody({ type, query }: CardBodyProps) {
     case 'author-influence':
       return <AuthorInfluenceScatterChart query={query} />
     case 'top-authors':
-    case 'candlestick':
       return <div style={comingSoonStyle}>Coming soon</div>
+    case 'candlestick':
+      return <CandleChartCard query={query} />
     default: {
       // TypeScript exhaustiveness — should never happen at runtime
       const _exhaustive: never = type

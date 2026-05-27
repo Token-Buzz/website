@@ -85,6 +85,23 @@ export function fromNarrative(n: {
   }
 }
 
+// ── Mapper: chart ──────────────────────────────────────────────────────────
+
+export function fromChart(c: {
+  symbol: string
+  interval: string
+  livePrice?: number | null
+}): HumStagedContext {
+  const parts: string[] = [`$${c.symbol} ${c.interval} chart`]
+  if (c.livePrice != null) parts.push(`live price $${c.livePrice.toFixed(6)}`)
+  return {
+    id: `chart:${c.symbol}:${c.interval}`,
+    type: 'chart',
+    label: `$${c.symbol} chart`,
+    summary: parts.join(', '),
+  }
+}
+
 // ── Serialization ──────────────────────────────────────────────────────────
 
 export function serializeContext(item: HumStagedContext): string {
