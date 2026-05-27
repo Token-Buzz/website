@@ -1,7 +1,7 @@
 ---
 description: Merge the current branch's PR into master, delete the branch, mark the task Done on the Project board + stamp cycle time, then stop.
 argument-hint: "[pr-or-issue-number]  (optional — defaults to the open PR for the current branch)"
-allowed-tools: Bash(git branch:*), Bash(git checkout:*), Bash(git switch:*), Bash(git pull:*), Bash(git fetch:*), Bash(git push:*), Bash(gh pr view:*), Bash(gh pr checks:*), Bash(gh project item-list:*), Bash(gh project item-edit:*), Bash(gh issue view:*), Bash(gh issue close:*), Bash(npm run:*), mcp__github__pull_request_read, mcp__github__merge_pull_request, mcp__github__issue_read, mcp__github__issue_write
+allowed-tools: Bash(git branch:*), Bash(git checkout:*), Bash(git switch:*), Bash(git pull:*), Bash(git fetch:*), Bash(gh api:*), Bash(gh pr view:*), Bash(gh pr checks:*), Bash(gh project item-list:*), Bash(gh project item-edit:*), Bash(gh issue view:*), Bash(gh issue close:*), Bash(npm run:*), mcp__github__pull_request_read, mcp__github__merge_pull_request, mcp__github__issue_read, mcp__github__issue_write
 ---
 
 You are wrapping up a finished piece of work: merge the PR, delete the branch, mark the
@@ -33,8 +33,12 @@ condition below trips. Do not start new work after finishing.
 
 ## 3. Delete the branch
 - `git checkout master && git pull origin master` first — you can't delete the branch you're on.
-- Delete the remote branch only if the merge didn't already (`git push origin --delete <branch>`),
-  then the local branch (`git branch -d <branch>`).
+- Delete the **remote** branch via the **GitHub API**, not `git push --delete`:
+  `gh api --method DELETE repos/Token-Buzz/website/git/refs/heads/<branch>`
+  (the ref path keeps any slashes in the branch name, e.g. `heads/claude/my-branch`).
+  If the squash-merge already deleted the branch, this returns 404/422 — treat that as
+  "already gone", not a failure.
+- Then delete the local branch (`git branch -d <branch>`).
 
 ## 4. Update task status (the full CLAUDE.md flow)
 For the resolved issue number:
