@@ -53,6 +53,9 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
   // Social event refs
   const socialEventsRef = useRef<SocialEvent[]>([])
   const markersPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
+  // Mirror the active timeframe in a ref so the click handler (created once in
+  // the chart-setup effect) snaps event times with the current, not stale, tf.
+  const tfRef = useRef<PriceInterval>(tf)
 
   // Chart creation effect — runs once (height changes apply via applyOptions)
   useEffect(() => {
@@ -152,7 +155,7 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
       }
 
       const allEvents = socialEventsRef.current
-      const intervalSecs = INTERVAL_SECONDS[tf]
+      const intervalSecs = INTERVAL_SECONDS[tfRef.current]
 
       // Primary: match by hoveredObjectId (reliable when user clicks exactly on a marker)
       if (param.hoveredObjectId) {
@@ -356,6 +359,11 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
       )
     }
   }, [showSocial, tf])
+
+  // Keep tfRef current for the click handler's stale closure
+  useEffect(() => {
+    tfRef.current = tf
+  }, [tf])
 
   return (
     <div style={{ background: 'var(--data-bg)', borderRadius: 10, padding: 16, color: 'var(--data-fg)', position: 'relative' }}>
