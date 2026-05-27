@@ -49,6 +49,12 @@ export function socialEventKey(symbol: string, type: string, ts: number, id?: st
 
 // ── OHLCV / price keys ──────────────────────────────────────────────────────
 
+// Rate-limit counter key (stored in Aggregates table with a short TTL)
+export const rateLimitKey = (provider: string, minuteStr: string) => ({
+  pk: `RATELIMIT#${provider}`,
+  sk: `MINUTE#${minuteStr}`,
+})
+
 export const ohlcvKey = (symbol: string, interval: string, ts: number) => ({
   pk: `TOKEN#${symbol.toUpperCase()}`,
   sk: `OHLCV#${interval}#${ts.toString().padStart(11, '0')}`,

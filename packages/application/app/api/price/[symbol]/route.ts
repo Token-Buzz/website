@@ -21,6 +21,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ symbol: 
     return Response.json({ error: "invalid range" }, { status: 400 });
   }
 
-  const bars = await getOHLCV(symbol, interval, from, to);
-  return Response.json({ symbol: symbol.toUpperCase(), interval, bars });
+  const { bars, rateLimited, retryAfterSec } = await getOHLCV(symbol, interval, from, to);
+  return Response.json({ symbol: symbol.toUpperCase(), interval, bars, rateLimited, retryAfterSec });
 }

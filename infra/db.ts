@@ -29,6 +29,7 @@ export const aggregatesTable = new sst.aws.Dynamo("Aggregates", {
   globalIndexes: {
     TopK: { hashKey: "gsi1pk", rangeKey: "gsi1sk" },
   },
+  ttl: "ttl",
 });
 
 export const tokensTable = new sst.aws.Dynamo("Tokens", {

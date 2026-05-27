@@ -40,6 +40,8 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
   const [showSocial, setShowSocial] = useState(true)
   const [selectedEvents, setSelectedEvents] = useState<SelectedEvents | null>(null)
   const [livePrice, setLivePrice] = useState<number | null>(null)
+  const [dataPaused, setDataPaused] = useState<{ retryAfterSec: number } | null>(null)
+  const [retryCountdown, setRetryCountdown] = useState(0)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -223,10 +225,17 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
       return fetch(`/api/price/${encodeURIComponent(symbol)}?interval=${tf}`, { signal: controller.signal })
         .then(async (res) => {
           if (!res.ok) throw new Error(`HTTP ${res.status}`)
-          return res.json() as Promise<{ bars: OHLCVBar[] }>
+          return res.json() as Promise<{ bars: OHLCVBar[]; rateLimited: boolean; retryAfterSec: number }>
         })
-        .then(({ bars }) => {
+        .then(({ bars, rateLimited, retryAfterSec }) => {
           if (cancelled) return
+          if (rateLimited) {
+            setDataPaused({ retryAfterSec })
+            setRetryCountdown(retryAfterSec)
+          } else {
+            setDataPaused(null)
+            setRetryCountdown(0)
+          }
           const candles = toCandleData(bars).map((p) => ({ ...p, time: p.time as UTCTimestamp }))
           const volumes = toVolumeData(bars).map((p) => ({ ...p, time: p.time as UTCTimestamp }))
           candleSeriesRef.current?.setData(candles)
@@ -261,8 +270,15 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
       try {
         const res = await fetch(`/api/price/${encodeURIComponent(symbol)}?interval=${tf}`)
         if (!res.ok || unmounted) return
-        const { bars } = (await res.json()) as { bars: OHLCVBar[] }
+        const { bars, rateLimited, retryAfterSec } = (await res.json()) as { bars: OHLCVBar[]; rateLimited: boolean; retryAfterSec: number }
         if (unmounted) return
+        if (rateLimited) {
+          setDataPaused({ retryAfterSec })
+          setRetryCountdown(retryAfterSec)
+        } else {
+          setDataPaused(null)
+          setRetryCountdown(0)
+        }
         const candles = toCandleData(bars).map((p) => ({ ...p, time: p.time as UTCTimestamp }))
         const volumes = toVolumeData(bars).map((p) => ({ ...p, time: p.time as UTCTimestamp }))
         for (let i = 0; i < candles.length; i++) {
@@ -360,6 +376,15 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
     }
   }, [showSocial, tf])
 
+  // Countdown effect — ticks retryCountdown down to 0 once per second
+  useEffect(() => {
+    if (retryCountdown <= 0) return
+    const id = window.setInterval(() => {
+      setRetryCountdown((c) => Math.max(0, c - 1))
+    }, 1000)
+    return () => window.clearInterval(id)
+  }, [retryCountdown])
+
   // Keep tfRef current for the click handler's stale closure
   useEffect(() => {
     tfRef.current = tf
@@ -407,6 +432,17 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
               </span>
             )}
             <span style={{ font: '500 10px var(--font-mono)', color: '#A39378' }}>· live</span>
+            {dataPaused && (
+              <span style={{
+                font: '500 10px var(--font-mono)',
+                color: '#A39378',
+                background: 'rgba(163,147,120,0.1)',
+                borderRadius: 4,
+                padding: '2px 6px',
+              }}>
+                live data paused — retrying in {retryCountdown}s
+              </span>
+            )}
           </div>
         <div style={{ display: 'inline-flex', gap: 8 }}>
           {PRICE_INTERVALS.map((p) => (
