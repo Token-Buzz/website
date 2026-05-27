@@ -2,12 +2,16 @@
 
 import { useEffect, useRef, useState } from 'react'
 import {
-  createChart, CandlestickSeries, HistogramSeries, ColorType, CrosshairMode,
+  createChart, CandlestickSeries, HistogramSeries, LineSeries, ColorType, CrosshairMode,
   type IChartApi, type ISeriesApi, type UTCTimestamp, type CandlestickData, type HistogramData,
 } from 'lightweight-charts'
 import { PRICE_INTERVALS, type PriceInterval, type OHLCVBar } from '@monorepo-template/core/providers/price'
 import { Eyebrow, fmtPrice } from './primitives'
-import { UP_COLOR, DOWN_COLOR, toCandleData, toVolumeData, pollIntervalMs, type CandlePoint } from './candleChart'
+import {
+  UP_COLOR, DOWN_COLOR, SMA_COLOR, EMA_COLOR, SMA_PERIOD, EMA_PERIOD,
+  toCandleData, toVolumeData, pollIntervalMs, sma, ema,
+  type CandlePoint,
+} from './candleChart'
 
 export interface CandleChartProps {
   symbol: string
@@ -22,11 +26,18 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
   const [hasData, setHasData] = useState(false)
   const [tooltip, setTooltip] = useState<{ x: number; y: number; bar: CandlePoint; volume: number } | null>(null)
   const [containerWidth, setContainerWidth] = useState(300)
+  const [showVolume, setShowVolume] = useState(true)
+  const [showSma, setShowSma] = useState(false)
+  const [showEma, setShowEma] = useState(false)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
+  const smaSeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
+  const emaSeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
+  // Retain loaded bars so indicators can recompute on toggle/poll without refetching
+  const barsRef = useRef<OHLCVBar[]>([])
   // Track the last loaded bar time so polling updates only append/overwrite in-place
   const lastBarTimeRef = useRef<number>(0)
 
@@ -66,9 +77,29 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
     })
     volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } })
 
+    const smaSeries = chart.addSeries(LineSeries, {
+      color: SMA_COLOR,
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+      visible: false,
+    })
+
+    const emaSeries = chart.addSeries(LineSeries, {
+      color: EMA_COLOR,
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+      visible: false,
+    })
+
     chartRef.current = chart
     candleSeriesRef.current = candleSeries
     volumeSeriesRef.current = volumeSeries
+    smaSeriesRef.current = smaSeries
+    emaSeriesRef.current = emaSeries
 
     const crosshairHandler = (param: Parameters<Parameters<typeof chart.subscribeCrosshairMove>[0]>[0]) => {
       if (!param.point || !param.time || param.point.x < 0) {
@@ -112,6 +143,8 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
       chartRef.current = null
       candleSeriesRef.current = null
       volumeSeriesRef.current = null
+      smaSeriesRef.current = null
+      emaSeriesRef.current = null
     }
   }, [height])
 
@@ -139,6 +172,9 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
           const volumes = toVolumeData(bars).map((p) => ({ ...p, time: p.time as UTCTimestamp }))
           candleSeriesRef.current?.setData(candles)
           volumeSeriesRef.current?.setData(volumes)
+          barsRef.current = bars
+          smaSeriesRef.current?.setData(sma(bars, SMA_PERIOD).map((p) => ({ ...p, time: p.time as UTCTimestamp })))
+          emaSeriesRef.current?.setData(ema(bars, EMA_PERIOD).map((p) => ({ ...p, time: p.time as UTCTimestamp })))
           lastBarTimeRef.current = bars.length > 0 ? bars[bars.length - 1].ts : 0
           chartRef.current?.timeScale().fitContent()
           setHasData(bars.length > 0)
@@ -179,6 +215,9 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
         if (bars.length > 0) {
           lastBarTimeRef.current = bars[bars.length - 1].ts
         }
+        barsRef.current = bars
+        smaSeriesRef.current?.setData(sma(bars, SMA_PERIOD).map((p) => ({ ...p, time: p.time as UTCTimestamp })))
+        emaSeriesRef.current?.setData(ema(bars, EMA_PERIOD).map((p) => ({ ...p, time: p.time as UTCTimestamp })))
       } catch {
         // swallow — polling failures don't surface an error banner
       }
@@ -189,6 +228,13 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
       window.clearInterval(id)
     }
   }, [symbol, tf])
+
+  // Visibility effect — sync series visibility with toggle state
+  useEffect(() => {
+    volumeSeriesRef.current?.applyOptions({ visible: showVolume })
+    smaSeriesRef.current?.applyOptions({ visible: showSma })
+    emaSeriesRef.current?.applyOptions({ visible: showEma })
+  }, [showVolume, showSma, showEma])
 
   return (
     <div style={{ background: 'var(--data-bg)', borderRadius: 10, padding: 16, color: 'var(--data-fg)', position: 'relative' }}>
@@ -213,6 +259,42 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
             </span>
           ))}
         </div>
+      </div>
+
+      {/* Indicator chip row */}
+      <div style={{ display: 'inline-flex', gap: 6, marginBottom: 8 }}>
+        {[
+          { label: 'Volume', active: showVolume, toggle: () => setShowVolume((v) => !v), swatch: null },
+          { label: 'SMA 20', active: showSma, toggle: () => setShowSma((v) => !v), swatch: SMA_COLOR },
+          { label: 'EMA 50', active: showEma, toggle: () => setShowEma((v) => !v), swatch: EMA_COLOR },
+        ].map(({ label, active, toggle, swatch }) => (
+          <span
+            key={label}
+            onClick={toggle}
+            style={{
+              font: '600 11px var(--font-mono)',
+              padding: '3px 8px',
+              borderRadius: 4,
+              cursor: 'pointer',
+              background: active ? 'rgba(255,179,71,0.15)' : 'transparent',
+              color: active ? '#FFB347' : '#A39378',
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
+          >
+            {swatch && (
+              <span style={{
+                background: swatch,
+                borderRadius: 2,
+                display: 'inline-block',
+                width: 8,
+                height: 8,
+                marginRight: 4,
+              }} />
+            )}
+            {label}
+          </span>
+        ))}
       </div>
 
       {/* Chart container — position relative for tooltip overlay */}
