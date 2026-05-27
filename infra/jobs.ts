@@ -72,6 +72,17 @@ if (isProd) {
       permissions: [{ actions: ["kms:Decrypt"], resources: [byokKmsKey.arn] }],
     },
   });
+
+  // 10. Price cache warmup — every 5 minutes (production only)
+  new sst.aws.Cron("PriceWarmup", {
+    schedule: "rate(5 minutes)",
+    function: {
+      handler: "packages/jobs/src/price-warmup.handler",
+      link: allTables,
+      timeout: "120 seconds",
+      memory: "256 MB",
+    },
+  });
 }
 
 // 2. DDB Streams aggregator — INSERT fan-out to Aggregates table.

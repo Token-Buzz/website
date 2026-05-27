@@ -10,6 +10,7 @@ import {
   ttlForBucket,
 } from '../providers/price'
 import { geckoTerminalProvider } from '../providers/geckoterminal'
+import { checkAndIncrement, GECKOTERMINAL_LIMIT } from './rate-limit'
 
 export interface OHLCVRecord {
   pk: string
@@ -126,15 +127,22 @@ export async function getOHLCV(
   from: number,
   to: number,
   provider: PriceProvider = geckoTerminalProvider,
-): Promise<OHLCVBar[]> {
+): Promise<{ bars: OHLCVBar[]; rateLimited: boolean; retryAfterSec: number }> {
   const cached = await queryCachedOhlcv(symbol, interval, from, to)
   const cachedTs = new Set(cached.map((b) => b.ts))
 
   const missing = missingBuckets(from, to, interval, cachedTs)
-  if (missing.length === 0) return cached
+  if (missing.length === 0) return { bars: cached, rateLimited: false, retryAfterSec: 0 }
 
   const ref = await resolveRef(symbol, provider)
-  if (!ref) return cached
+  if (!ref) return { bars: cached, rateLimited: false, retryAfterSec: 0 }
+
+  // Rate-limit check before calling the external provider
+  const rl = await checkAndIncrement(provider.id, GECKOTERMINAL_LIMIT)
+  if (!rl.allowed) {
+    console.warn(`getOHLCV: rate limit reached for ${provider.id} (${rl.count}/${GECKOTERMINAL_LIMIT}), serving stale cache`)
+    return { bars: cached, rateLimited: true, retryAfterSec: rl.retryAfterSec }
+  }
 
   const nowSec = Math.floor(Date.now() / 1000)
   let fresh: OHLCVBar[] = []
@@ -142,7 +150,7 @@ export async function getOHLCV(
     fresh = await provider.fetchOHLCV(ref, interval, Math.min(...missing), Math.max(...missing))
   } catch (err) {
     console.error('getOHLCV: provider fetch failed, returning cached bars', err)
-    return cached
+    return { bars: cached, rateLimited: false, retryAfterSec: 0 }
   }
 
   await writeOhlcvBuckets(symbol, interval, fresh, nowSec)
@@ -152,7 +160,9 @@ export async function getOHLCV(
   for (const bar of cached) byTs.set(bar.ts, bar)
   for (const bar of fresh) byTs.set(bar.ts, bar)
 
-  return Array.from(byTs.values())
+  const bars = Array.from(byTs.values())
     .filter((b) => b.ts >= from && b.ts <= to)
     .sort((a, b) => a.ts - b.ts)
+
+  return { bars, rateLimited: false, retryAfterSec: 0 }
 }
