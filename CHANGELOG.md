@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.10.0](https://github.com/Token-Buzz/website/compare/v0.9.0...v0.10.0) (2026-05-27)
+
+
+### 🚀 Features
+
+* **application:** CandleChart component with polling refresh (M6 P2) ([#186](https://github.com/Token-Buzz/website/issues/186)) ([f9ac1eb](https://github.com/Token-Buzz/website/commit/f9ac1eb682d85804acac2c0e47ea6bedb875f684))
+* **application:** quick-add menu over shared command registry (M4 P4) ([01ecd1e](https://github.com/Token-Buzz/website/commit/01ecd1e880600f43327ecd918ac6a9c817b845af))
+* **core:** GeckoTerminal provider + cache-through OHLCV price API (M6 P1) ([#183](https://github.com/Token-Buzz/website/issues/183)) ([d2ed262](https://github.com/Token-Buzz/website/commit/d2ed262a0eb1b2b1e48113e2d4bcb50899cb3e91))
+
+
+### 🐛 Fixes
+
+* **scripts:** clear autorelease:pending label after creating a release ([#188](https://github.com/Token-Buzz/website/issues/188)) ([e75da0f](https://github.com/Token-Buzz/website/commit/e75da0f287eec85c639c2a4f56607a9c12b0595d))
+
+
+### 📝 Documentation
+
+* require Conventional Commits for messages and PR titles ([#185](https://github.com/Token-Buzz/website/issues/185)) ([d9def5c](https://github.com/Token-Buzz/website/commit/d9def5c91c5866f8416e1a125aa2e6ebaca2b8e5))
+
 ## [0.9.0](https://github.com/Token-Buzz/website/compare/v0.8.0...v0.9.0) (2026-05-27)
 
 
