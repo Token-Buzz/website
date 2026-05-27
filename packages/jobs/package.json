@@ -10,6 +10,7 @@
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3",
     "@aws-sdk/client-dynamodb": "^3",
+    "@aws-sdk/client-s3": "^3",
     "@aws-sdk/lib-dynamodb": "^3",
     "@monorepo-template/core": "*",
     "sst": "*"
