@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/Token-Buzz/website/compare/v0.11.0...v0.12.0) (2026-05-27)
+
+
+### 🚀 Features
+
+* **application:** SMA/EMA indicators + chip row for CandleChart (M6 P3) ([#190](https://github.com/Token-Buzz/website/issues/190)) ([9d5d7c1](https://github.com/Token-Buzz/website/commit/9d5d7c1a0b396fffe9b1aa923c7210f5a9796738))
+
 ## [0.11.0](https://github.com/Token-Buzz/website/compare/v0.10.0...v0.11.0) (2026-05-27)
 
 
