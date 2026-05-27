@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/Token-Buzz/website/compare/v0.15.0...v0.16.0) (2026-05-27)
+
+
+### 🚀 Features
+
+* **infra,core,jobs:** M7 Phase 1 — ticker snapshot Lambda + S3 bucket ([#202](https://github.com/Token-Buzz/website/issues/202)) ([a0f0557](https://github.com/Token-Buzz/website/commit/a0f0557bf6d11a908ce97da1edbc89526c8b208f))
+
 ## [0.15.0](https://github.com/Token-Buzz/website/compare/v0.14.0...v0.15.0) (2026-05-27)
 
 
