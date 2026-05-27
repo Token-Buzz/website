@@ -120,8 +120,14 @@ export async function GET(req: Request) {
   // Optional sentiment filter.
   const sentiment = parseSentiment(searchParams.get("sentiment"));
 
-  // Fetch all tracked queries for this user.
-  const queries = await getAllTrackedQueries(userId);
+  // If a token deep-link filter is present, use only that token.
+  const tokenFilter = searchParams.get("token");
+
+  // Fetch tracked queries (skipped when a token filter overrides).
+  const queries = tokenFilter
+    ? [tokenFilter]
+    : await getAllTrackedQueries(userId);
+
   if (queries.length === 0) {
     return Response.json({ tweets: [], cursor: undefined });
   }

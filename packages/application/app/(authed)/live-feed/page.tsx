@@ -245,6 +245,7 @@ const SENTIMENT_FILTERS: { value: SentimentFilter; label: string }[] = [
 export default function LiveFeedPage() {
   const isMobile = useIsMobile()
   const [sentimentFilter, setSentimentFilter] = useState<SentimentFilter>('all')
+  const [tokenFilter, setTokenFilter] = useState<string | null>(null)
   const [tweets, setTweets] = useState<LiveFeedTweet[]>([])
   const [cursor, setCursor] = useState<string | undefined>(undefined)
   const [loading, setLoading] = useState(true)
@@ -257,13 +258,23 @@ export default function LiveFeedPage() {
   // Guard against duplicate concurrent fetches
   const loadingMoreRef = useRef(false)
 
+  // Read token deep-link param from URL on mount (avoids Suspense boundary from useSearchParams)
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('token')
+    // Defer setState to avoid calling it synchronously in effect body
+    Promise.resolve().then(() => {
+      if (token) setTokenFilter(token)
+    }).catch(() => {})
+  }, [])
+
   // ── Build URL ──────────────────────────────────────────────────────────
 
-  function buildUrl(opts: { cursor?: string; sentiment: SentimentFilter }): string {
+  function buildUrl(opts: { cursor?: string; sentiment: SentimentFilter; token: string | null }): string {
     const params = new URLSearchParams()
     params.set('limit', '30')
     if (opts.cursor) params.set('cursor', opts.cursor)
     if (opts.sentiment !== 'all') params.set('sentiment', opts.sentiment)
+    if (opts.token) params.set('token', opts.token)
     return `/api/live-feed?${params.toString()}`
   }
 
@@ -280,7 +291,7 @@ export default function LiveFeedPage() {
       setHasMore(true)
 
       try {
-        const url = buildUrl({ sentiment: sentimentFilter })
+        const url = buildUrl({ sentiment: sentimentFilter, token: tokenFilter })
         const res = await fetch(url)
         if (!res.ok) throw new Error(`Request failed: ${res.status}`)
         const data: LiveFeedResponse = await res.json()
@@ -306,7 +317,7 @@ export default function LiveFeedPage() {
     return () => {
       cancelled = true
     }
-  }, [sentimentFilter])
+  }, [sentimentFilter, tokenFilter])
 
   // ── Load more (infinite scroll) ───────────────────────────────────────
 
@@ -316,7 +327,7 @@ export default function LiveFeedPage() {
     setLoadingMore(true)
 
     try {
-      const url = buildUrl({ cursor, sentiment: sentimentFilter })
+      const url = buildUrl({ cursor, sentiment: sentimentFilter, token: tokenFilter })
       const res = await fetch(url)
       if (!res.ok) throw new Error(`Request failed: ${res.status}`)
       const data: LiveFeedResponse = await res.json()
@@ -329,7 +340,7 @@ export default function LiveFeedPage() {
       setLoadingMore(false)
       loadingMoreRef.current = false
     }
-  }, [cursor, hasMore, sentimentFilter])
+  }, [cursor, hasMore, sentimentFilter, tokenFilter])
 
   // ── IntersectionObserver on sentinel ─────────────────────────────────
 
@@ -415,6 +426,37 @@ export default function LiveFeedPage() {
             </button>
           ))}
         </div>
+
+        {/* Token deep-link filter chip */}
+        {tokenFilter && (
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'rgba(255,179,71,0.12)',
+              border: '1px solid rgba(255,179,71,0.35)',
+              borderRadius: 999,
+              padding: '4px 10px',
+              font: '600 11px var(--font-mono)',
+              color: '#FFB347',
+            }}
+          >
+            Filtered to ${tokenFilter}
+            {' '}
+            <a
+              href="/live-feed"
+              style={{
+                color: '#A39378',
+                textDecoration: 'none',
+                fontWeight: 500,
+                fontSize: 11,
+              }}
+            >
+              clear
+            </a>
+          </div>
+        )}
 
         <div style={{ flex: 1 }} />
 
