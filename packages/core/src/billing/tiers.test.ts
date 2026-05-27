@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { TIERS, DEFAULT_PLAN, evaluateHumQuota } from './tiers'
+import { TIERS, DEFAULT_PLAN, evaluateHumQuota, PAID_PLANS, BILLING_INTERVALS, stripePriceId } from './tiers'
 
 describe('TIERS', () => {
   test('free tier has humMonthly=10, label=Free', () => {
@@ -24,6 +24,89 @@ describe('TIERS', () => {
 describe('DEFAULT_PLAN', () => {
   test('is free', () => {
     expect(DEFAULT_PLAN).toBe('free')
+  })
+})
+
+describe('ingestionMonthly', () => {
+  test('free has ingestionMonthly=5', () => {
+    expect(TIERS.free.ingestionMonthly).toBe(5)
+  })
+
+  test('pro has ingestionMonthly=50', () => {
+    expect(TIERS.pro.ingestionMonthly).toBe(50)
+  })
+
+  test('alpha has ingestionMonthly=null (unlimited)', () => {
+    expect(TIERS.alpha.ingestionMonthly).toBeNull()
+  })
+})
+
+describe('prices', () => {
+  test('free tier has no prices (null)', () => {
+    expect(TIERS.free.prices).toBeNull()
+  })
+
+  test('pro.month.amount=2400', () => {
+    expect(TIERS.pro.prices?.month.amount).toBe(2400)
+  })
+
+  test('pro.year.amount=24000', () => {
+    expect(TIERS.pro.prices?.year.amount).toBe(24000)
+  })
+
+  test('alpha.month.amount=24000', () => {
+    expect(TIERS.alpha.prices?.month.amount).toBe(24000)
+  })
+
+  test('alpha.year.amount=240000', () => {
+    expect(TIERS.alpha.prices?.year.amount).toBe(240000)
+  })
+
+  test('priceIdEnvVar strings match expected names', () => {
+    expect(TIERS.pro.prices?.month.priceIdEnvVar).toBe('STRIPE_PRICE_PRO_MONTH')
+    expect(TIERS.pro.prices?.year.priceIdEnvVar).toBe('STRIPE_PRICE_PRO_YEAR')
+    expect(TIERS.alpha.prices?.month.priceIdEnvVar).toBe('STRIPE_PRICE_ALPHA_MONTH')
+    expect(TIERS.alpha.prices?.year.priceIdEnvVar).toBe('STRIPE_PRICE_ALPHA_YEAR')
+  })
+})
+
+describe('PAID_PLANS', () => {
+  test('deep-equals [pro, alpha]', () => {
+    expect(PAID_PLANS).toEqual(['pro', 'alpha'])
+  })
+})
+
+describe('BILLING_INTERVALS', () => {
+  test('deep-equals [month, year]', () => {
+    expect(BILLING_INTERVALS).toEqual(['month', 'year'])
+  })
+})
+
+describe('stripePriceId', () => {
+  test('returns env var value when set', () => {
+    const original = process.env.STRIPE_PRICE_PRO_MONTH
+    try {
+      process.env.STRIPE_PRICE_PRO_MONTH = 'price_test_123'
+      expect(stripePriceId('pro', 'month')).toBe('price_test_123')
+    } finally {
+      if (original === undefined) {
+        delete process.env.STRIPE_PRICE_PRO_MONTH
+      } else {
+        process.env.STRIPE_PRICE_PRO_MONTH = original
+      }
+    }
+  })
+
+  test('throws when env var is unset', () => {
+    const original = process.env.STRIPE_PRICE_PRO_MONTH
+    try {
+      delete process.env.STRIPE_PRICE_PRO_MONTH
+      expect(() => stripePriceId('pro', 'month')).toThrow('STRIPE_PRICE_PRO_MONTH')
+    } finally {
+      if (original !== undefined) {
+        process.env.STRIPE_PRICE_PRO_MONTH = original
+      }
+    }
   })
 })
 
