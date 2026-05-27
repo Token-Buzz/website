@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.0](https://github.com/Token-Buzz/website/compare/v0.13.0...v0.14.0) (2026-05-27)
+
+
+### 🚀 Features
+
+* **application:** M6 P5 — Jupiter live-price tick + /api/price/[symbol]/live ([92447e0](https://github.com/Token-Buzz/website/commit/92447e03defeb78e9390817a9e60f44f2350ce0a))
+* **application:** M6 P5 — Jupiter live-price tick + wire CandleChart into the app ([2316268](https://github.com/Token-Buzz/website/commit/23162683e5fe77d0c5759cca596c0715091fdd4b))
+
 ## [0.13.0](https://github.com/Token-Buzz/website/compare/v0.12.0...v0.13.0) (2026-05-27)
 
 
