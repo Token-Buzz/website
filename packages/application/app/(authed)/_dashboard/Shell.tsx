@@ -11,6 +11,7 @@ import { CommandPalette } from './CommandPalette'
 import type { CommandItem, CommandSection } from './CommandPalette'
 import { pickById } from './commandRegistry'
 import { QuickAddMenu } from './QuickAddMenu'
+import { HUM_OPEN_EVENT } from './humContext'
 import type { Dashboard } from '@monorepo-template/core/db/dashboards'
 import { swatchForId } from './commandSwatch'
 
@@ -589,10 +590,14 @@ function HumSlideOut({
   open,
   onClose,
   isMobile,
+  presetQuestion,
+  onPresetConsumed,
 }: {
   open: boolean
   onClose: () => void
   isMobile: boolean
+  presetQuestion?: string
+  onPresetConsumed?: () => void
 }) {
   // Body scroll lock (mobile only)
   useEffect(() => {
@@ -654,7 +659,7 @@ function HumSlideOut({
           pointerEvents: open ? 'auto' : 'none',
         }}
       >
-        <HumPanel open={open} onClose={onClose} />
+        <HumPanel open={open} onClose={onClose} presetQuestion={presetQuestion} onPresetConsumed={onPresetConsumed} />
       </div>
     </>
   )
@@ -665,6 +670,7 @@ function HumSlideOut({
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [activeWatchlist, setActiveWatchlist] = useState('memecoins')
   const [humOpen, setHumOpen] = useState(false)
+  const [humPreset, setHumPreset] = useState<string | undefined>(undefined)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [dashboards, setDashboards] = useState<Dashboard[]>([])
@@ -677,6 +683,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const closeDrawer = useCallback(() => setDrawerOpen(false), [])
   const openPalette = useCallback(() => setPaletteOpen(true), [])
   const closePalette = useCallback(() => setPaletteOpen(false), [])
+
+  const askHum = useCallback((preset?: string) => {
+    if (preset) setHumPreset(preset)
+    setHumOpen(true)
+  }, [])
 
   // Ensure drawer closes if screen widens past breakpoint.
   // setState is called inside a microtask callback to avoid the synchronous
@@ -697,6 +708,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // Open Hum panel when context is added via menu or hum:open event
+  useEffect(() => {
+    function openHum() { setHumOpen(true) }
+    window.addEventListener('hum:add-context', openHum)
+    window.addEventListener(HUM_OPEN_EVENT, openHum)
+    return () => {
+      window.removeEventListener('hum:add-context', openHum)
+      window.removeEventListener(HUM_OPEN_EVENT, openHum)
+    }
+  }, [])
+
+  // Deep-link: ?ask=<text> pre-fills the Hum composer on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const preset = params.get('ask')?.trim()
+    if (preset) {
+      queueMicrotask(() => askHum(preset))
+      params.delete('ask')
+      const qs = params.toString()
+      window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Fetch dashboards each time the palette opens so newly-created ones show up
@@ -725,13 +760,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       id: 'ask-hum',
       label: 'Ask Hum',
       icon: 'sparkle' as const,
-      onSelect: () => setHumOpen(true),
+      onSelect: () => askHum(),
     },
     {
       id: 'new-alert-via-hum',
       label: 'New alert via Hum',
       icon: 'bell' as const,
-      onSelect: () => setHumOpen(true),
+      onSelect: () => askHum(),
     },
     {
       id: 'open-settings',
@@ -754,7 +789,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         el.setAttribute('data-theme', el.getAttribute('data-theme') === 'light' ? 'dark' : 'light')
       },
     },
-  ], [router, signOut])
+  ], [router, signOut, askHum])
 
   const quickAddItems: CommandItem[] = useMemo(
     () => pickById(actionCommands, ['new-dashboard', 'ask-hum', 'new-alert-via-hum']),
@@ -831,6 +866,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         open={humOpen}
         onClose={() => setHumOpen(false)}
         isMobile={isMobile}
+        presetQuestion={humPreset}
+        onPresetConsumed={() => setHumPreset(undefined)}
       />
 
       {/* Command palette overlay */}
@@ -842,7 +879,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           id: 'ask-hum-about',
           label: `Ask Hum about "${q}"`,
           icon: 'sparkle',
-          onSelect: () => setHumOpen(true),
+          onSelect: () => askHum(q),
         })}
       />
     </div>

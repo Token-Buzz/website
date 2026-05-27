@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { resolveModel, totalInputTokens, toConverseMessages, HUM_DEFAULT_MODEL } from "./models";
+import { resolveModel, totalInputTokens, toConverseMessages, formatContextItems, HUM_DEFAULT_MODEL } from "./models";
 
 describe("resolveModel", () => {
   test("returns default when given undefined", () => {
@@ -36,6 +36,55 @@ describe("totalInputTokens", () => {
     expect(totalInputTokens({ inputTokens: 42 })).toBe(42);
     expect(totalInputTokens({ cacheReadInputTokens: 7 })).toBe(7);
     expect(totalInputTokens({ cacheWriteInputTokens: 3 })).toBe(3);
+  });
+});
+
+describe("formatContextItems", () => {
+  test("returns empty string for undefined", () => {
+    expect(formatContextItems(undefined)).toBe("");
+  });
+
+  test("returns empty string for empty array", () => {
+    expect(formatContextItems([])).toBe("");
+  });
+
+  test("single item with summary", () => {
+    const result = formatContextItems([{ summary: "Token $PEPE (Pepe), 100 mentions" }]);
+    expect(result).toBe('Attached context:\n- Token $PEPE (Pepe), 100 mentions\n');
+  });
+
+  test("single item with only label (no summary)", () => {
+    const result = formatContextItems([{ label: "BTC Mentions" }]);
+    expect(result).toBe("Attached context:\n- BTC Mentions\n");
+  });
+
+  test("prefers summary over label when both present", () => {
+    const result = formatContextItems([{ label: "BTC", summary: "Token $BTC with full details" }]);
+    expect(result).toContain("Token $BTC with full details");
+    expect(result).not.toContain("- BTC\n");
+  });
+
+  test("multiple items produce one bullet per item", () => {
+    const result = formatContextItems([
+      { summary: "First item" },
+      { summary: "Second item" },
+      { summary: "Third item" },
+    ]);
+    const lines = result.split("\n").filter(Boolean);
+    expect(lines[0]).toBe("Attached context:");
+    expect(lines[1]).toBe("- First item");
+    expect(lines[2]).toBe("- Second item");
+    expect(lines[3]).toBe("- Third item");
+  });
+
+  test("skips items with neither label nor summary", () => {
+    const result = formatContextItems([
+      { summary: "Valid item" },
+      {},
+      { label: "Also valid" },
+    ]);
+    const bullets = result.split("\n").filter((l) => l.startsWith("- "));
+    expect(bullets).toHaveLength(2);
   });
 });
 

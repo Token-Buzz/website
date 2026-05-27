@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { BedrockRuntimeClient, ConverseStreamCommand } from "@aws-sdk/client-bedrock-runtime";
-import { resolveModel, totalInputTokens, toConverseMessages } from "./models";
+import { resolveModel, totalInputTokens, toConverseMessages, formatContextItems } from "./models";
+import { canUseHum, recordHumUsage } from "@monorepo-template/core/db/usage";
 
 const client = new BedrockRuntimeClient({ region: "us-east-1" });
 
@@ -15,14 +16,25 @@ export async function POST(req: Request) {
     });
   }
 
+  const quota = await canUseHum(userId);
+  if (!quota.allowed) {
+    return new Response(
+      JSON.stringify({ error: "quota_exhausted", plan: quota.plan, used: quota.used, limit: quota.limit }),
+      { status: 402, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   const body = await req.json() as {
     message: string;
     history?: Array<{ from: string; text: string }>;
     model?: string;
+    contextItems?: Array<{ label?: string; summary?: string }>;
   };
 
   const model = resolveModel(body.model);
-  const messages = toConverseMessages(body.history, body.message);
+  const contextBlock = formatContextItems(body.contextItems);
+  const userText = contextBlock ? `${contextBlock}\n${body.message}` : body.message;
+  const messages = toConverseMessages(body.history, userText);
 
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
@@ -52,6 +64,8 @@ export async function POST(req: Request) {
           tokensOut: usage?.outputTokens ?? 0,
         };
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ meta })}\n\n`));
+        // Best-effort: record usage after a successful reply; a failure must not crash the stream.
+        try { await recordHumUsage(userId); } catch { /* swallow */ }
       } catch {
         controller.enqueue(
           encoder.encode(

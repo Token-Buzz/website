@@ -9,6 +9,7 @@
   },
   "exports": {
     "./alerts-eval": "./src/alerts-eval.ts",
+    "./billing/tiers": "./src/billing/tiers.ts",
     "./db/aggregates": "./src/db/aggregates.ts",
     "./db/alerts": "./src/db/alerts.ts",
     "./db/bot-heuristic": "./src/db/bot-heuristic.ts",
@@ -16,6 +17,7 @@
     "./db/byok-poll": "./src/db/byok-poll.ts",
     "./db/client": "./src/db/client.ts",
     "./db/conversations": "./src/db/conversations.ts",
+    "./db/usage": "./src/db/usage.ts",
     "./db/dashboards": "./src/db/dashboards.ts",
     "./db/geo": "./src/db/geo.ts",
     "./db/keys": "./src/db/keys.ts",

@@ -5,6 +5,8 @@ import { Card, Eyebrow } from '../../_dashboard/primitives'
 import { ChartErrorBoundary } from '../../_analytics/ChartErrorBoundary'
 import { CardBody } from './registry'
 import { CardMenu } from './CardMenu'
+import { humDragProps } from '../../_dashboard/humDragSource'
+import type { HumStagedContext } from '../../_dashboard/humContext'
 
 // ── DashboardCardFrame ────────────────────────────────────────────────────────
 
@@ -23,6 +25,8 @@ interface DashboardCardFrameProps {
   onAddToContext: () => void
   /** Called when the user chooses "Add to dashboard" (opens picker modal) */
   onAddToDashboard: () => void
+  /** When present, makes the card header a Hum drag source (only when not editing layout) */
+  dragItem?: HumStagedContext
 }
 
 export function DashboardCardFrame({
@@ -33,6 +37,7 @@ export function DashboardCardFrame({
   onRemove,
   onAddToContext,
   onAddToDashboard,
+  dragItem,
 }: DashboardCardFrameProps) {
   return (
     <Card
@@ -47,12 +52,14 @@ export function DashboardCardFrame({
     >
       {/* Header row */}
       <div
+        {...(dragItem ? humDragProps(dragItem) : {})}
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 8,
           marginBottom: 12,
           flexShrink: 0,
+          ...(dragItem ? { cursor: 'grab' } : {}),
         }}
       >
         {/* Label + meta */}
