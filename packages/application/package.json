@@ -16,6 +16,7 @@
     "@aws-sdk/lib-dynamodb": "^3",
     "@clerk/nextjs": "latest",
     "@monorepo-template/core": "*",
+    "lightweight-charts": "^5.2.0",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",
