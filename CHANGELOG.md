@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.17.1](https://github.com/Token-Buzz/website/compare/v0.17.0...v0.17.1) (2026-05-27)
+
+
+### 🐛 Fixes
+
+* **marketing:** mobile layout — eliminate horizontal overflow + add hamburger nav ([#204](https://github.com/Token-Buzz/website/issues/204)) ([43cf674](https://github.com/Token-Buzz/website/commit/43cf67497f2255d3e4c8fb7c6314b9d55480375a)), closes [#194](https://github.com/Token-Buzz/website/issues/194)
+
+
+### 📝 Documentation
+
+* plan M15 — SEO, Analytics & AI Search Optimization milestone ([ac179c9](https://github.com/Token-Buzz/website/commit/ac179c9c4bb2b1d463041acc425c1bbe57cc0fc5))
+
 ## [0.17.0](https://github.com/Token-Buzz/website/compare/v0.16.0...v0.17.0) (2026-05-27)
 
 
