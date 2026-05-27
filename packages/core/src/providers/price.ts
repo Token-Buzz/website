@@ -9,16 +9,18 @@ export interface OHLCVBar {
   volume: number
 }
 
-export interface MintInfo {
-  mint: string
-  chain: string
-  source: string  // provider id, e.g. 'birdeye'
+export interface TokenRef {
+  symbol: string
+  mint: string      // SPL mint address (for spot-price providers like Jupiter later)
+  pool: string      // DEX pool/pair address — how OHLCV providers address candles
+  chain: string     // 'solana'
+  source: string    // provider id, e.g. 'geckoterminal'
 }
 
 export interface PriceProvider {
   readonly id: string
-  resolveMint(symbol: string): Promise<MintInfo | null>
-  fetchOHLCV(mint: string, interval: PriceInterval, from: number, to: number): Promise<OHLCVBar[]>
+  resolve(symbol: string): Promise<TokenRef | null>
+  fetchOHLCV(ref: TokenRef, interval: PriceInterval, from: number, to: number): Promise<OHLCVBar[]>
 }
 
 export const INTERVAL_SECONDS: Record<PriceInterval, number> = {

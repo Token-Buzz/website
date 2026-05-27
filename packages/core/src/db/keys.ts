@@ -39,9 +39,9 @@ export const ohlcvKey = (symbol: string, interval: string, ts: number) => ({
   sk: `OHLCV#${interval}#${ts.toString().padStart(11, '0')}`,
 })
 
-export const tokenMintKey = (symbol: string) => ({
+export const tokenRefKey = (symbol: string) => ({
   pk: `TOKEN#${symbol.toUpperCase()}`,
-  sk: 'MINT',
+  sk: 'REF',
 })
 
 // ── Token keys ──────────────────────────────────────────────────────────────

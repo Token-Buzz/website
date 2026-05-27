@@ -1,26 +1,26 @@
 /**
  * OHLCV integration test — exercises the real `packages/core/src/db/ohlcv.ts`
- * functions (getOHLCV, queryCachedOhlcv, writeOhlcvBuckets, resolveMint,
- * getCachedMint) against a local dynalite DynamoDB.
+ * functions (getOHLCV, queryCachedOhlcv, writeOhlcvBuckets, resolveRef,
+ * getCachedRef) against a local dynalite DynamoDB.
  *
  * A fake PriceProvider is injected (no network or API key needed) to validate
- * the cache-through logic, mint caching, TTL assignment, and graceful
+ * the cache-through logic, ref caching, TTL assignment, and graceful
  * degradation.
  */
 
 import { describe, expect, test } from 'vitest'
 import { GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from '@monorepo-template/core/db/client'
-import { ohlcvKey, tokenMintKey } from '@monorepo-template/core/db/keys'
+import { ohlcvKey, tokenRefKey } from '@monorepo-template/core/db/keys'
 import {
   getOHLCV,
   queryCachedOhlcv,
-  getCachedMint,
+  getCachedRef,
 } from '@monorepo-template/core/db/ohlcv'
 import {
   type PriceProvider,
   type OHLCVBar,
-  type MintInfo,
+  type TokenRef,
   INTERVAL_SECONDS,
 } from '@monorepo-template/core/providers/price'
 
@@ -37,7 +37,13 @@ function fakeBar(ts: number): OHLCVBar {
   return { ts, open: 1, high: 2, low: 0.5, close: 1.5, volume: 100 }
 }
 
-const FAKE_MINT: MintInfo = { mint: 'FakeMint111111111111111111111111111111', chain: 'solana', source: 'birdeye' }
+const FAKE_REF: TokenRef = {
+  symbol: 'FAKE',
+  mint: 'FakeMint111111111111111111111111111111',
+  pool: 'FakePool111111111111111111111111111111',
+  chain: 'solana',
+  source: 'fake',
+}
 
 function makeFakeProvider(bars: OHLCVBar[]): PriceProvider & { resolveCalls: number; fetchCalls: number } {
   let resolveCalls = 0
@@ -46,11 +52,11 @@ function makeFakeProvider(bars: OHLCVBar[]): PriceProvider & { resolveCalls: num
     id: 'fake',
     get resolveCalls() { return resolveCalls },
     get fetchCalls() { return fetchCalls },
-    async resolveMint(_symbol: string): Promise<MintInfo | null> {
+    async resolve(_symbol: string): Promise<TokenRef | null> {
       resolveCalls++
-      return FAKE_MINT
+      return FAKE_REF
     },
-    async fetchOHLCV(_mint: string, _interval: '5m' | '1h' | '4h' | '1d', _from: number, _to: number): Promise<OHLCVBar[]> {
+    async fetchOHLCV(_ref: TokenRef, _interval: '5m' | '1h' | '4h' | '1d', _from: number, _to: number): Promise<OHLCVBar[]> {
       fetchCalls++
       return bars
     },
@@ -71,7 +77,7 @@ describe('cache-through', () => {
   const bars = [fakeBar(T0), fakeBar(T1)]
   let provider: ReturnType<typeof makeFakeProvider>
 
-  test('first call invokes resolveMint and fetchOHLCV, writes to DDB, returns bars', async () => {
+  test('first call invokes resolve and fetchOHLCV, writes to DDB, returns bars', async () => {
     provider = makeFakeProvider(bars)
     const result = await getOHLCV(SYM, INTERVAL, T0, T1, provider)
 
@@ -96,29 +102,29 @@ describe('cache-through', () => {
   })
 })
 
-// ── Test 2: mint cache ────────────────────────────────────────────────────────
+// ── Test 2: ref cache ─────────────────────────────────────────────────────────
 
-describe('mint cache', () => {
+describe('ref cache', () => {
   const INTERVAL = '1h'
   const T0 = 0
   const T1 = 3600
-  const SYM = 'MINTTEST' // unique symbol
+  const SYM = 'REFTEST' // unique symbol
 
-  test('MINT row is written on first call; second call does not call resolveMint again', async () => {
+  test('REF row is written on first call; second call does not call resolve again', async () => {
     const bars = [fakeBar(T0), fakeBar(T1)]
     const provider = makeFakeProvider(bars)
 
-    // First call writes the MINT row.
+    // First call writes the REF row.
     await getOHLCV(SYM, INTERVAL, T0, T1, provider)
     expect(provider.resolveCalls).toBe(1)
 
-    // Second call: mint is cached, resolveMint should NOT be called.
+    // Second call: ref is cached, resolve should NOT be called.
     await getOHLCV(SYM, INTERVAL, T0, T1, provider)
     expect(provider.resolveCalls).toBe(1)
 
-    // Also confirm getCachedMint returns the stored info.
-    const mintInfo = await getCachedMint(SYM)
-    expect(mintInfo).toEqual(FAKE_MINT)
+    // Also confirm getCachedRef returns the stored info.
+    const ref = await getCachedRef(SYM)
+    expect(ref).toMatchObject({ mint: FAKE_REF.mint, pool: FAKE_REF.pool, chain: 'solana', source: 'fake' })
   })
 })
 
@@ -177,16 +183,16 @@ describe('graceful degradation', () => {
     const { writeOhlcvBuckets } = await import('@monorepo-template/core/db/ohlcv')
     await writeOhlcvBuckets(SYM, INTERVAL, [fakeBar(T0)], nowSec)
 
-    // Also seed the MINT row so resolveMint doesn't need a provider call.
+    // Also seed the REF row so resolveRef doesn't need a provider call.
     const { ddb: ddbClient, TableNames: TN } = await import('@monorepo-template/core/db/client')
-    const { tokenMintKey: tmk } = await import('@monorepo-template/core/db/keys')
+    const { tokenRefKey: trk } = await import('@monorepo-template/core/db/keys')
     const { PutCommand } = await import('@aws-sdk/lib-dynamodb')
-    await ddbClient.send(new PutCommand({ TableName: TN.tokens, Item: { ...tmk(SYM), ...FAKE_MINT } }))
+    await ddbClient.send(new PutCommand({ TableName: TN.tokens, Item: { ...trk(SYM), ...FAKE_REF } }))
 
     // Provider that throws on fetchOHLCV.
     const throwingProvider: PriceProvider = {
       id: 'throwing',
-      async resolveMint(): Promise<MintInfo | null> { return FAKE_MINT },
+      async resolve(): Promise<TokenRef | null> { return FAKE_REF },
       async fetchOHLCV(): Promise<OHLCVBar[]> { throw new Error('API down') },
     }
 
@@ -200,7 +206,7 @@ describe('graceful degradation', () => {
 
     const throwingProvider: PriceProvider = {
       id: 'throwing',
-      async resolveMint(): Promise<MintInfo | null> { return FAKE_MINT },
+      async resolve(): Promise<TokenRef | null> { return FAKE_REF },
       async fetchOHLCV(): Promise<OHLCVBar[]> { throw new Error('API down') },
     }
 

@@ -1,15 +1,15 @@
 import { GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from './client'
-import { ohlcvKey, tokenMintKey } from './keys'
+import { ohlcvKey, tokenRefKey } from './keys'
 import {
   type OHLCVBar,
-  type MintInfo,
+  type TokenRef,
   type PriceProvider,
   type PriceInterval,
   missingBuckets,
   ttlForBucket,
 } from '../providers/price'
-import { birdeyeProvider } from '../providers/birdeye'
+import { geckoTerminalProvider } from '../providers/geckoterminal'
 
 export interface OHLCVRecord {
   pk: string
@@ -23,34 +23,42 @@ export interface OHLCVRecord {
   ttl?: number
 }
 
-export async function getCachedMint(symbol: string): Promise<MintInfo | null> {
-  const key = tokenMintKey(symbol)
+export async function getCachedRef(symbol: string): Promise<TokenRef | null> {
+  const key = tokenRefKey(symbol)
   const res = await ddb.send(
     new GetCommand({ TableName: TableNames.tokens, Key: key }),
   )
   if (!res.Item) return null
   const item = res.Item as Record<string, unknown>
+  const sym = item.symbol
   const mint = item.mint
+  const pool = item.pool
   const chain = item.chain
   const source = item.source
-  if (typeof mint !== 'string' || typeof chain !== 'string' || typeof source !== 'string') return null
-  return { mint, chain, source }
+  if (
+    typeof sym !== 'string' ||
+    typeof mint !== 'string' ||
+    typeof pool !== 'string' ||
+    typeof chain !== 'string' ||
+    typeof source !== 'string'
+  ) return null
+  return { symbol: sym, mint, pool, chain, source }
 }
 
-export async function resolveMint(symbol: string, provider: PriceProvider): Promise<MintInfo | null> {
-  const cached = await getCachedMint(symbol)
+export async function resolveRef(symbol: string, provider: PriceProvider): Promise<TokenRef | null> {
+  const cached = await getCachedRef(symbol)
   if (cached) return cached
 
-  const mintInfo = await provider.resolveMint(symbol)
-  if (!mintInfo) return null
+  const ref = await provider.resolve(symbol)
+  if (!ref) return null
 
   await ddb.send(
     new PutCommand({
       TableName: TableNames.tokens,
-      Item: { ...tokenMintKey(symbol), ...mintInfo },
+      Item: { ...tokenRefKey(symbol), ...ref },
     }),
   )
-  return mintInfo
+  return ref
 }
 
 export async function queryCachedOhlcv(
@@ -117,7 +125,7 @@ export async function getOHLCV(
   interval: PriceInterval,
   from: number,
   to: number,
-  provider: PriceProvider = birdeyeProvider,
+  provider: PriceProvider = geckoTerminalProvider,
 ): Promise<OHLCVBar[]> {
   const cached = await queryCachedOhlcv(symbol, interval, from, to)
   const cachedTs = new Set(cached.map((b) => b.ts))
@@ -125,13 +133,13 @@ export async function getOHLCV(
   const missing = missingBuckets(from, to, interval, cachedTs)
   if (missing.length === 0) return cached
 
-  const mint = await resolveMint(symbol, provider)
-  if (!mint) return cached
+  const ref = await resolveRef(symbol, provider)
+  if (!ref) return cached
 
   const nowSec = Math.floor(Date.now() / 1000)
   let fresh: OHLCVBar[] = []
   try {
-    fresh = await provider.fetchOHLCV(mint.mint, interval, Math.min(...missing), Math.max(...missing))
+    fresh = await provider.fetchOHLCV(ref, interval, Math.min(...missing), Math.max(...missing))
   } catch (err) {
     console.error('getOHLCV: provider fetch failed, returning cached bars', err)
     return cached

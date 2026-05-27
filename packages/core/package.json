@@ -34,7 +34,7 @@
     "./lib/twitter": "./src/lib/twitter.ts",
     "./movers": "./src/movers.ts",
     "./providers": "./src/providers.ts",
-    "./providers/birdeye": "./src/providers/birdeye.ts",
+    "./providers/geckoterminal": "./src/providers/geckoterminal.ts",
     "./providers/price": "./src/providers/price.ts",
     "./*": [
       "./src/*/index.ts",
