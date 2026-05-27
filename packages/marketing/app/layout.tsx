@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import {
   Bungee_Inline,
   Space_Grotesk,
@@ -35,6 +35,8 @@ const fraunces = Fraunces({
   display: 'swap',
   style: ['normal', 'italic'],
 })
+
+export const viewport: Viewport = { width: 'device-width', initialScale: 1 }
 
 export const metadata: Metadata = {
   title: 'TokenBuzz · Hear the market before you see it',

@@ -39,8 +39,6 @@ export default function Footer() {
           className="footer-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: '2.2fr 1fr 1fr 1fr 1fr',
-            gap: 48,
             marginBottom: 56,
           }}
         >
