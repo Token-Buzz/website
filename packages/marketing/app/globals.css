@@ -182,6 +182,8 @@
    ===================================================================== */
 html, body {
   margin: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -374,6 +376,111 @@ button:active { transform: scale(0.98); }
   background: var(--surface);
 }
 
+/* footer-grid desktop defaults (mobile overrides live in the @media block below) */
+.footer-grid {
+  grid-template-columns: 2.2fr 1fr 1fr 1fr 1fr;
+  gap: 48px;
+}
+
+/* =====================================================================
+   MOBILE NAV — hamburger + slide-in panel
+   ===================================================================== */
+.nav-hamburger { display: none; }
+.nav-mobile-panel { display: none; }
+
+@media (max-width: 900px) {
+  .nav-hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    color: var(--fg-1);
+    border-radius: var(--r-2);
+  }
+  .nav-hamburger:hover { background: var(--surface-hover); }
+
+  .nav-desktop-auth { display: none !important; }
+
+  .nav-mobile-panel {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+  }
+  .nav-mobile-panel.open { display: block; }
+
+  .nav-mobile-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  .nav-mobile-sheet {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: min(280px, 85vw);
+    height: 100%;
+    background: var(--bg-elevated);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 4px;
+    overflow-y: auto;
+  }
+
+  .nav-mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .nav-mobile-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    color: var(--fg-1);
+    border-radius: var(--r-2);
+  }
+  .nav-mobile-close:hover { background: var(--surface-hover); }
+
+  .nav-mobile-link {
+    display: block;
+    padding: 12px 8px;
+    font: 500 15px var(--font-sans);
+    color: var(--fg-2);
+    text-decoration: none;
+    border-radius: var(--r-2);
+    letter-spacing: -0.005em;
+  }
+  .nav-mobile-link:hover { background: var(--surface-hover); color: var(--fg-1); }
+
+  .nav-mobile-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 8px 0;
+  }
+
+  .nav-mobile-auth {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+  }
+}
+
 /* =====================================================================
    RESPONSIVE BREAKPOINTS (≤ 900px)
    ===================================================================== */
@@ -397,10 +504,17 @@ button:active { transform: scale(0.98); }
   .price-card { transform: none !important; }
 
   .footer-grid {
-    grid-template-columns: 1fr 1fr !important;
-    gap: 32px !important;
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+    overflow: hidden;
   }
 
-  .hero-display { font-size: 56px !important; }
+  footer { overflow: hidden; }
+
+  /* Fluid headline that stays within a 360px viewport */
+  .hero-display { font-size: clamp(32px, 9.5vw, 56px) !important; }
   .nav-links    { display: none !important; }
+
+  /* Prevent the rotated hero panel from overflowing */
+  .hero-panel   { transform: none !important; max-width: 100%; }
 }
