@@ -26,6 +26,7 @@ export default $config({
     const { app: application } = await import("./infra/application");
     await import("./infra/clerk");
     await import("./infra/jobs");
+    await import("./infra/ticker");
 
     return {
       router: router.url,
