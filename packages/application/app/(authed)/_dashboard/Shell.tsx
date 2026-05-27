@@ -684,7 +684,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const closePalette = useCallback(() => setPaletteOpen(false), [])
 
   const askHum = useCallback((preset?: string) => {
-    if (preset) setHumPreset(preset)
+    setHumPreset(preset ?? '')
     setHumOpen(true)
   }, [])
 
