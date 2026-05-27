@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/Token-Buzz/website/compare/v0.10.0...v0.11.0) (2026-05-27)
+
+
+### 🚀 Features
+
+* **application:** M4 P5 — wire command palette + quick-add to Hum and dashboards ([#187](https://github.com/Token-Buzz/website/issues/187)) ([2a89301](https://github.com/Token-Buzz/website/commit/2a89301261f3592bf5ad41d16af22988b4d5436a))
+
 ## [0.10.0](https://github.com/Token-Buzz/website/compare/v0.9.0...v0.10.0) (2026-05-27)
 
 
