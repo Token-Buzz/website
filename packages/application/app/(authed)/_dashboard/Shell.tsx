@@ -8,7 +8,8 @@ import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import { HumPanel } from './HumPanel'
 import type { WatchlistGroup } from './types'
 import { CommandPalette } from './CommandPalette'
-import type { CommandSection, CommandItem } from './CommandPalette'
+import type { CommandItem, CommandSection } from './CommandPalette'
+import { pickById } from './commandRegistry'
 import { QuickAddMenu } from './QuickAddMenu'
 import { HUM_OPEN_EVENT } from './humContext'
 import type { Dashboard } from '@monorepo-template/core/db/dashboards'
@@ -521,7 +522,7 @@ function TopBar({
             </button>
 
             {/* Quick add — icon-only */}
-            <QuickAddMenu items={quickAddItems} compact />
+            <QuickAddMenu items={quickAddItems} isMobile={true} />
 
             {/* Ask Hum — icon-only on mobile */}
             <button
@@ -564,7 +565,7 @@ function TopBar({
             </button>
 
             {/* Quick add */}
-            <QuickAddMenu items={quickAddItems} />
+            <QuickAddMenu items={quickAddItems} isMobile={false} />
 
             <Button
               variant={humOpen ? 'secondary' : 'primary'}
@@ -748,56 +749,51 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true }
   }, [paletteOpen])
 
-  // ── Shared action commands ─────────────────────────────────────────────────
-  // Built once; composed into both the command palette and the quick-add menu.
-  const newDashboard: CommandItem = useMemo(() => ({
-    id: 'new-dashboard',
-    label: 'New dashboard',
-    icon: 'plus' as const,
-    onSelect: () => router.push('/dashboards?new=1'),
-  }), [router])
-
-  const askHumCmd: CommandItem = useMemo(() => ({
-    id: 'ask-hum',
-    label: 'Ask Hum',
-    icon: 'sparkle' as const,
-    onSelect: () => askHum(),
-  }), [askHum])
-
-  const newAlert: CommandItem = useMemo(() => ({
-    id: 'new-alert',
-    label: 'New alert via Hum',
-    icon: 'bell' as const,
-    onSelect: () => askHum('Help me set up a new alert.'),
-  }), [askHum])
-
-  const openSettings: CommandItem = useMemo(() => ({
-    id: 'open-settings',
-    label: 'Open settings',
-    icon: 'settings' as const,
-    onSelect: () => router.push('/account'),
-  }), [router])
-
-  const signOutCmd: CommandItem = useMemo(() => ({
-    id: 'sign-out',
-    label: 'Sign out',
-    icon: 'logout' as const,
-    onSelect: () => void signOut(),
-  }), [signOut])
-
-  const toggleTheme: CommandItem = useMemo(() => ({
-    id: 'toggle-theme',
-    label: 'Toggle theme',
-    icon: 'contrast' as const,
-    onSelect: () => {
-      const el = document.documentElement
-      el.setAttribute('data-theme', el.getAttribute('data-theme') === 'light' ? 'dark' : 'light')
+  const actionCommands: CommandItem[] = useMemo(() => [
+    {
+      id: 'new-dashboard',
+      label: 'New dashboard',
+      icon: 'plus' as const,
+      onSelect: () => router.push('/dashboards?new=1'),
     },
-  }), [])
+    {
+      id: 'ask-hum',
+      label: 'Ask Hum',
+      icon: 'sparkle' as const,
+      onSelect: () => askHum(),
+    },
+    {
+      id: 'new-alert-via-hum',
+      label: 'New alert via Hum',
+      icon: 'bell' as const,
+      onSelect: () => askHum('Help me set up a new alert.'),
+    },
+    {
+      id: 'open-settings',
+      label: 'Open settings',
+      icon: 'settings' as const,
+      onSelect: () => router.push('/account'),
+    },
+    {
+      id: 'sign-out',
+      label: 'Sign out',
+      icon: 'logout' as const,
+      onSelect: () => void signOut(),
+    },
+    {
+      id: 'toggle-theme',
+      label: 'Toggle theme',
+      icon: 'contrast' as const,
+      onSelect: () => {
+        const el = document.documentElement
+        el.setAttribute('data-theme', el.getAttribute('data-theme') === 'light' ? 'dark' : 'light')
+      },
+    },
+  ], [router, signOut, askHum])
 
   const quickAddItems: CommandItem[] = useMemo(
-    () => [newDashboard, askHumCmd, newAlert],
-    [newDashboard, askHumCmd, newAlert],
+    () => pickById(actionCommands, ['new-dashboard', 'ask-hum', 'new-alert-via-hum']),
+    [actionCommands],
   )
 
   const paletteSections: CommandSection[] = useMemo(() => [
@@ -825,9 +821,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     {
       id: 'actions',
       heading: 'Actions',
-      items: [newDashboard, askHumCmd, openSettings, signOutCmd, toggleTheme],
+      items: pickById(actionCommands, ['new-dashboard', 'ask-hum', 'open-settings', 'sign-out', 'toggle-theme']),
     },
-  ], [dashboards, router, newDashboard, askHumCmd, openSettings, signOutCmd, toggleTheme])
+  ], [actionCommands, dashboards, router])
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
