@@ -28,7 +28,10 @@ import {
   resolvePreviousTag,
   parseCommitSubjects,
   buildNotesMessages,
+  parsePrNumbers,
 } from './release-notes-pure.js'
+
+const PENDING_LABEL = 'autorelease: pending'
 
 // ---------------------------------------------------------------------------
 // Git / shell helpers — use execFileSync/spawnSync with arg arrays (no shell
@@ -43,6 +46,28 @@ function ghRelease(args: string[]): void {
   const result = spawnSync('gh', args, { encoding: 'utf-8', stdio: 'inherit' })
   if (result.status !== 0) {
     throw new Error(`gh release failed with status ${result.status ?? 'null'}`)
+  }
+}
+
+// release-please leaves the merged Release PR labeled `autorelease: pending`
+// and only clears it when IT creates the release. Since this script creates
+// the release instead, release-please never clears the label, which stalls the
+// next Release PR. So we clear it here. Best-effort: never fail the release.
+function clearPendingReleaseLabels(): void {
+  try {
+    const json = execFileSync('gh', ['pr', 'list', '--state', 'merged', '--label', PENDING_LABEL, '--json', 'number'], { encoding: 'utf-8' })
+    const numbers = parsePrNumbers(json)
+    if (numbers.length === 0) {
+      console.log('No merged Release PRs labeled "autorelease: pending" to clear.')
+      return
+    }
+    for (const n of numbers) {
+      const res = spawnSync('gh', ['pr', 'edit', String(n), '--remove-label', PENDING_LABEL], { encoding: 'utf-8', stdio: 'inherit' })
+      if (res.status === 0) console.log(`Cleared "${PENDING_LABEL}" from PR #${n}.`)
+      else console.warn(`Could not clear "${PENDING_LABEL}" from PR #${n} (status ${res.status ?? 'null'}); continuing.`)
+    }
+  } catch (err) {
+    console.warn('Label cleanup skipped (non-fatal):', err instanceof Error ? err.message : String(err))
   }
 }
 
@@ -107,7 +132,8 @@ async function main(): Promise<void> {
   // 3. Idempotency guard — if tag already exists, nothing to do.
   if (allTags.includes(tag)) {
     console.log(`Release ${tag} already exists; nothing to do.`)
-    process.exit(0)
+    clearPendingReleaseLabels()
+    return
   }
 
   console.log(`Tag ${tag} does not exist yet — proceeding to create release.`)
@@ -169,6 +195,7 @@ async function main(): Promise<void> {
   ])
 
   console.log(`Release ${tag} created successfully.`)
+  clearPendingReleaseLabels()
 }
 
 main().catch(err => {

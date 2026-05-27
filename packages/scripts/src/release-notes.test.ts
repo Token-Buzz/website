@@ -4,7 +4,41 @@ import {
   resolvePreviousTag,
   parseCommitSubjects,
   buildNotesMessages,
+  parsePrNumbers,
 } from './release-notes-pure.js'
+
+// ---------------------------------------------------------------------------
+// parsePrNumbers
+// ---------------------------------------------------------------------------
+describe('parsePrNumbers', () => {
+  it('returns PR numbers from a normal array', () => {
+    expect(parsePrNumbers('[{"number":184},{"number":190}]')).toEqual([184, 190])
+  })
+
+  it('returns [] for empty string', () => {
+    expect(parsePrNumbers('')).toEqual([])
+  })
+
+  it('returns [] for whitespace-only string', () => {
+    expect(parsePrNumbers('   ')).toEqual([])
+  })
+
+  it('returns [] for empty array', () => {
+    expect(parsePrNumbers('[]')).toEqual([])
+  })
+
+  it('returns [] for non-array input (object)', () => {
+    expect(parsePrNumbers('{}')).toEqual([])
+  })
+
+  it('drops items missing a numeric number field', () => {
+    expect(parsePrNumbers('[{"number":5},{"foo":1},{"number":"x"}]')).toEqual([5])
+  })
+
+  it('drops items where number is a float (non-integer)', () => {
+    expect(parsePrNumbers('[{"number":5},{"number":1.5}]')).toEqual([5])
+  })
+})
 
 // ---------------------------------------------------------------------------
 // parseManifestVersion
