@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.13.0](https://github.com/Token-Buzz/website/compare/v0.12.0...v0.13.0) (2026-05-27)
+
+
+### 🚀 Features
+
+* **application:** M6 P4 — social-event overlays on CandleChart ([#195](https://github.com/Token-Buzz/website/issues/195)) ([707a68a](https://github.com/Token-Buzz/website/commit/707a68afae7a60f3aeef5b6b61403be20e42fa30))
+
+
+### 🧰 Maintenance
+
+* add /merge-and-close and /open-and-watch slash commands ([#193](https://github.com/Token-Buzz/website/issues/193)) ([b136f25](https://github.com/Token-Buzz/website/commit/b136f25fe7f3ec00c94b6401c2a578ecb634ae74))
+
 ## [0.12.0](https://github.com/Token-Buzz/website/compare/v0.11.0...v0.12.0) (2026-05-27)
 
 
