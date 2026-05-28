@@ -357,6 +357,23 @@ export const monitorKey = (userId: string, query: string) => ({
 })
 export const monitorSkPrefix = 'MONITOR#'
 
+/**
+ * Constant partition for the ByokHolders GSI used to enumerate ALL monitors.
+ *
+ * Reuses the existing ByokHolders GSI (gsi1pk/gsi1sk on the UserData table)
+ * under a disjoint key space: BYOK rows use gsi1pk=`BYOK#<provider>`,
+ * alert rows use gsi1pk=`ALERTTOKEN#<SYMBOL>`, and monitor rows use
+ * gsi1pk=`MONITORS` — the distinct prefixes mean the row types never collide
+ * in the same GSI partition.
+ */
+export const MONITOR_GSI_PK = 'MONITORS'
+
+/** GSI keys so a monitor row is discoverable via listAllMonitors (ByokHolders index). */
+export const monitorGsi = (userId: string, query: string) => ({
+  gsi1pk: MONITOR_GSI_PK,
+  gsi1sk: `USER#${userId}#${query}`,
+})
+
 // ── Poll cadence state (Aggregates table, keyed per source+query) ────────────
 
 export const pollStateKey = (source: string, query: string) => ({

@@ -217,6 +217,77 @@ describe('getMonitorAssignments (dynalite integration)', () => {
     expect(tasks).toHaveLength(0)
   })
 
+  // ── Keyless (farcaster) scenarios ────────────────────────────────────────────
+
+  test('farcaster: user with Monitor {sources:[farcaster]} and NO BYOK key yields a farcaster task with apiKey=""', async () => {
+    const userId = 'user_farcaster_a'
+    await putMonitor({
+      userId,
+      query: '$BTC',
+      sources: ['farcaster'],
+      intervalMs: 120_000,
+      createdAt: iso(),
+      updatedAt: iso(),
+    })
+
+    const tasks = await getMonitorAssignments()
+
+    const farcasterTasks = tasks.filter((t) => t.source === 'farcaster' && t.userId === userId)
+    expect(farcasterTasks).toHaveLength(1)
+    expect(farcasterTasks[0].query).toBe('$BTC')
+    expect(farcasterTasks[0].apiKey).toBe('')
+  })
+
+  test('farcaster: two users monitoring the same query are deduped to exactly one task', async () => {
+    const userA = 'user_farc_dedup_a'
+    const userB = 'user_farc_dedup_b'
+    await putMonitor({
+      userId: userA,
+      query: '$ETH',
+      sources: ['farcaster'],
+      intervalMs: 120_000,
+      createdAt: iso(),
+      updatedAt: iso(),
+    })
+    await putMonitor({
+      userId: userB,
+      query: '$ETH',
+      sources: ['farcaster'],
+      intervalMs: 120_000,
+      createdAt: iso(),
+      updatedAt: iso(),
+    })
+
+    const tasks = await getMonitorAssignments()
+
+    const ethFarcasterTasks = tasks.filter((t) => t.source === 'farcaster' && t.query === '$ETH')
+    expect(ethFarcasterTasks).toHaveLength(1)
+    expect([userA, userB]).toContain(ethFarcasterTasks[0].userId)
+  })
+
+  test('farcaster: a user whose only monitor is {sources:[twitter]} yields NO farcaster task', async () => {
+    const userId = 'user_farc_twitter_only'
+    // Give the user a BYOK key so the twitter path might produce tasks.
+    await putByokKey({ userId, provider: TWITTER_PROVIDER, apiKey: 'key_twit_only' })
+    await setByokBackgroundPolling(userId, TWITTER_PROVIDER, true)
+    await putMonitor({
+      userId,
+      query: '$DOGE',
+      sources: ['twitter'],
+      intervalMs: 120_000,
+      createdAt: iso(),
+      updatedAt: iso(),
+    })
+
+    const tasks = await getMonitorAssignments()
+
+    const farcasterTasks = tasks.filter((t) => t.source === 'farcaster' && t.userId === userId)
+    expect(farcasterTasks).toHaveLength(0)
+    // The twitter task for this user should still be present.
+    const twitterTasks = tasks.filter((t) => t.source === 'twitter' && t.userId === userId)
+    expect(twitterTasks).toHaveLength(1)
+  })
+
   test('multiple queries in a single monitor expand to multiple tasks', async () => {
     // putMonitor stores one record per query — put two.
     const userId = 'user_multi_e'

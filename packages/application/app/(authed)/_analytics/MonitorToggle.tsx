@@ -76,7 +76,7 @@ export function MonitorToggle({ query }: MonitorToggleProps) {
         const res = await fetch("/api/monitors", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: trimmed, sources: ["twitter"] }),
+          body: JSON.stringify({ query: trimmed, sources: ["twitter", "farcaster"] }),
         });
         if (res.status === 401) {
           setInlineMessage("Sign in to set up monitors.");

@@ -26,8 +26,8 @@ describe('getAdapter', () => {
 })
 
 describe('listImplementedSources', () => {
-  test('returns ["twitter"] — only twitter is implemented in Phase 1', () => {
-    expect(listImplementedSources()).toEqual(['twitter'])
+  test('returns ["twitter", "farcaster"] — both implemented as of Phase 2', () => {
+    expect(listImplementedSources()).toEqual(['twitter', 'farcaster'])
   })
 })
 
@@ -42,6 +42,10 @@ describe('allowedSources', () => {
 
   test('alpha plan includes twitter', () => {
     expect(allowedSources('alpha')).toContain('twitter')
+  })
+
+  test('free plan includes farcaster', () => {
+    expect(allowedSources('free')).toContain('farcaster')
   })
 })
 
@@ -70,6 +74,42 @@ describe('twitter adapter metadata', () => {
 
   test('byokProvider is "twitter"', () => {
     expect(adapter.byokProvider).toBe('twitter')
+  })
+
+  test('search is a function', () => {
+    expect(typeof adapter.search).toBe('function')
+  })
+
+  test('since is a function', () => {
+    expect(typeof adapter.since).toBe('function')
+  })
+})
+
+describe('farcaster adapter metadata', () => {
+  const adapter = SOURCE_ADAPTERS.farcaster!
+
+  test('id is "farcaster"', () => {
+    expect(adapter.id).toBe('farcaster')
+  })
+
+  test('displayName is "Farcaster"', () => {
+    expect(adapter.displayName).toBe('Farcaster')
+  })
+
+  test('minPlan is "free"', () => {
+    expect(adapter.minPlan).toBe('free')
+  })
+
+  test('pollIntervalMs is 2 minutes (120000)', () => {
+    expect(adapter.pollIntervalMs).toBe(2 * 60 * 1000)
+  })
+
+  test('implemented is true', () => {
+    expect(adapter.implemented).toBe(true)
+  })
+
+  test('byokProvider is null', () => {
+    expect(adapter.byokProvider).toBeNull()
   })
 
   test('search is a function', () => {
