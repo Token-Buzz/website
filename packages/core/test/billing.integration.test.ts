@@ -18,6 +18,8 @@ import {
   getPlanRecord,
   setPlanStatus,
   downgradeToFree,
+  getStripeCustomerId,
+  setStripeCustomerId,
 } from '@monorepo-template/core/db/billing'
 import { getUserPlan } from '@monorepo-template/core/db/usage'
 
@@ -147,5 +149,50 @@ describe('downgradeToFree', () => {
     expect(record?.status).toBe('canceled')
     expect(record?.cancelAtPeriodEnd).toBe(false)
     expect(await getUserPlan(userId)).toEqual({ plan: 'free' })
+  })
+})
+
+// ── getStripeCustomerId / setStripeCustomerId ──────────────────────────────────
+
+describe('getStripeCustomerId / setStripeCustomerId', () => {
+  test('returns null when no PLAN row exists', async () => {
+    expect(await getStripeCustomerId('billing_cus_user_none')).toBeNull()
+  })
+
+  test('round-trips a customerId via setStripeCustomerId then getStripeCustomerId', async () => {
+    const userId = 'billing_cus_user_1'
+
+    await setStripeCustomerId(userId, 'cus_X')
+    expect(await getStripeCustomerId(userId)).toBe('cus_X')
+  })
+
+  test('setStripeCustomerId does not clobber an existing plan row', async () => {
+    const userId = 'billing_cus_user_2'
+    const cpe = '2026-06-27T00:00:00.000Z'
+
+    // Write a full subscription row first.
+    await applySubscriptionToPlan({
+      userId,
+      plan: 'pro',
+      status: 'active',
+      interval: 'month',
+      currentPeriodEnd: cpe,
+      cancelAtPeriodEnd: false,
+      stripeCustomerId: 'cus_old',
+      stripeSubId: 'sub_cus_2',
+    })
+
+    // Now update only the customerId.
+    await setStripeCustomerId(userId, 'cus_new')
+
+    // The customerId must be updated.
+    expect(await getStripeCustomerId(userId)).toBe('cus_new')
+
+    // The existing plan/status fields must be preserved.
+    const record = await getPlanRecord(userId)
+    expect(record?.plan).toBe('pro')
+    expect(record?.status).toBe('active')
+    expect(record?.stripeSubId).toBe('sub_cus_2')
+    expect(record?.currentPeriodEnd).toBe(cpe)
   })
 })

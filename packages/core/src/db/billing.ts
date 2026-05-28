@@ -117,6 +117,26 @@ export async function resolveUserIdByCustomer(
   return (Item?.userId as string) ?? null
 }
 
+// ── Stripe customer ID on the PLAN row ────────────────────────────────────────
+
+export async function getStripeCustomerId(userId: string): Promise<string | null> {
+  const { Item } = await ddb.send(
+    new GetCommand({ TableName: TableNames.userData, Key: planKey(userId) }),
+  )
+  return (Item?.stripeCustomerId as string) ?? null
+}
+
+export async function setStripeCustomerId(userId: string, customerId: string): Promise<void> {
+  await ddb.send(
+    new UpdateCommand({
+      TableName: TableNames.userData,
+      Key: planKey(userId),
+      UpdateExpression: 'SET stripeCustomerId = :c, updatedAt = :now',
+      ExpressionAttributeValues: { ':c': customerId, ':now': new Date().toISOString() },
+    }),
+  )
+}
+
 // ── PLAN row writes ──────────────────────────────────────────────────────────
 
 export async function applySubscriptionToPlan(

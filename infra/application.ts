@@ -1,5 +1,5 @@
 import { router } from "./router";
-import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey, stripeSecretKey, stripeWebhookSecret } from "./secrets";
+import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey, stripeSecretKey, stripeWebhookSecret, stripePublishableKey, stripePriceProMonth, stripePriceProYear, stripePriceAlphaMonth, stripePriceAlphaYear } from "./secrets";
 import { tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable } from "./db";
 import { byokKmsKey } from "./byok";
 
@@ -43,6 +43,11 @@ export const app = new sst.aws.Nextjs("Application", {
         BYOK_KMS_KEY_ID: byokKmsKey.id,
         STRIPE_SECRET_KEY: stripeSecretKey.value,
         STRIPE_WEBHOOK_SECRET: stripeWebhookSecret.value,
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: stripePublishableKey.value,
+        STRIPE_PRICE_PRO_MONTH: stripePriceProMonth.value,
+        STRIPE_PRICE_PRO_YEAR: stripePriceProYear.value,
+        STRIPE_PRICE_ALPHA_MONTH: stripePriceAlphaMonth.value,
+        STRIPE_PRICE_ALPHA_YEAR: stripePriceAlphaYear.value,
     },
     permissions: [
         {
