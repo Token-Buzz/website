@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/Token-Buzz/website/compare/v0.23.0...v0.24.0) (2026-05-28)
+
+
+### 🚀 Features
+
+* **application,jobs:** account page rebuild + alert emails (M5 P5) ([#229](https://github.com/Token-Buzz/website/issues/229)) ([d46349b](https://github.com/Token-Buzz/website/commit/d46349b98f927677b61d7a2dfeba77d036c93ced))
+
 ## [0.23.0](https://github.com/Token-Buzz/website/compare/v0.22.0...v0.23.0) (2026-05-28)
 
 
