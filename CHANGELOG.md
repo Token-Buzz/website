@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.0](https://github.com/Token-Buzz/website/compare/v0.28.0...v0.29.0) (2026-05-28)
+
+
+### 🚀 Features
+
+* **application:** Stripe dunning + 7-day grace period (M5 P8) ([#238](https://github.com/Token-Buzz/website/issues/238)) ([2a551c9](https://github.com/Token-Buzz/website/commit/2a551c9b3380dc1a9155c34b34c5f2c71990ffad))
+
 ## [0.28.0](https://github.com/Token-Buzz/website/compare/v0.27.0...v0.28.0) (2026-05-28)
 
 
