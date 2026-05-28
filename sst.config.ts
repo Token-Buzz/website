@@ -27,6 +27,7 @@ export default $config({
     await import("./infra/clerk");
     await import("./infra/jobs");
     await import("./infra/ticker");
+    await import("./infra/monitoring");
 
     return {
       router: router.url,
