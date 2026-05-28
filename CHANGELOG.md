@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/Token-Buzz/website/compare/v0.24.0...v0.25.0) (2026-05-28)
+
+
+### 🚀 Features
+
+* **infra:** rate-limit alarm for GeckoTerminal cap (M7 P5) ([#228](https://github.com/Token-Buzz/website/issues/228)) ([5777944](https://github.com/Token-Buzz/website/commit/5777944b8a2a3ce4b8309f27d15c91e482086f09))
+
 ## [0.24.0](https://github.com/Token-Buzz/website/compare/v0.23.0...v0.24.0) (2026-05-28)
 
 
