@@ -349,6 +349,17 @@ export function aggRangeKey(type: string, query: string) {
   }
 }
 
+// ── Per-source ingestion count keys (Aggregates table) ──────────────────────
+
+/** Key for a per-source ingestion count row: one row per (query, source) pair. */
+export const sourceCountKey = (query: string, source: string) => ({
+  pk: `AGG#SRCCOUNT#${query}`,
+  sk: `SRC#${source}`,
+})
+
+/** Partition key prefix for listing all per-source counts for a query. */
+export const sourceCountPk = (query: string) => `AGG#SRCCOUNT#${query}`
+
 // ── Time bucket helpers ─────────────────────────────────────────────────────
 
 export function hourBucket(ts: Date | string | number): string {

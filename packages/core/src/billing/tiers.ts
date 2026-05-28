@@ -83,6 +83,13 @@ export function historyRetentionTtl(plan: Plan, nowMs: number = Date.now()): num
   return Math.floor(nowMs / 1000) + days * 86_400
 }
 
+export const PLAN_RANK: Record<Plan, number> = { free: 0, pro: 1, alpha: 2 }
+
+/** True when `plan` meets or exceeds the `required` tier. */
+export function planMeets(plan: Plan, required: Plan): boolean {
+  return PLAN_RANK[plan] >= PLAN_RANK[required]
+}
+
 /**
  * Resolve the Stripe Price ID for a paid plan × interval from the environment.
  * Throws when the env var is unset — billing config must fail loudly, never

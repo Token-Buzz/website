@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { TIERS, DEFAULT_PLAN, evaluateHumQuota, evaluateIngestionQuota, PAID_PLANS, BILLING_INTERVALS, stripePriceId, historyRetentionTtl } from './tiers'
+import { TIERS, DEFAULT_PLAN, evaluateHumQuota, evaluateIngestionQuota, PAID_PLANS, BILLING_INTERVALS, stripePriceId, historyRetentionTtl, PLAN_RANK, planMeets } from './tiers'
 
 describe('TIERS', () => {
   test('free tier has humMonthly=10, label=Free', () => {
@@ -209,6 +209,44 @@ describe('evaluateHumQuota', () => {
     expect(evaluateHumQuota('alpha', 10000).allowed).toBe(true)
     expect(evaluateHumQuota('alpha', 0).limit).toBeNull()
     expect(evaluateHumQuota('alpha', 10000).limit).toBeNull()
+  })
+})
+
+describe('PLAN_RANK', () => {
+  test('free=0, pro=1, alpha=2', () => {
+    expect(PLAN_RANK.free).toBe(0)
+    expect(PLAN_RANK.pro).toBe(1)
+    expect(PLAN_RANK.alpha).toBe(2)
+  })
+})
+
+describe('planMeets', () => {
+  test('free meets free', () => {
+    expect(planMeets('free', 'free')).toBe(true)
+  })
+  test('pro meets free', () => {
+    expect(planMeets('pro', 'free')).toBe(true)
+  })
+  test('alpha meets free', () => {
+    expect(planMeets('alpha', 'free')).toBe(true)
+  })
+  test('pro meets pro', () => {
+    expect(planMeets('pro', 'pro')).toBe(true)
+  })
+  test('alpha meets pro', () => {
+    expect(planMeets('alpha', 'pro')).toBe(true)
+  })
+  test('alpha meets alpha', () => {
+    expect(planMeets('alpha', 'alpha')).toBe(true)
+  })
+  test('free does NOT meet pro', () => {
+    expect(planMeets('free', 'pro')).toBe(false)
+  })
+  test('free does NOT meet alpha', () => {
+    expect(planMeets('free', 'alpha')).toBe(false)
+  })
+  test('pro does NOT meet alpha', () => {
+    expect(planMeets('pro', 'alpha')).toBe(false)
   })
 })
 

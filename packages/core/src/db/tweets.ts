@@ -1,7 +1,10 @@
 import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from './client'
+import type { SocialSource } from '../sources/types'
 
 export interface Tweet {
+  /** Social network this tweet originated from. Defaults to 'twitter' for legacy records. */
+  source?: SocialSource
   tweetId: string
   query: string
   text: string
@@ -37,6 +40,8 @@ export interface Tweet {
 }
 
 export interface TweetRecord {
+  /** Social network this tweet originated from. Defaults to 'twitter' for legacy records. */
+  source?: SocialSource
   pk: string
   sk: string
   id: string
@@ -179,6 +184,7 @@ export async function putTweet(tweet: Tweet): Promise<void> {
     Item: {
       pk,
       sk,
+      source: tweet.source ?? 'twitter',
       tweetId: tweet.tweetId,
       query: tweet.query,
       text: tweet.text,

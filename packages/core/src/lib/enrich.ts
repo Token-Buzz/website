@@ -7,6 +7,7 @@ import { extractKeywords } from "../db/keywords";
 import type { RawTweet } from "./twitter";
 import type { Tweet } from "../db/tweets";
 import type { GeoResult } from "../db/geo";
+import type { SocialSource } from "../sources/types";
 
 // ── URL regex ─────────────────────────────────────────────────────────────────
 const URL_REGEX = /https?:\/\/[\w./?=&%+#-]+/g;
@@ -21,6 +22,8 @@ export interface EnrichOpts {
   geoResult?: GeoResult | null;
   /** Pre-computed bot score. If omitted it is computed from the author fields. */
   botScore?: number;
+  /** Social network this post originated from. Defaults to 'twitter'. */
+  source?: SocialSource;
 }
 
 /**
@@ -78,6 +81,7 @@ export function enrichRawTweet(
   const geoResult = opts?.geoResult ?? null;
 
   return {
+    source: opts?.source ?? 'twitter',
     tweetId: raw.id,
     query,
     text: raw.text,
