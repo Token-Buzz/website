@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.0](https://github.com/Token-Buzz/website/compare/v0.33.0...v0.34.0) (2026-05-28)
+
+
+### 🚀 Features
+
+* **application,core:** pin entire query to dashboard (M8 P5) ([#250](https://github.com/Token-Buzz/website/issues/250)) ([93d0c95](https://github.com/Token-Buzz/website/commit/93d0c95870e1e9168675dbf18fb27b2ac9da225f)), closes [#69](https://github.com/Token-Buzz/website/issues/69)
+
 ## [0.33.0](https://github.com/Token-Buzz/website/compare/v0.32.0...v0.33.0) (2026-05-28)
 
 
