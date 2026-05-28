@@ -20,7 +20,8 @@
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "react-grid-layout": "^1.5.3"
+    "react-grid-layout": "^1.5.3",
+    "stripe": "^18"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
