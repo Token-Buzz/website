@@ -5,6 +5,7 @@ import { getTweetsByQueryWindow } from "@monorepo-template/core/db/tweets";
 import { getTweetsByQuery, type Tweet } from "@monorepo-template/core/db/tweets";
 import { bucketRange } from "@monorepo-template/core/db/keys";
 import { ddb, TableNames } from "@monorepo-template/core/db/client";
+import { readSourceCounts } from "@monorepo-template/core/db/source-counts";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -360,6 +361,7 @@ export async function GET(req: Request) {
     contentLengthEngagement,
     authorInfluence,
     tweets,
+    sourceCounts,
   ] = await Promise.all([
     safe(fetchHashtags(query)),
     safe(fetchMentions(query)),
@@ -380,6 +382,7 @@ export async function GET(req: Request) {
     safe(fetchContentLengthEngagement(query)),
     safe(fetchAuthorInfluence(query)),
     safe(fetchTweets(query)),
+    safe(readSourceCounts(query)),
   ]);
 
   return Response.json({
@@ -402,5 +405,6 @@ export async function GET(req: Request) {
     contentLengthEngagement,
     authorInfluence,
     tweets,
+    sourceCounts,
   });
 }
