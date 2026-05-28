@@ -14,6 +14,7 @@ import { QuickAddMenu } from './QuickAddMenu'
 import { HUM_OPEN_EVENT } from './humContext'
 import type { Dashboard } from '@monorepo-template/core/db/dashboards'
 import { swatchForId } from './commandSwatch'
+import { UpgradeModalProvider } from '@/app/_billing/UpgradeModalProvider'
 
 // ── Sidebar nav items ──────────────────────────────────────────────────────
 
@@ -826,6 +827,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   ], [actionCommands, dashboards, router])
 
   return (
+    <UpgradeModalProvider>
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
       {/* Desktop persistent sidebar — hidden on mobile */}
       {!isMobile && (
@@ -883,5 +885,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         })}
       />
     </div>
+    </UpgradeModalProvider>
   )
 }

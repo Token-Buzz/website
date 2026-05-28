@@ -10,6 +10,7 @@ import {
   markByokKeyInvalid,
   TWITTER_PROVIDER,
 } from "@monorepo-template/core/db/byok";
+import { canIngestQuery, recordIngestionUsage } from "@monorepo-template/core/db/usage";
 import citiesData from "@/lib/geo/cities5000.json";
 
 // Load offline city dataset once at module init.
@@ -43,6 +44,15 @@ export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // ── Ingestion quota gate ─────────────────────────────────────────────────────
+  const quota = await canIngestQuery(userId);
+  if (!quota.allowed) {
+    return Response.json(
+      { error: "quota_exhausted", plan: quota.plan, used: quota.used, limit: quota.limit },
+      { status: 402 },
+    );
   }
 
   // ── Parse body ─────────────────────────────────────────────────────────────
@@ -110,6 +120,13 @@ export async function POST(req: Request) {
       { error: "twitter ingest failed", detail },
       { status: 502 },
     );
+  }
+
+  // Record the metered ingestion query (best-effort — must not fail the request).
+  try {
+    await recordIngestionUsage(userId);
+  } catch {
+    /* best-effort */
   }
 
   if (rawTweets.length === 0) {

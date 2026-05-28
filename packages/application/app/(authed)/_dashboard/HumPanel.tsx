@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import Link from 'next/link'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Icon, Eyebrow } from './primitives'
+import { useUpgradeModal } from '@/app/_billing/UpgradeModalProvider'
+import type { Plan } from '@monorepo-template/core/billing/tiers'
 import type { HumMessage } from './types'
 import type { HumStagedContext } from './humContext'
 import { HUM_CONTEXT_MIME, parseContext, fromCardEvent } from './humContext'
@@ -108,6 +109,15 @@ export function HumPanel({ onClose, open, presetQuestion, onPresetConsumed }: Hu
   const scrollRef = useRef<HTMLDivElement>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const loadedRef = useRef(false)
+
+  const { openUpgrade } = useUpgradeModal()
+
+  const refreshQuota = useCallback(() => {
+    fetch('/api/hum/quota')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data) setQuota(data) })
+      .catch(() => { /* best-effort */ })
+  }, [])
 
   // ── Restore conversation on first open ──────────────────────────────────
   useEffect(() => {
@@ -520,12 +530,12 @@ export function HumPanel({ onClose, open, presetQuestion, onPresetConsumed }: Hu
               <div style={{ font: '400 12px var(--font-sans)', color: 'var(--fg-3)' }}>
                 {quota.used} / {quota.limit} queries used this month
               </div>
-              <Link
-                href="/account"
-                style={{ background: 'var(--buzz-500)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', font: '600 13px var(--font-sans)', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}
+              <button
+                onClick={() => openUpgrade({ currentPlan: quota.plan as Plan, onClose: refreshQuota })}
+                style={{ background: 'var(--buzz-500)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', font: '600 13px var(--font-sans)', cursor: 'pointer' }}
               >
                 Upgrade plan
-              </Link>
+              </button>
             </div>
           ) : (
             <div style={{ padding: 14, borderTop: '1px solid var(--border)', flexShrink: 0 }}>
