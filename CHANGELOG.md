@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/Token-Buzz/website/compare/v0.26.0...v0.27.0) (2026-05-28)
+
+
+### 🚀 Features
+
+* **marketing:** pricing monthly/yearly toggle + real tier quotas (M5 P7) ([#234](https://github.com/Token-Buzz/website/issues/234)) ([520a303](https://github.com/Token-Buzz/website/commit/520a303ccbc662068761ce873d776dbacabcd9cd))
+
 ## [0.26.0](https://github.com/Token-Buzz/website/compare/v0.25.0...v0.26.0) (2026-05-28)
 
 
