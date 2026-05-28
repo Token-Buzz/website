@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { TIERS, DEFAULT_PLAN, evaluateHumQuota, evaluateIngestionQuota, PAID_PLANS, BILLING_INTERVALS, stripePriceId } from './tiers'
+import { TIERS, DEFAULT_PLAN, evaluateHumQuota, evaluateIngestionQuota, PAID_PLANS, BILLING_INTERVALS, stripePriceId, historyRetentionTtl } from './tiers'
 
 describe('TIERS', () => {
   test('free tier has humMonthly=10, label=Free', () => {
@@ -209,5 +209,23 @@ describe('evaluateHumQuota', () => {
     expect(evaluateHumQuota('alpha', 10000).allowed).toBe(true)
     expect(evaluateHumQuota('alpha', 0).limit).toBeNull()
     expect(evaluateHumQuota('alpha', 10000).limit).toBeNull()
+  })
+})
+
+describe('historyRetentionTtl', () => {
+  test('free at nowMs=0 returns 30 * 86400', () => {
+    expect(historyRetentionTtl('free', 0)).toBe(30 * 86_400)
+  })
+
+  test('pro at nowMs=0 returns 365 * 86400', () => {
+    expect(historyRetentionTtl('pro', 0)).toBe(365 * 86_400)
+  })
+
+  test('alpha returns null (no expiry)', () => {
+    expect(historyRetentionTtl('alpha', 0)).toBeNull()
+  })
+
+  test('non-zero nowMs: free at nowMs=10000 returns floor(10000/1000) + 30*86400', () => {
+    expect(historyRetentionTtl('free', 10_000)).toBe(Math.floor(10_000 / 1000) + 30 * 86_400)
   })
 })

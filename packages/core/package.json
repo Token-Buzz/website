@@ -25,6 +25,7 @@
     "./db/rate-limit": "./src/db/rate-limit.ts",
     "./db/usage": "./src/db/usage.ts",
     "./db/dashboards": "./src/db/dashboards.ts",
+    "./db/saved-queries": "./src/db/saved-queries.ts",
     "./db/geo": "./src/db/geo.ts",
     "./db/keys": "./src/db/keys.ts",
     "./db/keywords": "./src/db/keywords.ts",

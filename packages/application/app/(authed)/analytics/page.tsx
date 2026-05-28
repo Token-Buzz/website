@@ -28,6 +28,7 @@ import { PostingHeatmapChart } from "../_analytics/PostingHeatmapChart";
 import { GeographicDistributionMapChart } from "../_analytics/GeographicDistributionMapChart";
 import { ContentLengthEngagementChart } from "../_analytics/ContentLengthEngagementChart";
 import { SummaryProvider } from "../_analytics/SummaryProvider";
+import { HistorySaver } from "../_analytics/HistorySaver";
 import { DashboardPickerModal } from "../dashboards/_components/DashboardPickerModal";
 import { addHumContext, buildHumContextItem } from "../dashboards/_components/cardActions";
 import { fromCard } from "../_dashboard/humContext";
@@ -49,6 +50,7 @@ function AnalyticsPageInner() {
 
   const [pickerCard, setPickerCard] = useState<DashboardCard | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [submission, setSubmission] = useState<{ query: string; id: string } | null>(null);
 
   // Auto-dismiss notice after 4000ms
   useEffect(() => {
@@ -97,7 +99,7 @@ function AnalyticsPageInner() {
         </h1>
 
         {/* Search bar */}
-        <SearchBar onIngested={() => {}} />
+        <SearchBar onIngested={(q) => setSubmission({ query: q, id: crypto.randomUUID() })} />
       </div>
 
       {/* ── Notice banner ───────────────────────────────────────────────── */}
@@ -137,6 +139,7 @@ function AnalyticsPageInner() {
 
       {/* ── Summary data provider — one request for all charts ─────────── */}
       <SummaryProvider query={query}>
+        <HistorySaver submission={submission} />
 
       {/* ── Tweet results ───────────────────────────────────────────────── */}
       {query && (
