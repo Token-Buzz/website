@@ -1,5 +1,5 @@
 import { router } from "./router";
-import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey, stripeSecretKey, stripeWebhookSecret, stripePublishableKey, stripePriceProMonth, stripePriceProYear, stripePriceAlphaMonth, stripePriceAlphaYear } from "./secrets";
+import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey, stripeSecretKey, stripeWebhookSecret, stripePublishableKey, stripePriceProMonth, stripePriceProYear, stripePriceAlphaMonth, stripePriceAlphaYear, resendApiKey, contactFromAddress } from "./secrets";
 import { tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable } from "./db";
 import { byokKmsKey } from "./byok";
 
@@ -35,6 +35,9 @@ export const app = new sst.aws.Nextjs("Application", {
     environment: {
         NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: clerkPublishableKey.value,
         CLERK_SECRET_KEY: clerkSecretKey.value,
+        WEB_DOMAIN: webDomain.value,
+        RESEND_API_KEY: resendApiKey.value,
+        CONTACT_FROM_ADDRESS: contactFromAddress.value,
         NEXT_PUBLIC_CLERK_SIGN_IN_URL: "/sign-in",
         NEXT_PUBLIC_CLERK_SIGN_UP_URL: "/sign-up",
         NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: "/dashboard",
