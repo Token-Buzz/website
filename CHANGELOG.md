@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.0](https://github.com/Token-Buzz/website/compare/v0.31.0...v0.32.0) (2026-05-28)
+
+
+### 🚀 Features
+
+* **application,core:** inline recent-queries drawer on Analytics SearchBar (M8 P4) ([#246](https://github.com/Token-Buzz/website/issues/246)) ([aaf43aa](https://github.com/Token-Buzz/website/commit/aaf43aaa79b7d682fc065f1f4f01190b3c7162ba)), closes [#68](https://github.com/Token-Buzz/website/issues/68)
+
 ## [0.31.0](https://github.com/Token-Buzz/website/compare/v0.30.0...v0.31.0) (2026-05-28)
 
 
