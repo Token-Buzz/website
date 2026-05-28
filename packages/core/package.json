@@ -38,6 +38,7 @@
     "./live-feed": "./src/live-feed.ts",
     "./lib/crypto": "./src/lib/crypto.ts",
     "./lib/enrich": "./src/lib/enrich.ts",
+    "./lib/group-queries": "./src/lib/group-queries.ts",
     "./lib/poll-assignment": "./src/lib/poll-assignment.ts",
     "./lib/twitter": "./src/lib/twitter.ts",
     "./movers": "./src/movers.ts",
