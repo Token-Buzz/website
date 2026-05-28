@@ -10,7 +10,7 @@ import { StaticSummaryProvider, isPopulated, DEFAULT_TIMEOUT_MS, DEFAULT_SCHEDUL
 import { AnalyticsChartGrid } from '../_analytics/AnalyticsChartGrid'
 import { Button, Eyebrow, Icon } from '../_dashboard/primitives'
 import { DashboardPickerModal } from '../dashboards/_components/DashboardPickerModal'
-import { addHumContext, buildHumContextItem } from '../dashboards/_components/cardActions'
+import { addHumContext, buildHumContextItem, buildQueryDashboardCards } from '../dashboards/_components/cardActions'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import { useUpgradeModal } from '@/app/_billing/UpgradeModalProvider'
 import type { Plan } from '@monorepo-template/core/billing/tiers'
@@ -42,15 +42,14 @@ export function SnapshotView({ query, submittedAt, queryHash: _queryHash, snapsh
   const isMobile = useIsMobile()
   const { openUpgrade } = useUpgradeModal()
 
-  const [pickerCard, setPickerCard] = useState<DashboardCard | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
-  const [noticeIsError, setNoticeIsError] = useState(false)
+  const [pickerCards, setPickerCards] = useState<DashboardCard[] | null>(null)
+  const [pinAll, setPinAll] = useState(false)
+  const [notice, setNotice] = useState<{ text: string; isError: boolean; href?: string } | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const refreshingRef = useRef(false)
 
-  function showNotice(msg: string, isError = false) {
-    setNotice(msg)
-    setNoticeIsError(isError)
+  function showNotice(msg: string, isError = false, href?: string) {
+    setNotice({ text: msg, isError, href })
     const t = setTimeout(() => setNotice(null), 5000)
     return () => clearTimeout(t)
   }
@@ -61,12 +60,18 @@ export function SnapshotView({ query, submittedAt, queryHash: _queryHash, snapsh
   }
 
   function handleAddToDashboard(cardType: DashboardCardType) {
-    setPickerCard({
+    setPinAll(false)
+    setPickerCards([{
       id: crypto.randomUUID(),
       type: cardType,
       position: { x: 0, y: 0, w: 6, h: 9 },
       options: { query },
-    })
+    }])
+  }
+
+  function handlePinAll() {
+    setPinAll(true)
+    setPickerCards(buildQueryDashboardCards(query, () => crypto.randomUUID()))
   }
 
   async function handleRefresh() {
@@ -249,15 +254,25 @@ export function SnapshotView({ query, submittedAt, queryHash: _queryHash, snapsh
             <strong style={{ color: 'var(--fg-1)' }}>{formatSnapshotDate(submittedAt)}</strong>
           </span>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          icon="refresh"
-          disabled={refreshing}
-          onClick={handleRefresh}
-        >
-          {refreshing ? 'Refreshing…' : 'Refresh'}
-        </Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon="grid"
+            onClick={handlePinAll}
+          >
+            Pin to dashboard
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon="refresh"
+            disabled={refreshing}
+            onClick={handleRefresh}
+          >
+            {refreshing ? 'Refreshing…' : 'Refresh'}
+          </Button>
+        </div>
       </div>
 
       {/* ── Notice banner ─────────────────────────────────────────────── */}
@@ -265,18 +280,33 @@ export function SnapshotView({ query, submittedAt, queryHash: _queryHash, snapsh
         <div
           style={{
             padding: '10px 14px',
-            background: noticeIsError ? 'var(--bear-100, rgba(224,82,82,0.1))' : 'var(--bg-elevated)',
-            border: `1px solid ${noticeIsError ? 'var(--bear-500, #e05252)' : 'var(--buzz-500)'}`,
+            background: notice.isError ? 'var(--bear-100, rgba(224,82,82,0.1))' : 'var(--bg-elevated)',
+            border: `1px solid ${notice.isError ? 'var(--bear-500, #e05252)' : 'var(--buzz-500)'}`,
             borderRadius: 6,
             font: '500 13px/1.4 var(--font-sans)',
-            color: noticeIsError ? 'var(--bear-500, #e05252)' : 'var(--fg-1)',
+            color: notice.isError ? 'var(--bear-500, #e05252)' : 'var(--fg-1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 12,
           }}
         >
-          <span>{notice}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span>{notice.text}</span>
+            {notice.href && (
+              <Link
+                href={notice.href}
+                style={{
+                  color: 'var(--buzz-500)',
+                  textDecoration: 'none',
+                  font: '500 13px/1.4 var(--font-sans)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                View dashboard →
+              </Link>
+            )}
+          </span>
           <button
             onClick={() => setNotice(null)}
             aria-label="Dismiss"
@@ -306,14 +336,19 @@ export function SnapshotView({ query, submittedAt, queryHash: _queryHash, snapsh
       </StaticSummaryProvider>
 
       {/* ── Dashboard picker modal ────────────────────────────────────── */}
-      {pickerCard && (
+      {pickerCards !== null && (
         <DashboardPickerModal
-          card={pickerCard}
-          currentDashboardId=""
-          onClose={() => setPickerCard(null)}
-          onAdded={(name) => {
-            setPickerCard(null)
-            showNotice('Added card to "' + name + '"')
+          cards={pickerCards}
+          title={pinAll ? 'Pin query to dashboard' : 'Add card to dashboard'}
+          allowCreate
+          createQuery={query}
+          onClose={() => { setPickerCards(null); setPinAll(false) }}
+          onAdded={({ dashboardId, name }) => {
+            const cardCount = pickerCards?.length ?? 0
+            const wasAll = pinAll
+            setPickerCards(null)
+            setPinAll(false)
+            showNotice('Added ' + (wasAll ? cardCount + ' cards' : 'card') + ` to "${name}"`, false, `/dashboards/${dashboardId}`)
           }}
         />
       )}

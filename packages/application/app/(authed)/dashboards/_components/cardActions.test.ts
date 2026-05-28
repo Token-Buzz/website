@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { buildHumContextItem, copyCardForDashboard } from './cardActions'
+import { buildHumContextItem, copyCardForDashboard, buildQueryDashboardCards, ANALYTICS_CARD_TYPES } from './cardActions'
 import type { DashboardCard } from '@monorepo-template/core/db/dashboards'
 
 describe('buildHumContextItem', () => {
@@ -128,5 +128,53 @@ describe('copyCardForDashboard', () => {
     const copy = copyCardForDashboard(sourceCard, [existingCard], 'new-id')
     // With one existing card, the next position should be x: 6 (right column), y: 0 (same row)
     expect(copy.position).toEqual({ x: 6, y: 0, w: 6, h: 9 })
+  })
+})
+
+describe('buildQueryDashboardCards', () => {
+  test('returns one card per ANALYTICS_CARD_TYPES, in the same order', () => {
+    let counter = 0
+    const idFactory = () => `id-${counter++}`
+    const cards = buildQueryDashboardCards('bitcoin', idFactory)
+    expect(cards.map((c) => c.type)).toEqual([...ANALYTICS_CARD_TYPES])
+  })
+
+  test('every card options.query equals the passed query', () => {
+    let counter = 0
+    const idFactory = () => `id-${counter++}`
+    const cards = buildQueryDashboardCards('ethereum news', idFactory)
+    for (const card of cards) {
+      expect(card.options.query).toBe('ethereum news')
+    }
+  })
+
+  test('uses the injected idFactory for card ids', () => {
+    let counter = 0
+    const idFactory = () => `id-${counter++}`
+    const cards = buildQueryDashboardCards('test', idFactory)
+    expect(cards.map((c) => c.id)).toEqual(
+      ANALYTICS_CARD_TYPES.map((_, i) => `id-${i}`)
+    )
+  })
+
+  test('each card options is a distinct object reference', () => {
+    const idFactory = () => crypto.randomUUID()
+    const cards = buildQueryDashboardCards('solana', idFactory)
+    const optionRefs = cards.map((c) => c.options)
+    // Check no two are the same reference
+    for (let i = 0; i < optionRefs.length; i++) {
+      for (let j = i + 1; j < optionRefs.length; j++) {
+        expect(optionRefs[i]).not.toBe(optionRefs[j])
+      }
+    }
+  })
+
+  test('positions tile two-per-row: first card {x:0,y:0,w:6,h:9}, second {x:6,y:0}, third {x:0,y:9}', () => {
+    let counter = 0
+    const idFactory = () => `id-${counter++}`
+    const cards = buildQueryDashboardCards('xrp', idFactory)
+    expect(cards[0].position).toEqual({ x: 0, y: 0, w: 6, h: 9 })
+    expect(cards[1].position).toEqual({ x: 6, y: 0, w: 6, h: 9 })
+    expect(cards[2].position).toEqual({ x: 0, y: 9, w: 6, h: 9 })
   })
 })

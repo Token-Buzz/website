@@ -9,15 +9,21 @@ import { copyCardForDashboard } from './cardActions'
 // ── DashboardPickerModal ──────────────────────────────────────────────────────
 
 interface DashboardPickerModalProps {
-  card: DashboardCard
-  currentDashboardId: string
+  cards: DashboardCard[]
+  currentDashboardId?: string
+  title?: string
+  allowCreate?: boolean
+  createQuery?: string
   onClose: () => void
-  onAdded: (dashboardName: string) => void
+  onAdded: (result: { dashboardId: string; name: string }) => void
 }
 
 export function DashboardPickerModal({
-  card,
+  cards,
   currentDashboardId,
+  title,
+  allowCreate,
+  createQuery,
   onClose,
   onAdded,
 }: DashboardPickerModalProps) {
@@ -27,6 +33,13 @@ export function DashboardPickerModal({
   const [savingId, setSavingId] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [fetchSeq, setFetchSeq] = useState(0)
+  const [showCreate, setShowCreate] = useState(false)
+  const [creatingName, setCreatingName] = useState(
+    createQuery?.trim() ? createQuery.trim() : 'New dashboard'
+  )
+  const [creating, setCreating] = useState(false)
+
+  const modalTitle = title ?? 'Add to dashboard'
 
   // Escape-to-close
   useEffect(() => {
@@ -78,14 +91,18 @@ export function DashboardPickerModal({
     setSaveError(null)
     setSavingId(d.dashboardId)
     try {
-      const copied = copyCardForDashboard(card, d.cards, crypto.randomUUID())
+      let acc = d.cards
+      for (const c of cards) {
+        const copy = copyCardForDashboard(c, acc, crypto.randomUUID())
+        acc = [...acc, copy]
+      }
       const res = await fetch('/api/dashboards/' + d.dashboardId, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cards: [...d.cards, copied] }),
+        body: JSON.stringify({ cards: acc }),
       })
       if (res.ok) {
-        onAdded(d.name)
+        onAdded({ dashboardId: d.dashboardId, name: d.name })
       } else {
         const data = (await res.json().catch(() => ({}))) as { error?: string }
         setSaveError(data.error ?? `Failed to add (${res.status}).`)
@@ -97,11 +114,55 @@ export function DashboardPickerModal({
     }
   }
 
+  async function handleCreateAndAdd() {
+    const name = creatingName.trim() || 'New dashboard'
+    setCreating(true)
+    setSaveError(null)
+    try {
+      // Step 1: POST /api/dashboards to create
+      const createRes = await fetch('/api/dashboards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, ...(createQuery ? { query: createQuery } : {}) }),
+      })
+      if (!createRes.ok) {
+        const data = (await createRes.json().catch(() => ({}))) as { error?: string }
+        setSaveError(data.error ?? `Failed to create dashboard (${createRes.status}).`)
+        return
+      }
+      const createData = (await createRes.json()) as { dashboard: Dashboard }
+      const newDashboard = createData.dashboard
+
+      // Step 2: PATCH to append all cards
+      let acc = newDashboard.cards
+      for (const c of cards) {
+        const copy = copyCardForDashboard(c, acc, crypto.randomUUID())
+        acc = [...acc, copy]
+      }
+      const patchRes = await fetch('/api/dashboards/' + newDashboard.dashboardId, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cards: acc }),
+      })
+      if (patchRes.ok) {
+        onAdded({ dashboardId: newDashboard.dashboardId, name: newDashboard.name })
+      } else {
+        const data = (await patchRes.json().catch(() => ({}))) as { error?: string }
+        setSaveError(data.error ?? `Dashboard created but cards could not be added (${patchRes.status}).`)
+      }
+    } catch {
+      setSaveError('Network error. Please try again.')
+    } finally {
+      setCreating(false)
+    }
+  }
+
   function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === e.currentTarget) onClose()
   }
 
-  const candidates = dashboards.filter((d) => d.dashboardId !== currentDashboardId)
+  const candidates = dashboards.filter((d) => d.dashboardId !== (currentDashboardId ?? ''))
+  const isBusy = savingId !== null || creating
 
   return (
     // Backdrop
@@ -149,7 +210,7 @@ export function DashboardPickerModal({
                 letterSpacing: '-0.015em',
               }}
             >
-              Add to dashboard
+              {modalTitle}
             </h2>
           </div>
           <button
@@ -209,8 +270,8 @@ export function DashboardPickerModal({
                 Retry
               </Button>
             </div>
-          ) : candidates.length === 0 ? (
-            // Empty state
+          ) : candidates.length === 0 && !allowCreate ? (
+            // Empty state — no create affordance
             <div
               style={{
                 font: '400 13px/1.5 var(--font-sans)',
@@ -229,78 +290,198 @@ export function DashboardPickerModal({
               </Link>
             </div>
           ) : (
-            // Dashboard list
+            // Dashboard list (may be empty when allowCreate is true)
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {candidates.map((d) => {
-                const isSaving = savingId === d.dashboardId
-                const isDisabled = savingId !== null
-                return (
-                  <button
-                    key={d.dashboardId}
-                    onClick={() => handlePickDashboard(d)}
-                    disabled={isDisabled}
+              {candidates.length === 0 && allowCreate ? (
+                <div
+                  style={{
+                    font: '400 13px/1.5 var(--font-sans)',
+                    color: 'var(--fg-3)',
+                    marginBottom: 4,
+                  }}
+                >
+                  {cards.length > 1 ? 'Add these cards to a dashboard.' : 'Add this card to a dashboard.'}{' '}
+                  <Link
+                    href="/dashboards"
                     style={{
-                      width: '100%',
-                      textAlign: 'left',
+                      color: 'var(--buzz-500)',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Manage dashboards →
+                  </Link>
+                </div>
+              ) : (
+                candidates.map((d) => {
+                  const isSaving = savingId === d.dashboardId
+                  const isDisabled = isBusy
+                  return (
+                    <button
+                      key={d.dashboardId}
+                      onClick={() => handlePickDashboard(d)}
+                      disabled={isDisabled}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '12px 14px',
+                        borderRadius: 8,
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border)',
+                        cursor: isDisabled ? 'default' : 'pointer',
+                        opacity: isDisabled && !isSaving ? 0.5 : 1,
+                        transition: 'border-color 120ms',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isDisabled) {
+                          ;(e.currentTarget as HTMLButtonElement).style.borderColor =
+                            'var(--buzz-500)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'
+                      }}
+                    >
+                      {/* Dashboard name */}
+                      <div
+                        style={{
+                          font: '600 14px/1.2 var(--font-sans)',
+                          color: 'var(--fg-1)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          marginBottom: 4,
+                        }}
+                      >
+                        {d.name}
+                        {isSaving && (
+                          <span
+                            style={{
+                              font: '400 12px/1.2 var(--font-sans)',
+                              color: 'var(--fg-3)',
+                              marginLeft: 8,
+                            }}
+                          >
+                            Adding…
+                          </span>
+                        )}
+                      </div>
+                      {/* Scope chips */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        {d.ticker && <Ticker symbol={d.ticker} size="sm" />}
+                        {d.query && (
+                          <span
+                            style={{
+                              font: '400 12px/1.2 var(--font-sans)',
+                              color: 'var(--fg-3)',
+                            }}
+                          >
+                            {d.query}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })
+              )}
+
+              {/* Create new dashboard affordance */}
+              {allowCreate && (
+                showCreate ? (
+                  <div
+                    style={{
                       padding: '12px 14px',
                       borderRadius: 8,
                       background: 'var(--bg-elevated)',
-                      border: '1px solid var(--border)',
-                      cursor: isDisabled ? 'default' : 'pointer',
-                      opacity: isDisabled && !isSaving ? 0.5 : 1,
+                      border: '1px solid var(--buzz-500)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        font: '600 13px/1.2 var(--font-sans)',
+                        color: 'var(--fg-1)',
+                      }}
+                    >
+                      New dashboard name
+                    </div>
+                    <input
+                      type="text"
+                      value={creatingName}
+                      onChange={(e) => setCreatingName(e.target.value)}
+                      disabled={creating}
+                      placeholder="Dashboard name"
+                      autoFocus
+                      style={{
+                        font: '500 13px/1.2 var(--font-sans)',
+                        color: 'var(--fg-1)',
+                        background: 'var(--bg-sunken)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 6,
+                        padding: '8px 10px',
+                        outline: 'none',
+                        width: '100%',
+                        boxSizing: 'border-box',
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !creating) void handleCreateAndAdd()
+                        if (e.key === 'Escape') setShowCreate(false)
+                      }}
+                    />
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        disabled={creating || !creatingName.trim()}
+                        onClick={() => void handleCreateAndAdd()}
+                      >
+                        {creating ? 'Creating…' : 'Create & add'}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={creating}
+                        onClick={() => setShowCreate(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowCreate(true)}
+                    disabled={isBusy}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 14px',
+                      borderRadius: 8,
+                      background: 'transparent',
+                      border: '1px dashed var(--border)',
+                      cursor: isBusy ? 'default' : 'pointer',
+                      opacity: isBusy ? 0.5 : 1,
+                      font: '500 13px/1.2 var(--font-sans)',
+                      color: 'var(--buzz-500)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
                       transition: 'border-color 120ms',
                     }}
                     onMouseEnter={(e) => {
-                      if (!isDisabled) {
-                        ;(e.currentTarget as HTMLButtonElement).style.borderColor =
-                          'var(--buzz-500)'
+                      if (!isBusy) {
+                        ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--buzz-500)'
                       }
                     }}
                     onMouseLeave={(e) => {
                       ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'
                     }}
                   >
-                    {/* Dashboard name */}
-                    <div
-                      style={{
-                        font: '600 14px/1.2 var(--font-sans)',
-                        color: 'var(--fg-1)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        marginBottom: 4,
-                      }}
-                    >
-                      {d.name}
-                      {isSaving && (
-                        <span
-                          style={{
-                            font: '400 12px/1.2 var(--font-sans)',
-                            color: 'var(--fg-3)',
-                            marginLeft: 8,
-                          }}
-                        >
-                          Adding…
-                        </span>
-                      )}
-                    </div>
-                    {/* Scope chips */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      {d.ticker && <Ticker symbol={d.ticker} size="sm" />}
-                      {d.query && (
-                        <span
-                          style={{
-                            font: '400 12px/1.2 var(--font-sans)',
-                            color: 'var(--fg-3)',
-                          }}
-                        >
-                          {d.query}
-                        </span>
-                      )}
-                    </div>
+                    <Icon name="plus" size={14} />
+                    Create new dashboard
                   </button>
                 )
-              })}
+              )}
 
               {/* Save error */}
               {saveError && (

@@ -143,10 +143,11 @@ function AnalyticsPageInner() {
       {/* Picker modal — "Add to dashboard" */}
       {pickerCard && (
         <DashboardPickerModal
-          card={pickerCard}
-          currentDashboardId=""
+          cards={[pickerCard]}
+          allowCreate
+          createQuery={query}
           onClose={() => setPickerCard(null)}
-          onAdded={(name) => {
+          onAdded={({ name }) => {
             setPickerCard(null);
             setNotice('Added card to "' + name + '"');
           }}

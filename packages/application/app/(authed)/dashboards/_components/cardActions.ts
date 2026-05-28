@@ -60,3 +60,38 @@ export function addHumContext(item: HumContextItem): void {
   if (typeof window === 'undefined') return
   window.dispatchEvent(new CustomEvent(HUM_ADD_CONTEXT_EVENT, { detail: item }))
 }
+
+/**
+ * Canonical ordered list of every analytics card type rendered by
+ * AnalyticsChartGrid. Single source of truth for "pin the whole query".
+ * Keep in sync with AnalyticsChartGrid.tsx.
+ */
+export const ANALYTICS_CARD_TYPES: readonly DashboardCardType[] = [
+  'hashtags', 'mentions', 'domains', 'bio-domains', 'symbol-rate', 'engagement',
+  'sentiment', 'sentiment-timeline', 'keywords', 'conversation-depth', 'geo',
+  'languages', 'sources', 'verification', 'bot-ratio', 'posting-heatmap',
+  'content-length', 'author-influence',
+] as const
+
+/**
+ * Builds the full set of dashboard cards for a query — one card per analytics
+ * card type, with the query string baked into each card's options. Positions
+ * tile against an initially-empty board via nextCardPosition. The `idFactory`
+ * is injected so this stays pure/testable (callers pass crypto.randomUUID).
+ */
+export function buildQueryDashboardCards(
+  query: string,
+  idFactory: () => string,
+): DashboardCard[] {
+  const cards: DashboardCard[] = []
+  for (const type of ANALYTICS_CARD_TYPES) {
+    const card: DashboardCard = {
+      id: idFactory(),
+      type,
+      position: nextCardPosition(cards),
+      options: { query },
+    }
+    cards.push(card)
+  }
+  return cards
+}

@@ -4,12 +4,12 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { SavedQueryListItem } from '@monorepo-template/core/db/saved-queries'
-import type { DashboardCard } from '@monorepo-template/core/db/dashboards'
 import { groupQueriesByDate } from '@monorepo-template/core/lib/group-queries'
 import { encodeQueryId } from '@monorepo-template/core/lib/queryId'
 import { Button, Card, Eyebrow, Icon } from '../_dashboard/primitives'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import { DashboardPickerModal } from '../dashboards/_components/DashboardPickerModal'
+import { buildQueryDashboardCards, ANALYTICS_CARD_TYPES } from '../dashboards/_components/cardActions'
 
 // ── Timestamp formatter ────────────────────────────────────────────────────
 
@@ -124,27 +124,22 @@ interface HistoryViewProps {
 
 export function HistoryView({ initialItems }: HistoryViewProps) {
   const isMobile = useIsMobile()
-  const [pickerCard, setPickerCard] = useState<DashboardCard | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [pinQuery, setPinQuery] = useState<string | null>(null)
+  const [notice, setNotice] = useState<{ text: string; href?: string } | null>(null)
 
   const now = new Date().toISOString()
   const groups = groupQueriesByDate(initialItems, now)
 
   function handlePin(item: SavedQueryListItem) {
-    // Build a representative 'mentions' card baked with this query, same shape
-    // the Analytics page uses for "Add to dashboard".
-    const card: DashboardCard = {
-      id: crypto.randomUUID(),
-      type: 'mentions',
-      position: { x: 0, y: 0, w: 6, h: 9 },
-      options: { query: item.query },
-    }
-    setPickerCard(card)
+    setPinQuery(item.query)
   }
 
-  function handleNotice(msg: string) {
-    setNotice(msg)
-    const t = setTimeout(() => setNotice(null), 4000)
+  function showAddedNotice(name: string, dashboardId: string) {
+    setNotice({
+      text: `Added ${ANALYTICS_CARD_TYPES.length} cards to "${name}"`,
+      href: `/dashboards/${dashboardId}`,
+    })
+    const t = setTimeout(() => setNotice(null), 6000)
     return () => clearTimeout(t)
   }
 
@@ -190,7 +185,22 @@ export function HistoryView({ initialItems }: HistoryViewProps) {
             gap: 12,
           }}
         >
-          <span>{notice}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span>{notice.text}</span>
+            {notice.href && (
+              <Link
+                href={notice.href}
+                style={{
+                  color: 'var(--buzz-500)',
+                  textDecoration: 'none',
+                  font: '500 13px/1.4 var(--font-sans)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                View dashboard →
+              </Link>
+            )}
+          </span>
           <button
             onClick={() => setNotice(null)}
             aria-label="Dismiss"
@@ -258,14 +268,16 @@ export function HistoryView({ initialItems }: HistoryViewProps) {
       )}
 
       {/* Dashboard picker modal */}
-      {pickerCard && (
+      {pinQuery !== null && (
         <DashboardPickerModal
-          card={pickerCard}
-          currentDashboardId=""
-          onClose={() => setPickerCard(null)}
-          onAdded={(name) => {
-            setPickerCard(null)
-            handleNotice(`Added card to "${name}"`)
+          cards={buildQueryDashboardCards(pinQuery, () => crypto.randomUUID())}
+          title="Pin query to dashboard"
+          allowCreate
+          createQuery={pinQuery}
+          onClose={() => setPinQuery(null)}
+          onAdded={({ dashboardId, name }) => {
+            setPinQuery(null)
+            showAddedNotice(name, dashboardId)
           }}
         />
       )}
