@@ -349,6 +349,32 @@ export function aggRangeKey(type: string, query: string) {
   }
 }
 
+// ── Monitor keys (UserData table) ───────────────────────────────────────────
+
+export const monitorKey = (userId: string, query: string) => ({
+  pk: `USER#${userId}`,
+  sk: `MONITOR#${query}`,
+})
+export const monitorSkPrefix = 'MONITOR#'
+
+// ── Poll cadence state (Aggregates table, keyed per source+query) ────────────
+
+export const pollStateKey = (source: string, query: string) => ({
+  pk: `POLLSTATE#${source}`,
+  sk: `QUERY#${query}`,
+})
+
+// ── Per-source ingestion count keys (Aggregates table) ──────────────────────
+
+/** Key for a per-source ingestion count row: one row per (query, source) pair. */
+export const sourceCountKey = (query: string, source: string) => ({
+  pk: `AGG#SRCCOUNT#${query}`,
+  sk: `SRC#${source}`,
+})
+
+/** Partition key prefix for listing all per-source counts for a query. */
+export const sourceCountPk = (query: string) => `AGG#SRCCOUNT#${query}`
+
 // ── Time bucket helpers ─────────────────────────────────────────────────────
 
 export function hourBucket(ts: Date | string | number): string {

@@ -1,27 +1,28 @@
 import type { Handler } from "aws-lambda";
-import { searchTweets } from "@monorepo-template/core/lib/twitter";
-import { enrichRawTweet } from "@monorepo-template/core/lib/enrich";
-import { putTweet, getLatestTweetId } from "@monorepo-template/core/db/tweets";
-import { getPollAssignments } from "@monorepo-template/core/db/byok-poll";
-import { TWITTER_PROVIDER } from "@monorepo-template/core/db/byok";
+import { getMonitorAssignments } from "@monorepo-template/core/db/monitor-poll";
+import { getAdapter } from "@monorepo-template/core/sources/registry";
+import { shouldPollNow, markPolled } from "@monorepo-template/core/db/poll-state";
 import { handleKeyError } from "./key-errors";
 
 export const handler: Handler = async () => {
-  const assignments = await getPollAssignments(TWITTER_PROVIDER);
+  const tasks = await getMonitorAssignments();
+  for (const task of tasks) {
+    const adapter = getAdapter(task.source);
+    if (!adapter || !adapter.implemented) continue;
 
-  for (const { userId, apiKey, queries } of assignments) {
-    for (const query of queries) {
-      try {
-        const sinceId = (await getLatestTweetId(query)) ?? undefined;
-        const rawTweets = await searchTweets(apiKey, query, { sinceId, maxPages: 3 });
-        for (const raw of rawTweets) {
-          await putTweet(enrichRawTweet(raw, query));
-        }
-        console.log(`Polled ${rawTweets.length} tweets for ${query} (user ${userId})`);
-      } catch (err) {
-        if (await handleKeyError(err, userId, TWITTER_PROVIDER)) break;
-        console.error(`Poller failed for query ${query} (user ${userId}):`, err);
-      }
+    // Cadence policy: free/zero-cost sources poll at their floor interval (~2 min),
+    // paid/op-heavy sources at coarser floors defined by adapter.pollIntervalMs.
+    if (!(await shouldPollNow(task.source, task.query, adapter.pollIntervalMs))) continue;
+
+    try {
+      const { ingested } = await adapter.since(task.apiKey, task.query);
+      await markPolled(task.source, task.query);
+      console.log(`Polled ${ingested} ${task.source} posts for ${task.query} (user ${task.userId})`);
+    } catch (err) {
+      // handleKeyError needs the source's BYOK provider, not a hardcoded one.
+      const provider = adapter.byokProvider;
+      if (provider && (await handleKeyError(err, task.userId, provider))) continue;
+      console.error(`Poller failed for ${task.source} query ${task.query} (user ${task.userId}):`, err);
     }
   }
 };

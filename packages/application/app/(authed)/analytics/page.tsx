@@ -9,6 +9,8 @@ import { useIsMobile } from "@/app/_hooks/useIsMobile";
 import { SummaryProvider } from "../_analytics/SummaryProvider";
 import { HistorySaver } from "../_analytics/HistorySaver";
 import { AnalyticsChartGrid } from "../_analytics/AnalyticsChartGrid";
+import { SourceChips } from "../_analytics/SourceChips";
+import { MonitorToggle } from "../_analytics/MonitorToggle";
 import { DashboardPickerModal } from "../dashboards/_components/DashboardPickerModal";
 import { addHumContext, buildHumContextItem } from "../dashboards/_components/cardActions";
 
@@ -119,6 +121,22 @@ function AnalyticsPageInner() {
       {/* ── Summary data provider — one request for all charts ─────────── */}
       <SummaryProvider query={query}>
         <HistorySaver submission={submission} />
+
+        {/* ── Sources + monitor row ─────────────────────────────────────── */}
+        {query && (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <SourceChips query={query} />
+            <MonitorToggle query={query} />
+          </div>
+        )}
 
         <AnalyticsChartGrid
           query={query}
