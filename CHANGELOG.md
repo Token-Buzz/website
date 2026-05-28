@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.31.0](https://github.com/Token-Buzz/website/compare/v0.30.0...v0.31.0) (2026-05-28)
+
+
+### 🚀 Features
+
+* **application,core:** snapshot detail view (M8 P3) ([#242](https://github.com/Token-Buzz/website/issues/242)) ([8c0d8ea](https://github.com/Token-Buzz/website/commit/8c0d8ea56a8c5dd540233df619ea9c7a37fc222f)), closes [#67](https://github.com/Token-Buzz/website/issues/67)
+
+
+### 📝 Documentation
+
+* **M9:** manual+automated ingestion modes, API costs, monitor-model resize ([2dec05e](https://github.com/Token-Buzz/website/commit/2dec05e95bcdb05f2557cd7a16f5b3cdb25304e8))
+
 ## [0.30.0](https://github.com/Token-Buzz/website/compare/v0.29.0...v0.30.0) (2026-05-28)
 
 
