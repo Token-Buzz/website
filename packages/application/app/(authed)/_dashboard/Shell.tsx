@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   { id: 'feed',       label: 'Live feed',  icon: 'activity'   as const, href: '/live-feed' },
   { id: 'alerts',     label: 'Alerts',     icon: 'bell'       as const, href: '/alerts', count: '3' },
   { id: 'analytics',  label: 'Analytics',  icon: 'trend'      as const, href: '/analytics' },
+  { id: 'history',    label: 'History',    icon: 'clock'      as const, href: '/history' },
 ]
 
 const DEFAULT_WATCHLISTS: WatchlistGroup[] = [
@@ -41,7 +42,7 @@ const DEFAULT_WATCHLISTS: WatchlistGroup[] = [
 function NavItem({
   icon, label, active, count, onClick,
 }: {
-  icon: 'home' | 'table' | 'grid' | 'movers' | 'activity' | 'bell' | 'trend'
+  icon: 'home' | 'table' | 'grid' | 'movers' | 'activity' | 'bell' | 'trend' | 'clock'
   label: string
   active: boolean
   count?: string
