@@ -69,6 +69,7 @@ export const userDataTable = new sst.aws.Dynamo("UserData", {
     // Enables Phase 6 jobs to enumerate all users holding a key for a provider.
     ByokHolders: { hashKey: "gsi1pk", rangeKey: "gsi1sk" },
   },
+  ttl: "ttl",
 });
 
 export const authorLocationsTable = new sst.aws.Dynamo("AuthorLocations", {
