@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/Token-Buzz/website/compare/v0.20.0...v0.21.0) (2026-05-28)
+
+
+### 🚀 Features
+
+* **marketing,application:** ticker click → signup deep-link (M7 P3) ([#222](https://github.com/Token-Buzz/website/issues/222)) ([3f53fbe](https://github.com/Token-Buzz/website/commit/3f53fbecf9bc350bdc5c83ee58eef815bbfbf1df))
+
 ## [0.20.0](https://github.com/Token-Buzz/website/compare/v0.19.0...v0.20.0) (2026-05-28)
 
 
