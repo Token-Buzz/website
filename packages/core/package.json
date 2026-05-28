@@ -32,6 +32,8 @@
     "./db/tweets": "./src/db/tweets.ts",
     "./db/user-data": "./src/db/user-data.ts",
     "./db/users": "./src/db/users.ts",
+    "./db/account": "./src/db/account.ts",
+    "./db/notification-prefs": "./src/db/notification-prefs.ts",
     "./live-feed": "./src/live-feed.ts",
     "./lib/crypto": "./src/lib/crypto.ts",
     "./lib/enrich": "./src/lib/enrich.ts",

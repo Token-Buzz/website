@@ -144,6 +144,7 @@ new sst.aws.Cron("SocialEventsMaterializer", {
 
 // 8. Alert evaluator — fires on every Tokens buzz update (INSERT/MODIFY) and
 // checks active alert rules for that token, recording in-app triggers on match.
+// environment supplies secrets for email notifications sent on trigger.
 tokensTable.subscribe(
   "AlertEvaluator",
   {
@@ -151,6 +152,12 @@ tokensTable.subscribe(
     link: allTables,
     timeout: "60 seconds",
     memory: "256 MB",
+    environment: {
+      CLERK_SECRET_KEY: clerkSecretKey.value,
+      RESEND_API_KEY: resendApiKey.value,
+      CONTACT_FROM_ADDRESS: contactFromAddress.value,
+      WEB_DOMAIN: webDomain.value,
+    },
   },
   { filters: [{ eventName: ["INSERT", "MODIFY"] }] },
 );
