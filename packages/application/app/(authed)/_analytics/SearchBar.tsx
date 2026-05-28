@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Icon } from "../_dashboard/primitives";
+import { useUpgradeModal } from "@/app/_billing/UpgradeModalProvider";
+import type { Plan } from "@monorepo-template/core/billing/tiers";
 
 interface SearchBarProps {
   onIngested?: (query: string) => void;
@@ -17,10 +19,20 @@ export function SearchBar({ onIngested }: SearchBarProps) {
   // We don't sync via useEffect (triggers cascading renders) — the
   // user's submitted value is what drives the URL; browser-back
   // reloads the page/component which reseeds this state.
+  const { openUpgrade } = useUpgradeModal();
   const [value, setValue] = useState(() => searchParams.get("q") ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsKey, setNeedsKey] = useState<null | "missing" | "invalid">(null);
+  const [quota, setQuota] = useState<{ used: number; limit: number | null; plan: string } | null>(null);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/query/quota")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data) setQuota({ used: data.used, limit: data.limit, plan: data.plan }); })
+      .catch(() => { /* best-effort */ });
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -29,6 +41,7 @@ export function SearchBar({ onIngested }: SearchBarProps) {
 
     setError(null);
     setNeedsKey(null);
+    setQuotaExceeded(false);
     setLoading(true);
 
     // Update URL first so the query persists even if the POST fails.
@@ -47,6 +60,13 @@ export function SearchBar({ onIngested }: SearchBarProps) {
       });
 
       if (!res.ok) {
+        if (res.status === 402) {
+          const body = await res.json().catch(() => ({}));
+          const b = body as { used?: number; limit?: number | null; plan?: string };
+          setQuota({ used: b.used ?? 0, limit: b.limit ?? 0, plan: b.plan ?? "free" });
+          setQuotaExceeded(true);
+          return;
+        }
         if (res.status === 403) {
           const body = await res.json().catch(() => ({}));
           if ((body as { error?: string }).error === "byok_required") {
@@ -76,6 +96,7 @@ export function SearchBar({ onIngested }: SearchBarProps) {
       }
 
       onIngested?.(trimmed);
+      setQuota((q) => (q ? { ...q, used: q.used + 1 } : q));
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
         setError("Search timed out — try again or pick a less broad query.");
@@ -191,6 +212,55 @@ export function SearchBar({ onIngested }: SearchBarProps) {
           >
             {needsKey === "invalid" ? "Update API key" : "Add API key"}
           </Link>
+        </div>
+      )}
+
+      {quotaExceeded && quota && (
+        <div
+          style={{
+            marginTop: 8,
+            padding: "10px 14px",
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--accent, #6c63ff)",
+            borderRadius: 6,
+            font: "500 12px var(--font-sans)",
+            color: "var(--fg-1)",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <span style={{ flex: 1 }}>
+            You&apos;ve used {quota.used} / {quota.limit} queries this month. Upgrade for a higher limit.
+          </span>
+          <button
+            onClick={() => openUpgrade({ currentPlan: quota.plan as Plan })}
+            style={{
+              flexShrink: 0,
+              padding: "5px 12px",
+              background: "var(--accent, #6c63ff)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              font: "600 12px var(--font-sans)",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Upgrade plan
+          </button>
+        </div>
+      )}
+
+      {quota && quota.limit !== null && !quotaExceeded && (
+        <div
+          style={{
+            marginTop: 6,
+            font: "500 10px var(--font-mono)",
+            color: "var(--fg-3)",
+          }}
+        >
+          {quota.used} / {quota.limit} queries used this month
         </div>
       )}
 

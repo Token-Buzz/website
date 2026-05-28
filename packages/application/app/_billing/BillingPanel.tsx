@@ -5,7 +5,7 @@ import { Elements } from '@stripe/react-stripe-js'
 import type { Plan, BillingInterval } from '@monorepo-template/core/billing/tiers'
 import { TIERS } from '@monorepo-template/core/billing/tiers'
 import { Button, Eyebrow } from '@/app/(authed)/_dashboard/primitives'
-import { UpgradeModal } from './UpgradeModal'
+import { useUpgradeModal } from './UpgradeModalProvider'
 import { UpdatePaymentMethodForm } from './UpdatePaymentMethodForm'
 import { getStripePromise } from './stripe'
 
@@ -104,10 +104,10 @@ function SkeletonRow({ height = 48 }: { height?: number }) {
 // ── Main component ─────────────────────────────────────────────────────────
 
 export function BillingPanel() {
+  const { openUpgrade } = useUpgradeModal()
   const [planData, setPlanData] = useState<PlanData | null>(null)
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
 
   // Payment method state
   const [card, setCard] = useState<CardInfo | null | undefined>(undefined) // undefined = not yet fetched
@@ -201,11 +201,6 @@ export function BillingPanel() {
   }, [planData?.plan])
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-
-  function handleModalClose() {
-    setModalOpen(false)
-    void fetchPlan()
-  }
 
   async function handleCancel() {
     setCancelLoading(true)
@@ -349,7 +344,13 @@ export function BillingPanel() {
             <Button
               variant="primary"
               size="sm"
-              onClick={() => setModalOpen(true)}
+              onClick={() =>
+                openUpgrade({
+                  currentPlan: planData?.plan,
+                  initialInterval: planData?.interval ?? undefined,
+                  onClose: () => { void fetchPlan() },
+                })
+              }
             >
               {isPaid ? 'Change plan' : 'Upgrade plan'}
             </Button>
@@ -717,13 +718,6 @@ export function BillingPanel() {
         </>
       )}
 
-      {/* ── Upgrade modal ────────────────────────────────────────────────────── */}
-      <UpgradeModal
-        open={modalOpen}
-        onClose={handleModalClose}
-        currentPlan={planData?.plan}
-        initialInterval={planData?.interval ?? undefined}
-      />
     </div>
   )
 }
