@@ -1,14 +1,32 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Icon } from "../_dashboard/primitives";
 import { useUpgradeModal } from "@/app/_billing/UpgradeModalProvider";
 import type { Plan } from "@monorepo-template/core/billing/tiers";
+import type { SavedQueryListItem } from "@monorepo-template/core/db/saved-queries";
+import { recentDistinctQueries } from "@monorepo-template/core/lib/recent-queries";
 
 interface SearchBarProps {
   onIngested?: (query: string) => void;
+}
+
+// ── Timestamp formatter ────────────────────────────────────────────────────
+
+function formatTimestamp(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const isToday =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+
+  if (isToday) {
+    return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 export function SearchBar({ onIngested }: SearchBarProps) {
@@ -27,6 +45,11 @@ export function SearchBar({ onIngested }: SearchBarProps) {
   const [quota, setQuota] = useState<{ used: number; limit: number | null; plan: string } | null>(null);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
 
+  // Recent queries dropdown state
+  const [recent, setRecent] = useState<SavedQueryListItem[]>([]);
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     fetch("/api/query/quota")
       .then((r) => (r.ok ? r.json() : null))
@@ -34,11 +57,31 @@ export function SearchBar({ onIngested }: SearchBarProps) {
       .catch(() => { /* best-effort */ });
   }, []);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    const trimmed = value.trim();
-    if (!trimmed) return;
+  // Fetch recent queries on mount (best-effort)
+  useEffect(() => {
+    fetch("/api/history/list")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { queries?: SavedQueryListItem[] } | null) => {
+        if (data?.queries) {
+          setRecent(recentDistinctQueries(data.queries, 10));
+        }
+      })
+      .catch(() => { /* best-effort */ });
+  }, []);
 
+  // Close dropdown on outside mousedown
+  useEffect(() => {
+    if (!open) return;
+    function handleMouseDown(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
+  }, [open]);
+
+  async function runQuery(trimmed: string) {
     setError(null);
     setNeedsKey(null);
     setQuotaExceeded(false);
@@ -111,6 +154,15 @@ export function SearchBar({ onIngested }: SearchBarProps) {
     }
   }
 
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    runQuery(trimmed);
+  }
+
+  const dropdownId = "search-recent-queries-listbox";
+
   return (
     <div>
       <form
@@ -121,48 +173,147 @@ export function SearchBar({ onIngested }: SearchBarProps) {
           gap: 8,
         }}
       >
-        {/* Input wrapper */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "0 12px",
-            height: 40,
-            background: "var(--bg-elevated)",
-            border: `1px solid ${error ? "var(--bear-500, #e05252)" : "var(--border)"}`,
-            borderRadius: 8,
-            transition: "border-color 120ms",
-          }}
-        >
-          <Icon name="search" size={16} style={{ color: "var(--fg-3)", flexShrink: 0 }} />
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="Search a query, e.g. $BTC or #solana…"
-            disabled={loading}
+        {/* Input wrapper — position:relative so dropdown can be absolutely placed */}
+        <div ref={wrapperRef} style={{ flex: 1, position: "relative" }}>
+          <div
             style={{
-              flex: 1,
-              border: "none",
-              outline: "none",
-              background: "transparent",
-              font: "500 14px var(--font-sans)",
-              color: "var(--fg-1)",
-              caretColor: "var(--buzz-500)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "0 12px",
+              height: 40,
+              background: "var(--bg-elevated)",
+              border: `1px solid ${error ? "var(--bear-500, #e05252)" : "var(--border)"}`,
+              borderRadius: 8,
+              transition: "border-color 120ms",
             }}
-          />
-          {loading && (
-            <span
+          >
+            <Icon name="search" size={16} style={{ color: "var(--fg-3)", flexShrink: 0 }} />
+            <input
+              type="text"
+              role="combobox"
+              aria-expanded={open}
+              aria-controls={dropdownId}
+              aria-autocomplete="list"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onFocus={() => { if (recent.length > 0) setOpen(true); }}
+              onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
+              placeholder="Search a query, e.g. $BTC or #solana…"
+              disabled={loading}
               style={{
-                font: "500 11px var(--font-mono)",
-                color: "var(--fg-3)",
-                flexShrink: 0,
+                flex: 1,
+                border: "none",
+                outline: "none",
+                background: "transparent",
+                font: "500 14px var(--font-sans)",
+                color: "var(--fg-1)",
+                caretColor: "var(--buzz-500)",
+              }}
+            />
+            {loading && (
+              <span
+                style={{
+                  font: "500 11px var(--font-mono)",
+                  color: "var(--fg-3)",
+                  flexShrink: 0,
+                }}
+              >
+                Loading&hellip;
+              </span>
+            )}
+          </div>
+
+          {/* Recent queries dropdown */}
+          {open && recent.length > 0 && (
+            <div
+              id={dropdownId}
+              role="listbox"
+              style={{
+                position: "absolute",
+                top: "calc(100% + 4px)",
+                left: 0,
+                right: 0,
+                zIndex: 50,
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r-3)",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+                maxHeight: 320,
+                overflowY: "auto",
               }}
             >
-              Loading&hellip;
-            </span>
+              {/* Header */}
+              <div
+                style={{
+                  padding: "8px 12px 4px",
+                  font: "600 11px/1.2 var(--font-sans)",
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  color: "var(--fg-3)",
+                }}
+              >
+                Recent queries
+              </div>
+
+              {recent.map((item) => (
+                <button
+                  key={`${item.submittedAt}::${item.queryHash}`}
+                  type="button"
+                  role="option"
+                  aria-selected={false}
+                  onClick={() => {
+                    setOpen(false);
+                    setValue(item.query);
+                    runQuery(item.query);
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-sunken)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  <span
+                    title={item.query}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: "var(--fg-1)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {item.query}
+                  </span>
+                  <span
+                    style={{
+                      font: "500 11px/1 var(--font-mono)",
+                      color: "var(--fg-3)",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {formatTimestamp(item.submittedAt)}
+                  </span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
