@@ -10,6 +10,7 @@ import {
   displaySymbol,
   formatPrice,
   formatBuzz,
+  isStale,
 } from './tickerFormat'
 
 interface Props {
@@ -18,9 +19,11 @@ interface Props {
 
 export default function LiveTickerClient({ initialSnapshot }: Props) {
   const [snapshot, setSnapshot] = useState<TickerSnapshot | null>(initialSnapshot)
+  const [now, setNow] = useState<number>(0)
 
   useEffect(() => {
-    const id = setInterval(async () => {
+    async function tick() {
+      setNow(Date.now())
       try {
         const res = await fetch(SNAPSHOT_PATH, { cache: 'no-store' })
         if (!res.ok) return
@@ -30,12 +33,18 @@ export default function LiveTickerClient({ initialSnapshot }: Props) {
       } catch {
         // keep last-good snapshot on any failure
       }
-    }, 30_000)
-    return () => clearInterval(id)
+    }
+    const initial = setTimeout(tick, 0)
+    const id = setInterval(tick, 30_000)
+    return () => {
+      clearTimeout(initial)
+      clearInterval(id)
+    }
   }, [])
 
-  const data: TickerToken[] =
-    snapshot && snapshot.tokens.length > 0 ? snapshot.tokens : FALLBACK_TOKENS
+  const usingFallback = !(snapshot && snapshot.tokens.length > 0)
+  const data: TickerToken[] = usingFallback ? FALLBACK_TOKENS : snapshot!.tokens
+  const stale = !usingFallback && snapshot != null && isStale(snapshot.updatedAt, now)
   const items = [...data, ...data]
 
   return (
@@ -56,6 +65,7 @@ export default function LiveTickerClient({ initialSnapshot }: Props) {
           gap: 36,
           whiteSpace: 'nowrap',
           animation: 'tb-marquee 38s linear infinite',
+          animationPlayState: stale ? 'paused' : 'running',
           width: 'max-content',
         }}
       >
@@ -113,6 +123,35 @@ export default function LiveTickerClient({ initialSnapshot }: Props) {
           </a>
         ))}
       </div>
+      {stale && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '0 14px',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            color: 'var(--data-dim)',
+            background: 'linear-gradient(90deg, transparent, var(--data-bg) 45%)',
+            pointerEvents: 'none',
+          }}
+        >
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: 'var(--data-dim)',
+            }}
+          />
+          data stale
+        </div>
+      )}
     </div>
   )
 }

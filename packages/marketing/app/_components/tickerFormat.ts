@@ -35,6 +35,14 @@ export function formatBuzz(buzzDelta: number): string {
   return `buzz ${sign}${Math.abs(pct)}%`
 }
 
+export const STALE_AFTER_MS = 5 * 60 * 1000
+
+export function isStale(updatedAt: string, now: number): boolean {
+  const t = Date.parse(updatedAt)
+  if (Number.isNaN(t)) return false
+  return now - t > STALE_AFTER_MS
+}
+
 export const TRENDING_THRESHOLD = 1
 
 export const FALLBACK_TOKENS: TickerToken[] = [
