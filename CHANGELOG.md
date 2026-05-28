@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/Token-Buzz/website/compare/v0.21.0...v0.22.0) (2026-05-28)
+
+
+### 🚀 Features
+
+* **billing:** custom upgrade UI with Stripe Elements (M5 P4) ([#223](https://github.com/Token-Buzz/website/issues/223)) ([b32d71d](https://github.com/Token-Buzz/website/commit/b32d71dab6fc5ebb25b76c6a4d878b89727d0de3))
+
 ## [0.21.0](https://github.com/Token-Buzz/website/compare/v0.20.0...v0.21.0) (2026-05-28)
 
 
