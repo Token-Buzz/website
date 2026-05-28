@@ -20,6 +20,7 @@ export interface PlanRecord {
   interval?: BillingInterval
   currentPeriodEnd?: string // ISO-8601
   cancelAtPeriodEnd?: boolean
+  gracePeriodEndsAt?: string // ISO-8601
   stripeCustomerId?: string
   stripeSubId?: string
   updatedAt?: string
@@ -81,6 +82,7 @@ export async function getPlanRecord(userId: string): Promise<PlanRecord | null> 
     interval: Item.interval as BillingInterval | undefined,
     currentPeriodEnd: Item.currentPeriodEnd as string | undefined,
     cancelAtPeriodEnd: Item.cancelAtPeriodEnd as boolean | undefined,
+    gracePeriodEndsAt: Item.gracePeriodEndsAt as string | undefined,
     stripeCustomerId: Item.stripeCustomerId as string | undefined,
     stripeSubId: Item.stripeSubId as string | undefined,
     updatedAt: Item.updatedAt as string | undefined,
@@ -198,6 +200,10 @@ export async function setPlanStatus(
     UpdateExpression += ', currentPeriodEnd = :cpe'
     ExpressionAttributeValues[':cpe'] = currentPeriodEnd
   }
+  // A recovered payment clears any dunning grace deadline.
+  if (status === 'active') {
+    UpdateExpression += ' REMOVE gracePeriodEndsAt'
+  }
   await ddb.send(
     new UpdateCommand({
       TableName: TableNames.userData,
@@ -205,6 +211,31 @@ export async function setPlanStatus(
       UpdateExpression,
       ExpressionAttributeNames: { '#s': 'status' },
       ExpressionAttributeValues,
+    }),
+  )
+}
+
+/**
+ * invoice.payment_failed → flip to past_due and stamp the grace deadline.
+ * `if_not_exists` keeps the original deadline so repeated payment_failed
+ * retries within the same dunning cycle don't extend the window.
+ */
+export async function enterGracePeriod(
+  userId: string,
+  gracePeriodEndsAt: string,
+): Promise<void> {
+  await ddb.send(
+    new UpdateCommand({
+      TableName: TableNames.userData,
+      Key: planKey(userId),
+      UpdateExpression:
+        'SET #s = :pastdue, gracePeriodEndsAt = if_not_exists(gracePeriodEndsAt, :end), updatedAt = :now',
+      ExpressionAttributeNames: { '#s': 'status' },
+      ExpressionAttributeValues: {
+        ':pastdue': 'past_due',
+        ':end': gracePeriodEndsAt,
+        ':now': new Date().toISOString(),
+      },
     }),
   )
 }

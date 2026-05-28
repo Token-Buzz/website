@@ -48,6 +48,9 @@ export const DEFAULT_PLAN: Plan = 'free'
 export const PAID_PLANS: PaidPlan[] = ['pro', 'alpha']
 export const BILLING_INTERVALS: BillingInterval[] = ['month', 'year']
 
+/** Days a past_due paid plan keeps full access before falling back to free. */
+export const GRACE_PERIOD_DAYS = 7
+
 export function evaluateHumQuota(
   plan: Plan,
   used: number,

@@ -20,6 +20,7 @@ import {
   downgradeToFree,
   getStripeCustomerId,
   setStripeCustomerId,
+  enterGracePeriod,
 } from '@monorepo-template/core/db/billing'
 import { getUserPlan } from '@monorepo-template/core/db/usage'
 
@@ -149,6 +150,64 @@ describe('downgradeToFree', () => {
     expect(record?.status).toBe('canceled')
     expect(record?.cancelAtPeriodEnd).toBe(false)
     expect(await getUserPlan(userId)).toEqual({ plan: 'free' })
+  })
+})
+
+// ── enterGracePeriod ──────────────────────────────────────────────────────────
+
+describe('enterGracePeriod', () => {
+  test('sets status to past_due and stamps grace deadline; repeated calls preserve original deadline', async () => {
+    const userId = 'billing_grace_user_1'
+
+    await applySubscriptionToPlan({
+      userId,
+      plan: 'pro',
+      status: 'active',
+      interval: 'month',
+      stripeCustomerId: 'cus_grace_1',
+      stripeSubId: 'sub_grace_1',
+    })
+
+    await enterGracePeriod(userId, '2099-01-01T00:00:00.000Z')
+
+    let record = await getPlanRecord(userId)
+    expect(record?.plan).toBe('pro')
+    expect(record?.status).toBe('past_due')
+    expect(record?.gracePeriodEndsAt).toBe('2099-01-01T00:00:00.000Z')
+
+    // Second call with a different deadline — if_not_exists must preserve the first.
+    await enterGracePeriod(userId, '2099-02-02T00:00:00.000Z')
+    record = await getPlanRecord(userId)
+    expect(record?.gracePeriodEndsAt).toBe('2099-01-01T00:00:00.000Z')
+  })
+})
+
+// ── setPlanStatus clears grace on active ──────────────────────────────────────
+
+describe('setPlanStatus clears grace on active', () => {
+  test('clears gracePeriodEndsAt when status is set to active', async () => {
+    const userId = 'billing_grace_clear_user_1'
+
+    await applySubscriptionToPlan({
+      userId,
+      plan: 'pro',
+      status: 'active',
+      interval: 'month',
+      stripeCustomerId: 'cus_grace_clear_1',
+      stripeSubId: 'sub_grace_clear_1',
+    })
+
+    await enterGracePeriod(userId, '2099-01-01T00:00:00.000Z')
+
+    // Confirm grace deadline was set.
+    let record = await getPlanRecord(userId)
+    expect(record?.gracePeriodEndsAt).toBe('2099-01-01T00:00:00.000Z')
+
+    // Recover the payment — should clear the grace deadline.
+    await setPlanStatus(userId, 'active')
+    record = await getPlanRecord(userId)
+    expect(record?.status).toBe('active')
+    expect(record?.gracePeriodEndsAt).toBeUndefined()
   })
 })
 
