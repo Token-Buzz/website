@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/Token-Buzz/website/compare/v0.25.0...v0.26.0) (2026-05-28)
+
+
+### 🚀 Features
+
+* **application:** enforce ingestion quota + 402 upgrade flow (M5 P6) ([#232](https://github.com/Token-Buzz/website/issues/232)) ([1c2bc65](https://github.com/Token-Buzz/website/commit/1c2bc65009a3c64474b726505190bbd036d92d98))
+
 ## [0.25.0](https://github.com/Token-Buzz/website/compare/v0.24.0...v0.25.0) (2026-05-28)
 
 
