@@ -15,6 +15,7 @@ import {
 import { hourBucket as toHourBucket } from "@monorepo-template/core/db/keys";
 import { isKolHandle, kolPostEvent } from "@monorepo-template/core/social-events";
 import { writeSocialEvent } from "@monorepo-template/core/db/social-events";
+import { incrementSourceCount } from "@monorepo-template/core/db/source-counts";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -289,6 +290,14 @@ export const handler: DynamoDBStreamHandler = async (event) => {
       await incrementPulse(query, minuteBucket);
     } catch (err) {
       console.error("[aggregator] pulse error:", err);
+    }
+
+    // ── Per-source ingestion count (one increment per record) ─────────────
+    const source = img.source?.S ?? "twitter";
+    try {
+      await incrementSourceCount(query, source, 1);
+    } catch (err) {
+      console.error("[aggregator] source-count error:", err);
     }
 
     // sentiment-by-symbol: delegated to sentiment.ts Lambda; nothing to do here.
