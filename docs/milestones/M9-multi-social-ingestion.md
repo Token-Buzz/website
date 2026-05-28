@@ -15,10 +15,47 @@ Expands ingestion beyond X/Twitter to crypto-native social platforms. Reorders t
 - **v2 milestone** — does not block v1 ship.
 - **Source priority**: Telegram → Reddit → Discord → Farcaster. Skip IG/FB; defer TikTok.
 - **Per-source tables** (one new DDB table per platform). Existing `Tweets` table untouched. All sources unify only at the source-agnostic `Aggregates` table.
+- **Two ingestion modes for every source — manual *and* automated.** Mirrors the existing X/Twitter design: a user can run an on-demand search, *and* can opt into automated monitoring (polling) of a query. Automated monitoring is a **first-class part of the source-agnostic layer (Phase 1)**, not a bolt-on — see "Ingestion modes" below.
 - **Tier-gated by API economics** — cheapest in Free, paid/operationally-heavy APIs gated:
   - Free: X (fixed-cost subscription, scale-friendly) + Farcaster (free + free)
-  - Pro: + Reddit ($0.24/1k calls — variable cost, gate to recover spend)
+  - Pro: + Reddit (~$0.24/1k calls — variable cost, gate to recover spend)
   - Alpha: + Telegram + Discord (operationally heavy — premium tier)
+
+## Ingestion modes — manual + automated (mirrors X/Twitter)
+
+The existing Twitter pipeline already supports **both** modes, and M9 carries both forward to every new source:
+
+- **Manual (on-demand search)** — user submits a query in the Analytics UI; results fetched and persisted immediately. Today: `POST /api/query` → `searchTweets()`.
+- **Automated monitoring (opt-in polling)** — user sets up a monitor on a query; a scheduled Lambda re-runs it on an interval and persists new results. Today: `TweetPoller` cron (`infra/jobs.ts`, `rate(2 minutes)`, prod-only) → `getPollAssignments()` finds users with `backgroundPolling === true`, pulls their watchlist queries via `getAllTrackedQueries()`, fetches since the last seen id.
+
+**Design rule for M9:** generalize the Twitter-specific poller into a **source-agnostic "monitor" abstraction** — `{ query, sources[], interval }` opt-in per user — with a per-source adapter behind it. Do this once in Phase 1 rather than re-implementing polling four times. Reuse what already exists:
+
+- **Watchlist / tracked-query model** (`packages/core/src/db/user-data.ts`, `getAllTrackedQueries`) — already stores per-user query lists.
+- **Poll-assignment + dedup logic** (`packages/core/src/db/byok-poll.ts`) — already fans out across users/queries and avoids double-polling the same query.
+- **DynamoDB Streams consumers** (Aggregator, Sentiment, AlertEvaluator) — fire automatically on every persisted record regardless of whether it came from a manual search or a poll, so per-source records flow into Aggregates with no extra wiring.
+
+### Poll cadence policy (cost control)
+
+Polling multiplies call volume, so cadence is gated by each source's cost model:
+
+- **Free / zero-marginal-cost sources** (X fixed-subscription, Farcaster free tier) — may poll at the existing ~2-minute cadence.
+- **Paid-per-call sources** (Reddit) — default to a **coarser interval (≈15–30 min)** and **count every poll call against the monthly per-source quota** (`USAGE#<yyyymm>#reddit`). Polling auto-pauses when the quota is exhausted.
+- **Operationally-heavy sources** (Telegram, Discord) — cadence bounded by platform rate limits / `FLOOD_WAIT`, not by dollars; conservative defaults to protect the shared project account/bot.
+
+## API cost & free-tier findings (researched 2026-05)
+
+Paid rates for the closed APIs move around and several require sales contact, so treat dollar figures as ballpark.
+
+| Source | Free tier | Paid cost | Notes |
+| --- | --- | --- | --- |
+| **Farcaster (Neynar)** | **Yes** — free tier exists; Starter-level limits ≈300 RPM / 5 RPS per endpoint. | Credit / compute-unit based (historically a ~$9 Starter plan; pay-as-you-go x402 endpoints). | Genuinely free to start → best first integration (Phase 2). |
+| **Reddit** | 100 QPM authenticated (OAuth); 10 RPM unauthenticated. Non-commercial only. | **~$0.24 / 1,000 calls** at volume; **no public rate card** — commercial/serious use requires enterprise sales + use-case review for a custom quote. | Only source with a real per-call dollar cost *and* a commercial-licensing wrinkle → gate to Pro, meter via `USAGE#<yyyymm>#reddit`. |
+| **Telegram (MTProto)** | **Free** — no per-call charge. | Free; cost is operational (undocumented `FLOOD_WAIT` limits, account-ban risk, session storage). | Alpha. Dollar cost ≈ $0; engineering/ops cost is the gate. |
+| **Discord** | **Free** (Bot API). | Free; cost is per-server manual bot-invite onboarding. | Alpha. Dollar cost ≈ $0; onboarding effort is the gate. |
+| **TikTok** | Research API, academics-only — no general access. | — | Deferred. |
+| **Instagram / Facebook** | Graph API exposes neither search nor groups. | — | Skipped. |
+
+**Takeaways:** Farcaster + Telegram + Discord are effectively **$0 in API fees** (Telegram/Discord cost is operational). **Reddit is the only real per-call dollar cost** — which is exactly why it's Pro-gated and metered, and why its automated monitoring uses a coarser default interval.
 
 ## Per-source assessment
 
@@ -46,10 +83,11 @@ Each source-specific table has its own GSIs sized to the platform's natural acce
 
 ## Phases
 
-### Phase 1 — Source-agnostic query layer
+### Phase 1 — Source-agnostic query layer (manual + automated)
 
 - Refactor the Analytics ingestion API to accept `sources[]` parameter.
 - Each query fan-outs to per-source Lambdas in parallel; results unified at the aggregate level.
+- **Generalize the Twitter-specific `TweetPoller` into a source-agnostic monitor:** a `{ query, sources[], interval }` opt-in record per user, with a per-source adapter behind a common interface. The scheduled Lambda iterates monitors and dispatches each source via its adapter — so both manual search and automated polling share the same per-source ingestor code. Build this once here, not per source.
 - UI gets source-filter chips: `[X (87)] [Reddit (23)] [Telegram (12)]`.
 
 ### Phase 2 — Farcaster ingestor (free, lowest-risk first integration)
@@ -60,11 +98,11 @@ Each source-specific table has its own GSIs sized to the platform's natural acce
 
 ### Phase 3 — Reddit ingestor
 
-- Official paid API. Two ingestion paths:
-  - Live search for new posts matching query
-  - Per-subreddit top-of-hour polling for designated crypto subs (r/CryptoCurrency, r/SolanaMemecoins, r/SatoshiStreetBets, token-specific subs)
+- Official paid API (~$0.24/1k calls; commercial use needs an enterprise quote). Two ingestion paths:
+  - **Manual** live search for new posts matching a query.
+  - **Automated** monitoring via the Phase 1 monitor abstraction, on a **coarser default interval (≈15–30 min)** to control per-call spend (plus per-subreddit top-of-hour polling for designated crypto subs: r/CryptoCurrency, r/SolanaMemecoins, r/SatoshiStreetBets, token-specific subs).
 - Gate to Pro tier.
-- Meter Reddit calls against a new monthly counter `USAGE#<yyyymm>#reddit` (extends M5's entitlement layer).
+- Meter **every** Reddit call — manual and polled — against a new monthly counter `USAGE#<yyyymm>#reddit` (extends M5's entitlement layer); automated monitoring auto-pauses when the quota is exhausted.
 
 ### Phase 4 — Telegram ingestor
 
