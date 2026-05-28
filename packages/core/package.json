@@ -10,6 +10,8 @@
   "exports": {
     "./alerts-eval": "./src/alerts-eval.ts",
     "./billing/tiers": "./src/billing/tiers.ts",
+    "./billing/stripe": "./src/billing/stripe.ts",
+    "./db/billing": "./src/db/billing.ts",
     "./db/aggregates": "./src/db/aggregates.ts",
     "./db/social-events": "./src/db/social-events.ts",
     "./social-events": "./src/social-events.ts",

@@ -196,6 +196,16 @@ export const usageKey = (userId: string, yyyymm: string, kind: string) => ({
   sk: `USAGE#${yyyymm}#${kind}`,
 })
 
+export const stripeEventKey = (eventId: string) => ({
+  pk: `STRIPE_EVENT#${eventId}`,
+  sk: 'PROCESSED',
+})
+
+export const stripeCustomerKey = (customerId: string) => ({
+  pk: `STRIPE_CUSTOMER#${customerId}`,
+  sk: 'USER',
+})
+
 /**
  * Hum AI conversation key builders.
  *

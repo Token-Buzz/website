@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.20.0](https://github.com/Token-Buzz/website/compare/v0.19.0...v0.20.0) (2026-05-28)
+
+
+### 🚀 Features
+
+* **billing:** Stripe webhook handler (M5 P3) ([#219](https://github.com/Token-Buzz/website/issues/219)) ([76bc90b](https://github.com/Token-Buzz/website/commit/76bc90bbe9b956d31e4ee3d845bc27056a969cf8))
+
+## [0.19.0](https://github.com/Token-Buzz/website/compare/v0.18.0...v0.19.0) (2026-05-28)
+
+
+### 🚀 Features
+
+* **marketing:** live ticker reads S3 snapshot (M7 Phase 2) ([#218](https://github.com/Token-Buzz/website/issues/218)) ([af8114e](https://github.com/Token-Buzz/website/commit/af8114ec455ac28de2676a606df252610841212f))
+
 ## [0.18.0](https://github.com/Token-Buzz/website/compare/v0.17.1...v0.18.0) (2026-05-27)
 
 
