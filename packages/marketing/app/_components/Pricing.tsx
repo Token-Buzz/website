@@ -1,19 +1,111 @@
-import React from 'react'
+'use client'
+
+import React, { useState } from 'react'
 import BuzzDot from './BuzzDot'
 import Button from './Button'
 import Icon from './Icon'
 
-interface PriceCardProps {
+type Interval = 'month' | 'year'
+
+interface PlanDef {
   tier: string
+  slug: 'free' | 'pro' | 'alpha'
   tagline: string
-  price: string
-  period: string
+  monthlyPrice: number | null  // null = free
+  yearlyPrice: number | null   // null = free
   features: string[]
   cta: string
   featured?: boolean
 }
 
-function PriceCard({ tier, tagline, price, period, features, cta, featured }: PriceCardProps) {
+const PLANS: PlanDef[] = [
+  {
+    tier: 'Free',
+    slug: 'free',
+    tagline: 'For the curious. No card required.',
+    monthlyPrice: null,
+    yearlyPrice: null,
+    features: [
+      '10 Hum AI queries / month',
+      '5 token ingestions / month',
+      'X + Farcaster sources',
+      'Unlimited dashboards, alerts & watchlists',
+      'Email alerts',
+    ],
+    cta: 'Start free',
+  },
+  {
+    tier: 'Pro',
+    slug: 'pro',
+    tagline: 'For traders running real positions.',
+    monthlyPrice: 24,
+    yearlyPrice: 240,
+    features: [
+      '500 Hum AI queries / month',
+      '50 token ingestions / month',
+      'X + Farcaster + Reddit sources',
+      'Unlimited dashboards, alerts & watchlists',
+      'Push, email & Discord alerts',
+      'Real-time buzz feed',
+    ],
+    cta: 'Start with Pro',
+    featured: true,
+  },
+  {
+    tier: 'Alpha',
+    slug: 'alpha',
+    tagline: 'For desks, funds, and the impatient.',
+    monthlyPrice: 240,
+    yearlyPrice: 2400,
+    features: [
+      'Unlimited Hum AI queries',
+      'Unlimited token ingestion',
+      'All sources incl. Telegram & Discord',
+      'Everything in Pro',
+    ],
+    cta: 'Go Alpha',
+  },
+]
+
+interface PriceCardProps {
+  plan: PlanDef
+  interval: Interval
+}
+
+function PriceCard({ plan, interval }: PriceCardProps) {
+  const { tier, slug, tagline, monthlyPrice, yearlyPrice, features, cta, featured } = plan
+  const isFree = monthlyPrice === null
+
+  // Derived price display
+  let displayPrice: string
+  let displayPeriod: string
+  let billedLine: string | null = null
+  let savingsBadge: string | null = null
+
+  if (isFree) {
+    displayPrice = '$0'
+    displayPeriod = 'forever'
+  } else if (interval === 'month') {
+    displayPrice = `$${monthlyPrice}`
+    displayPeriod = '/month'
+  } else {
+    // yearly: show per-month equivalent
+    const perMonth = Math.round(yearlyPrice! / 12)
+    const savings = monthlyPrice! * 12 - yearlyPrice!
+    displayPrice = `$${perMonth}`
+    displayPeriod = '/mo'
+    billedLine = `billed $${yearlyPrice}/year`
+    savingsBadge = `Save $${savings}/yr`
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  let href: string
+  if (slug === 'free') {
+    href = `${appUrl}/sign-up?plan=free`
+  } else {
+    href = `${appUrl}/sign-up?plan=${slug}&interval=${interval}`
+  }
+
   return (
     <div
       className="price-card"
@@ -76,23 +168,53 @@ function PriceCard({ tier, tagline, price, period, features, cta, featured }: Pr
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-        <span
-          style={{
-            font: '600 52px/1 var(--font-mono)',
-            letterSpacing: '-0.02em',
-          }}
-        >
-          {price}
-        </span>
-        <span
-          style={{
-            font: '500 14px var(--font-mono)',
-            color: featured ? 'var(--data-dim)' : 'var(--fg-3)',
-          }}
-        >
-          {period}
-        </span>
+      <div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+          <span
+            style={{
+              font: '600 52px/1 var(--font-mono)',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            {displayPrice}
+          </span>
+          <span
+            style={{
+              font: '500 14px var(--font-mono)',
+              color: featured ? 'var(--data-dim)' : 'var(--fg-3)',
+            }}
+          >
+            {displayPeriod}
+          </span>
+          {savingsBadge && (
+            <span
+              style={{
+                marginLeft: 8,
+                background: 'var(--buzz-500)',
+                color: '#fff',
+                font: '600 10px var(--font-sans)',
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                padding: '3px 7px',
+                borderRadius: 4,
+                alignSelf: 'center',
+              }}
+            >
+              {savingsBadge}
+            </span>
+          )}
+        </div>
+        {billedLine && (
+          <div
+            style={{
+              font: '400 12px var(--font-sans)',
+              color: featured ? 'var(--data-dim)' : 'var(--fg-3)',
+              marginTop: 4,
+            }}
+          >
+            {billedLine}
+          </div>
+        )}
       </div>
 
       <div style={{ height: 1, background: featured ? 'var(--data-line)' : 'var(--border)' }} />
@@ -138,7 +260,7 @@ function PriceCard({ tier, tagline, price, period, features, cta, featured }: Pr
         variant={featured ? 'inverse' : 'secondary'}
         size="md"
         iconRight="arrowR"
-        href="#"
+        href={href}
       >
         {cta}
       </Button>
@@ -146,53 +268,9 @@ function PriceCard({ tier, tagline, price, period, features, cta, featured }: Pr
   )
 }
 
-const PLANS: PriceCardProps[] = [
-  {
-    tier: 'Free',
-    tagline: 'For the curious. Five tokens, no card.',
-    price: '$0',
-    period: 'forever',
-    features: [
-      '5 tracked tokens',
-      '1h-delayed buzz feed',
-      'Daily sentiment digest',
-      'Email alerts',
-    ],
-    cta: 'Start free',
-  },
-  {
-    tier: 'Pro',
-    tagline: 'For traders running real positions.',
-    price: '$24',
-    period: '/month',
-    features: [
-      'Unlimited tracked tokens',
-      'Real-time buzz feed (12s)',
-      'Full sentiment + reputation scoring',
-      'Push, email, and Discord alerts',
-      '30-day mention history',
-      'Mobile + web apps',
-    ],
-    cta: 'Start tracking',
-    featured: true,
-  },
-  {
-    tier: 'Alpha',
-    tagline: 'For desks, funds, and the impatient.',
-    price: '$240',
-    period: '/month',
-    features: [
-      'Everything in Pro',
-      'Ask Hum — unlimited queries',
-      'Custom narrative tracking',
-'Team seats (up to 5)',
-      '1-year mention history + CSV export',
-    ],
-    cta: 'Start Alpha trial',
-  },
-]
-
 export default function Pricing() {
+  const [interval, setInterval] = useState<Interval>('month')
+
   return (
     <section id="pricing" style={{ padding: '96px 32px 64px' }}>
       <div style={{ maxWidth: 1280, margin: '0 auto' }}>
@@ -223,16 +301,54 @@ export default function Pricing() {
               Three plans.<br />One number.
             </h2>
           </div>
-          <div
-            style={{
-              font: '400 17px/1.55 var(--font-sans)',
-              color: 'var(--fg-2)',
-              maxWidth: 520,
-              alignSelf: 'end',
-            }}
-          >
-            Pay monthly. Cancel anytime. No annual lock-in, no &quot;contact sales&quot; tier. The Free
-            plan covers a hobby; Pro covers a position; Alpha covers a desk.
+          <div style={{ alignSelf: 'end' }}>
+            <div
+              style={{
+                font: '400 17px/1.55 var(--font-sans)',
+                color: 'var(--fg-2)',
+                maxWidth: 520,
+                marginBottom: 24,
+              }}
+            >
+              Pay monthly or save with a yearly plan. Cancel anytime. No &quot;contact sales&quot; tier.
+              The Free plan covers a hobby; Pro covers a position; Alpha covers a desk.
+            </div>
+
+            {/* Billing interval toggle */}
+            <div
+              style={{
+                display: 'inline-flex',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: 3,
+                gap: 2,
+              }}
+            >
+              {(['month', 'year'] as Interval[]).map(opt => {
+                const active = interval === opt
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setInterval(opt)}
+                    style={{
+                      font: '600 13px var(--font-sans)',
+                      letterSpacing: '-0.005em',
+                      padding: '7px 18px',
+                      borderRadius: 6,
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 160ms cubic-bezier(0.2, 0.7, 0.2, 1)',
+                      background: active ? 'var(--inv-bg)' : 'transparent',
+                      color: active ? 'var(--inv-fg)' : 'var(--fg-2)',
+                    }}
+                  >
+                    {opt === 'month' ? 'Monthly' : 'Yearly'}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
 
@@ -245,7 +361,9 @@ export default function Pricing() {
             alignItems: 'stretch',
           }}
         >
-          {PLANS.map(plan => <PriceCard key={plan.tier} {...plan} />)}
+          {PLANS.map(plan => (
+            <PriceCard key={plan.tier} plan={plan} interval={interval} />
+          ))}
         </div>
       </div>
     </section>
