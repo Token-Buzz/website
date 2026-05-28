@@ -206,6 +206,11 @@ export const stripeCustomerKey = (customerId: string) => ({
   sk: 'USER',
 })
 
+export const notificationPrefsKey = (userId: string) => ({
+  pk: `USER#${userId}`,
+  sk: 'NOTIFPREFS',
+})
+
 /**
  * Hum AI conversation key builders.
  *

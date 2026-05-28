@@ -4,6 +4,8 @@ import { UserProfile } from '@clerk/nextjs'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import { ApiKeysSection } from './ApiKeysSection'
 import { BillingPanel } from '@/app/_billing/BillingPanel'
+import { NotificationsSection } from './NotificationsSection'
+import { DangerZoneSection } from './DangerZoneSection'
 import { Icon } from '@/app/(authed)/_dashboard/primitives'
 // Account page reuses the shared tb-* component styles (tabs, form, fields,
 // buttons) that live in auth.css — which is otherwise only loaded by AuthShell.
@@ -45,6 +47,20 @@ export default function AccountPage() {
           }
         >
           <UserProfile.Page
+            label="Plan & Billing"
+            labelIcon={<Icon name="star" size={16} />}
+            url="billing"
+          >
+            <BillingPanel />
+          </UserProfile.Page>
+          <UserProfile.Page
+            label="Notifications"
+            labelIcon={<Icon name="bell" size={16} />}
+            url="notifications"
+          >
+            <NotificationsSection />
+          </UserProfile.Page>
+          <UserProfile.Page
             label="API Keys"
             labelIcon={<Icon name="settings" size={16} />}
             url="api-keys"
@@ -52,11 +68,11 @@ export default function AccountPage() {
             <ApiKeysSection />
           </UserProfile.Page>
           <UserProfile.Page
-            label="Plan & Billing"
-            labelIcon={<Icon name="star" size={16} />}
-            url="billing"
+            label="Danger Zone"
+            labelIcon={<Icon name="trash" size={16} />}
+            url="danger"
           >
-            <BillingPanel />
+            <DangerZoneSection />
           </UserProfile.Page>
         </UserProfile>
       </div>
