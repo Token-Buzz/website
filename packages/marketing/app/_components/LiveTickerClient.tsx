@@ -60,14 +60,19 @@ export default function LiveTickerClient({ initialSnapshot }: Props) {
         }}
       >
         {items.map((t, i) => (
-          <div
+          <a
             key={`${i}-${t.symbol}`}
+            href={`${process.env.NEXT_PUBLIC_APP_URL}/sign-up?token=${encodeURIComponent(displaySymbol(t.symbol))}`}
+            rel="nofollow noreferrer"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 10,
               fontFamily: 'var(--font-mono)',
               fontSize: 13,
+              textDecoration: 'none',
+              color: 'inherit',
+              cursor: 'pointer',
             }}
           >
             <span style={{ color: 'var(--data-fg)', fontWeight: 600 }}>
@@ -105,7 +110,7 @@ export default function LiveTickerClient({ initialSnapshot }: Props) {
                 TRENDING
               </span>
             )}
-          </div>
+          </a>
         ))}
       </div>
     </div>

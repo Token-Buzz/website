@@ -8,7 +8,13 @@ import type { Token } from '../_dashboard/types'
 
 export default function WatchlistPage() {
   const [selectedToken, setSelectedToken] = useState<Token | null>(null)
+  const [focus, setFocus] = useState<string | null>(null)
   const isMobile = useIsMobile()
+
+  useEffect(() => {
+    const f = new URLSearchParams(window.location.search).get('focus')
+    Promise.resolve().then(() => { if (f) setFocus(f) }).catch(() => {})
+  }, [])
 
   // Lock body scroll while mobile overlay is open
   useEffect(() => {
@@ -29,6 +35,7 @@ export default function WatchlistPage() {
         <WatchlistView
           onSelectToken={setSelectedToken}
           selectedToken={selectedToken}
+          initialFocus={focus}
         />
       </div>
 

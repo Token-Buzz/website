@@ -1,12 +1,17 @@
-'use client'
-
 import { AuthenticateWithRedirectCallback } from '@clerk/nextjs'
+import { postAuthDest } from '../_auth/postAuthDest'
 
-export default function SsoCallback() {
+export default async function SsoCallback({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string }>
+}) {
+  const { token } = await searchParams
+  const dest = postAuthDest(token ?? null)
   return (
     <AuthenticateWithRedirectCallback
-      signInForceRedirectUrl="/dashboard"
-      signUpForceRedirectUrl="/dashboard"
+      signInForceRedirectUrl={dest}
+      signUpForceRedirectUrl={dest}
     />
   )
 }
