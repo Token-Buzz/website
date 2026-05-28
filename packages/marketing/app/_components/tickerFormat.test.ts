@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { formatPrice, formatBuzz, displaySymbol } from './tickerFormat'
+import { formatPrice, formatBuzz, displaySymbol, isStale, STALE_AFTER_MS } from './tickerFormat'
 
 describe('displaySymbol', () => {
   test('strips leading $ from symbol', () => {
@@ -55,5 +55,31 @@ describe('formatBuzz', () => {
   })
   test('zero: 0 -> buzz +0%', () => {
     expect(formatBuzz(0)).toBe('buzz +0%')
+  })
+})
+
+describe('isStale', () => {
+  const BASE = 1_000_000_000_000 // fixed epoch ms for deterministic tests
+
+  test('fresh timestamp (now just after updatedAt) returns false', () => {
+    const updatedAt = new Date(BASE).toISOString()
+    const now = BASE + 1000 // 1 second later
+    expect(isStale(updatedAt, now)).toBe(false)
+  })
+
+  test('exactly at threshold boundary (now - t === STALE_AFTER_MS) returns false', () => {
+    const updatedAt = new Date(BASE).toISOString()
+    const now = BASE + STALE_AFTER_MS // not strictly greater than, so false
+    expect(isStale(updatedAt, now)).toBe(false)
+  })
+
+  test('older than 5 minutes returns true', () => {
+    const updatedAt = new Date(BASE).toISOString()
+    const now = BASE + STALE_AFTER_MS + 1 // one ms past the threshold
+    expect(isStale(updatedAt, now)).toBe(true)
+  })
+
+  test('unparseable string returns false', () => {
+    expect(isStale('not-a-date', BASE)).toBe(false)
   })
 })
