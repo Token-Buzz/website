@@ -13,7 +13,15 @@ vi.mock('./client', () => ({
   TableNames: { aggregates: 'Aggregates', tokens: 'Tokens', tweets: 'Tweets', userData: 'UserData' },
 }))
 
-import { retryAfterSeconds } from './rate-limit'
+import {
+  retryAfterSeconds,
+  warnThreshold,
+  nearLimit,
+  buildRateLimitEmf,
+  RATE_LIMIT_METRIC_NAMESPACE,
+  RATE_LIMIT_METRIC_NAME,
+  RATE_LIMIT_METRIC_DIMENSION,
+} from './rate-limit'
 import { rateLimitKey } from './keys'
 
 describe('retryAfterSeconds', () => {
@@ -56,5 +64,91 @@ describe('rateLimitKey', () => {
   it('encodes minute string correctly in sk', () => {
     const key = rateLimitKey('coingecko', '2026-12-25T23:59')
     expect(key.sk).toBe('MINUTE#2026-12-25T23:59')
+  })
+})
+
+describe('warnThreshold', () => {
+  it('returns 20 for limit 25 (GeckoTerminal)', () => {
+    expect(warnThreshold(25)).toBe(20)
+  })
+
+  it('returns 48 for limit 60 (Jupiter)', () => {
+    expect(warnThreshold(60)).toBe(48)
+  })
+})
+
+describe('nearLimit', () => {
+  it('returns false when count is below the warn threshold (limit 25)', () => {
+    expect(nearLimit(19, 25)).toBe(false)
+  })
+
+  it('returns true at exactly the warn threshold (limit 25)', () => {
+    expect(nearLimit(20, 25)).toBe(true)
+  })
+
+  it('returns true at the hard limit (limit 25)', () => {
+    expect(nearLimit(25, 25)).toBe(true)
+  })
+
+  it('returns true when count exceeds the hard limit (limit 25)', () => {
+    expect(nearLimit(26, 25)).toBe(true)
+  })
+
+  it('returns false when count is below the warn threshold (limit 60)', () => {
+    expect(nearLimit(47, 60)).toBe(false)
+  })
+
+  it('returns true at exactly the warn threshold (limit 60)', () => {
+    expect(nearLimit(48, 60)).toBe(true)
+  })
+})
+
+describe('buildRateLimitEmf', () => {
+  const nowMs = 1_700_000_000_000
+  const provider = 'geckoterminal'
+  const count = 21
+
+  it('sets _aws.Timestamp to the provided nowMs', () => {
+    const emf = buildRateLimitEmf(provider, count, nowMs)
+    const aws = emf._aws as { Timestamp: number }
+    expect(aws.Timestamp).toBe(nowMs)
+  })
+
+  it('sets the correct metric namespace', () => {
+    const emf = buildRateLimitEmf(provider, count, nowMs)
+    const metrics = (emf._aws as { CloudWatchMetrics: Array<{ Namespace: string }> })
+      .CloudWatchMetrics
+    expect(metrics[0].Namespace).toBe(RATE_LIMIT_METRIC_NAMESPACE)
+    expect(metrics[0].Namespace).toBe('TokenBuzz/RateLimit')
+  })
+
+  it('sets Dimensions to [[Provider]]', () => {
+    const emf = buildRateLimitEmf(provider, count, nowMs)
+    const metrics = (
+      emf._aws as { CloudWatchMetrics: Array<{ Dimensions: string[][] }> }
+    ).CloudWatchMetrics
+    expect(metrics[0].Dimensions).toEqual([[RATE_LIMIT_METRIC_DIMENSION]])
+    expect(metrics[0].Dimensions).toEqual([['Provider']])
+  })
+
+  it('sets Metrics to [{ Name: ProviderCallsPerMin, Unit: Count }]', () => {
+    const emf = buildRateLimitEmf(provider, count, nowMs)
+    const metrics = (
+      emf._aws as { CloudWatchMetrics: Array<{ Metrics: Array<{ Name: string; Unit: string }> }> }
+    ).CloudWatchMetrics
+    expect(metrics[0].Metrics).toEqual([{ Name: RATE_LIMIT_METRIC_NAME, Unit: 'Count' }])
+    expect(metrics[0].Metrics).toEqual([{ Name: 'ProviderCallsPerMin', Unit: 'Count' }])
+  })
+
+  it('sets the Provider dimension value', () => {
+    const emf = buildRateLimitEmf(provider, count, nowMs)
+    expect(emf[RATE_LIMIT_METRIC_DIMENSION]).toBe(provider)
+    expect(emf['Provider']).toBe('geckoterminal')
+  })
+
+  it('sets the ProviderCallsPerMin metric value', () => {
+    const emf = buildRateLimitEmf(provider, count, nowMs)
+    expect(emf[RATE_LIMIT_METRIC_NAME]).toBe(count)
+    expect(emf['ProviderCallsPerMin']).toBe(21)
   })
 })
