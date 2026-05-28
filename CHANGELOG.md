@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/Token-Buzz/website/compare/v0.22.0...v0.23.0) (2026-05-28)
+
+
+### 🚀 Features
+
+* **marketing:** ticker stale-data indicator (M7 P4) ([#225](https://github.com/Token-Buzz/website/issues/225)) ([9a7b2a6](https://github.com/Token-Buzz/website/commit/9a7b2a6bb694c5c9d990b8e17bfc46699cb3320f))
+
 ## [0.22.0](https://github.com/Token-Buzz/website/compare/v0.21.0...v0.22.0) (2026-05-28)
 
 
