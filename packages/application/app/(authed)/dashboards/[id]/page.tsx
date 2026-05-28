@@ -561,10 +561,10 @@ export default function DashboardDetailPage() {
       {/* Picker modal — "Add to dashboard" */}
       {pickerCard && dashboard && (
         <DashboardPickerModal
-          card={pickerCard}
+          cards={[pickerCard]}
           currentDashboardId={dashboard.dashboardId}
           onClose={() => setPickerCard(null)}
-          onAdded={(name) => {
+          onAdded={({ name }) => {
             setPickerCard(null)
             setNotice('Added card to "' + name + '"')
           }}
