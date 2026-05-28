@@ -13,10 +13,16 @@ import { TextField } from '../../_auth/TextField'
 import { ContinueButton } from '../../_auth/ContinueButton'
 import { usePasswordStrength } from '../../_auth/usePasswordStrength'
 import { clerkErrorMessage } from '../../_auth/clerkErrors'
+import { postAuthDest } from '../../_auth/postAuthDest'
 
 type Step = 'form' | 'code'
 
 const SSO_CALLBACK_URL = '/sso-callback'
+
+function destFromUrl() {
+  const token = new URLSearchParams(window.location.search).get('token')
+  return postAuthDest(token)
+}
 
 export default function SignUpPage() {
   const { signUp } = useSignUp()
@@ -24,7 +30,7 @@ export default function SignUpPage() {
   const { isLoaded, isSignedIn } = useAuth()
 
   useEffect(() => {
-    if (isLoaded && isSignedIn) router.replace('/dashboard')
+    if (isLoaded && isSignedIn) router.replace(destFromUrl())
   }, [isLoaded, isSignedIn, router])
 
   const [step, setStep] = useState<Step>('form')
@@ -84,7 +90,7 @@ export default function SignUpPage() {
         setLoading(false)
         return
       }
-      router.push('/dashboard')
+      router.push(destFromUrl())
     }
     setLoading(false)
   }
@@ -92,10 +98,12 @@ export default function SignUpPage() {
   async function handleOAuth(strategy: 'oauth_google' | 'oauth_github' | 'oauth_microsoft') {
     if (!signUp) return
     setError(null)
+    const token = new URLSearchParams(window.location.search).get('token')
+    const callback = token ? `${SSO_CALLBACK_URL}?token=${encodeURIComponent(token)}` : SSO_CALLBACK_URL
     const { error: ssoError } = await signUp.sso({
       strategy,
-      redirectUrl: SSO_CALLBACK_URL,
-      redirectCallbackUrl: SSO_CALLBACK_URL,
+      redirectUrl: callback,
+      redirectCallbackUrl: callback,
     })
     if (ssoError) setError(clerkErrorMessage(ssoError))
   }

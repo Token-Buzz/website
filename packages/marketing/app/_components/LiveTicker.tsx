@@ -34,14 +34,19 @@ export default function LiveTicker() {
         }}
       >
         {items.map((it, i) => (
-          <div
+          <a
             key={i}
+            href={`${process.env.NEXT_PUBLIC_APP_URL}/sign-up?token=${encodeURIComponent(it.s)}`}
+            rel="nofollow noreferrer"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 10,
               fontFamily: 'var(--font-mono)',
               fontSize: 13,
+              textDecoration: 'none',
+              color: 'inherit',
+              cursor: 'pointer',
             }}
           >
             <span style={{ color: 'var(--data-fg)', fontWeight: 600 }}>${it.s}</span>
@@ -56,7 +61,7 @@ export default function LiveTicker() {
             </span>
             <span style={{ color: 'var(--data-dim)' }}>·</span>
             <span style={{ color: 'var(--data-amber)' }}>{it.b}</span>
-          </div>
+          </a>
         ))}
       </div>
     </div>

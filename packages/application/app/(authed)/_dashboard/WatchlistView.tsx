@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Icon, Button, Eyebrow, Ticker, BuzzDot, Sparkline, Delta, fmtCount } from './primitives'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import type { Token } from './types'
@@ -210,12 +210,23 @@ interface WatchlistViewProps {
   tokens?: Token[]
   onSelectToken?: (t: Token | null) => void
   selectedToken?: Token | null
+  initialFocus?: string | null
 }
 
-export function WatchlistView({ tokens = SAMPLE_TOKENS, onSelectToken, selectedToken }: WatchlistViewProps) {
+export function WatchlistView({ tokens = SAMPLE_TOKENS, onSelectToken, selectedToken, initialFocus }: WatchlistViewProps) {
   const [filter, setFilter] = useState<FilterType>('all')
   const [sort, setSort] = useState<Sort>({ k: 'dbuzz', dir: 'desc' })
   const [starred, setStarred] = useState(new Set(['PEPE', 'SOL', 'WIF']))
+
+  const focusedRef = useRef(false)
+  useEffect(() => {
+    if (focusedRef.current || !initialFocus) return
+    const match = tokens.find((t) => t.sym.toUpperCase() === initialFocus.toUpperCase())
+    if (match) {
+      focusedRef.current = true
+      onSelectToken?.(match)
+    }
+  }, [initialFocus, tokens, onSelectToken])
 
   const isMobile = useIsMobile()
 
