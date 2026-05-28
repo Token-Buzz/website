@@ -18,10 +18,12 @@ export interface TierConfig {
   ingestionMonthly: number | null
   /** Stripe pricing per interval; null for the free tier. */
   prices: Record<BillingInterval, TierPrice> | null
+  /** Query-history snapshot retention in days; null = no expiry. */
+  historyRetentionDays: number | null
 }
 
 export const TIERS: Record<Plan, TierConfig> = {
-  free: { plan: 'free', label: 'Free', humMonthly: 10, ingestionMonthly: 5, prices: null },
+  free: { plan: 'free', label: 'Free', humMonthly: 10, ingestionMonthly: 5, prices: null, historyRetentionDays: 30 },
   pro: {
     plan: 'pro',
     label: 'Pro',
@@ -31,6 +33,7 @@ export const TIERS: Record<Plan, TierConfig> = {
       month: { amount: 2400, priceIdEnvVar: 'STRIPE_PRICE_PRO_MONTH' },
       year: { amount: 24000, priceIdEnvVar: 'STRIPE_PRICE_PRO_YEAR' },
     },
+    historyRetentionDays: 365,
   },
   alpha: {
     plan: 'alpha',
@@ -41,6 +44,7 @@ export const TIERS: Record<Plan, TierConfig> = {
       month: { amount: 24000, priceIdEnvVar: 'STRIPE_PRICE_ALPHA_MONTH' },
       year: { amount: 240000, priceIdEnvVar: 'STRIPE_PRICE_ALPHA_YEAR' },
     },
+    historyRetentionDays: null,
   },
 }
 
@@ -64,6 +68,16 @@ export function evaluateIngestionQuota(
   const limit = TIERS[plan].ingestionMonthly
   const allowed = limit === null || used < limit
   return { allowed, limit }
+}
+
+/**
+ * Epoch-seconds DynamoDB TTL for a snapshot saved at `nowMs`, derived from the
+ * plan's retention window. Returns null for no-expiry plans (alpha).
+ */
+export function historyRetentionTtl(plan: Plan, nowMs: number = Date.now()): number | null {
+  const days = TIERS[plan].historyRetentionDays
+  if (days == null) return null
+  return Math.floor(nowMs / 1000) + days * 86_400
 }
 
 /**

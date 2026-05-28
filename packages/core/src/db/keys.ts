@@ -196,6 +196,11 @@ export const usageKey = (userId: string, yyyymm: string, kind: string) => ({
   sk: `USAGE#${yyyymm}#${kind}`,
 })
 
+export const savedQueryKey = (userId: string, submittedAt: string, queryHash: string) => ({
+  pk: `USER#${userId}`,
+  sk: `QUERY#${submittedAt}#${queryHash}`,
+})
+
 export const stripeEventKey = (eventId: string) => ({
   pk: `STRIPE_EVENT#${eventId}`,
   sk: 'PROCESSED',
