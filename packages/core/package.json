@@ -39,6 +39,7 @@
     "./lib/crypto": "./src/lib/crypto.ts",
     "./lib/enrich": "./src/lib/enrich.ts",
     "./lib/group-queries": "./src/lib/group-queries.ts",
+    "./lib/recent-queries": "./src/lib/recent-queries.ts",
     "./lib/poll-assignment": "./src/lib/poll-assignment.ts",
     "./lib/queryId": "./src/lib/queryId.ts",
     "./lib/twitter": "./src/lib/twitter.ts",
