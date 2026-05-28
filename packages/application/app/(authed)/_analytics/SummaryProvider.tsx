@@ -66,6 +66,7 @@ export interface SummaryData {
     }[];
     query: string;
   } | null;
+  sourceCounts: Record<string, number> | null;
 }
 
 interface SummaryState {
