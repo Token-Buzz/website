@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.0](https://github.com/Token-Buzz/website/compare/v0.32.0...v0.33.0) (2026-05-28)
+
+
+### 🚀 Features
+
+* source-agnostic ingestion layer + monitors (M9 Phase 1) ([#249](https://github.com/Token-Buzz/website/issues/249)) ([f244132](https://github.com/Token-Buzz/website/commit/f244132307f9b5cbcb25e2a24401655831199887))
+
 ## [0.32.0](https://github.com/Token-Buzz/website/compare/v0.31.0...v0.32.0) (2026-05-28)
 
 
