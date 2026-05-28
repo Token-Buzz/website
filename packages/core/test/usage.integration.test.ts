@@ -44,6 +44,56 @@ describe('getUserPlan', () => {
     const result = await getUserPlan(userId)
     expect(result).toEqual({ plan: 'pro' })
   })
+
+  test('pro + past_due + future grace deadline → returns pro (still within grace)', async () => {
+    const userId = 'usage_test_grace_future'
+    await ddb.send(
+      new PutCommand({
+        TableName: TableNames.userData,
+        Item: {
+          ...planKey(userId),
+          plan: 'pro',
+          status: 'past_due',
+          gracePeriodEndsAt: '2099-01-01T00:00:00.000Z',
+        },
+      }),
+    )
+    const result = await getUserPlan(userId)
+    expect(result).toEqual({ plan: 'pro' })
+  })
+
+  test('pro + past_due + past grace deadline → returns free (grace expired)', async () => {
+    const userId = 'usage_test_grace_past'
+    await ddb.send(
+      new PutCommand({
+        TableName: TableNames.userData,
+        Item: {
+          ...planKey(userId),
+          plan: 'pro',
+          status: 'past_due',
+          gracePeriodEndsAt: '2000-01-01T00:00:00.000Z',
+        },
+      }),
+    )
+    const result = await getUserPlan(userId)
+    expect(result).toEqual({ plan: 'free' })
+  })
+
+  test('pro + past_due + no grace deadline → returns pro (rely on deleted webhook)', async () => {
+    const userId = 'usage_test_grace_no_deadline'
+    await ddb.send(
+      new PutCommand({
+        TableName: TableNames.userData,
+        Item: {
+          ...planKey(userId),
+          plan: 'pro',
+          status: 'past_due',
+        },
+      }),
+    )
+    const result = await getUserPlan(userId)
+    expect(result).toEqual({ plan: 'pro' })
+  })
 })
 
 // ── getHumUsage ───────────────────────────────────────────────────────────────

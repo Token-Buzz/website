@@ -8,8 +8,11 @@ import {
   applySubscriptionToPlan,
   downgradeToFree,
   setPlanStatus,
+  enterGracePeriod,
+  getPlanRecord,
 } from "@monorepo-template/core/db/billing";
-import { mapStripeStatus, planForPriceId } from "@monorepo-template/core/billing/stripe";
+import { mapStripeStatus, planForPriceId, graceWindowEnd } from "@monorepo-template/core/billing/stripe";
+import { sendDowngradeEmail } from "./_email";
 
 // Stripe signature verification needs the Node crypto runtime and the exact,
 // unparsed request body — so opt out of the Edge runtime and any static caching.
@@ -95,7 +98,12 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription): Promise<void
     );
     return;
   }
+  const plan = await getPlanRecord(userId);
+  const wasPaid = plan != null && plan.plan !== 'free';
   await downgradeToFree(userId, { stripeCustomerId: customerId ?? undefined });
+  if (wasPaid) {
+    await sendDowngradeEmail({ userId });
+  }
 }
 
 /** invoice.payment_succeeded / .payment_failed → flip the PLAN status. */
@@ -112,7 +120,11 @@ async function handleInvoiceStatus(
     );
     return;
   }
-  await setPlanStatus(userId, status);
+  if (status === 'past_due') {
+    await enterGracePeriod(userId, graceWindowEnd());
+  } else {
+    await setPlanStatus(userId, status);
+  }
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {

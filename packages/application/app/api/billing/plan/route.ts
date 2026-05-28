@@ -16,6 +16,7 @@ export async function GET() {
       interval: null,
       cancelAtPeriodEnd: false,
       currentPeriodEnd: null,
+      gracePeriodEndsAt: null,
     });
   }
 
@@ -25,5 +26,6 @@ export async function GET() {
     interval: r.interval ?? null,
     cancelAtPeriodEnd: r.cancelAtPeriodEnd ?? false,
     currentPeriodEnd: r.currentPeriodEnd ?? null,
+    gracePeriodEndsAt: r.gracePeriodEndsAt ?? null,
   });
 }

@@ -2,6 +2,7 @@ import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from './client'
 import { planKey, usageKey } from './keys'
 import { type Plan, DEFAULT_PLAN, evaluateHumQuota, evaluateIngestionQuota } from '../billing/tiers'
+import { effectivePlan } from '../billing/stripe'
 
 export type { Plan }
 
@@ -24,7 +25,13 @@ export async function getUserPlan(userId: string): Promise<{ plan: Plan }> {
     }),
   )
   if (!Item || !Item.plan) return { plan: DEFAULT_PLAN }
-  return { plan: Item.plan as Plan }
+  return {
+    plan: effectivePlan({
+      plan: Item.plan as Plan,
+      status: Item.status as string | undefined,
+      gracePeriodEndsAt: Item.gracePeriodEndsAt as string | undefined,
+    }),
+  }
 }
 
 export async function getHumUsage(
