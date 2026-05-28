@@ -11,3 +11,7 @@ export const changelogGithubToken = new sst.Secret("CHANGELOG_GITHUB_TOKEN");
 export const stripeSecretKey = new sst.Secret("STRIPE_SECRET_KEY");
 export const stripePublishableKey = new sst.Secret("STRIPE_PUBLISHABLE_KEY");
 export const stripeWebhookSecret = new sst.Secret("STRIPE_WEBHOOK_SECRET");
+export const stripePriceProMonth = new sst.Secret("STRIPE_PRICE_PRO_MONTH");
+export const stripePriceProYear = new sst.Secret("STRIPE_PRICE_PRO_YEAR");
+export const stripePriceAlphaMonth = new sst.Secret("STRIPE_PRICE_ALPHA_MONTH");
+export const stripePriceAlphaYear = new sst.Secret("STRIPE_PRICE_ALPHA_YEAR");

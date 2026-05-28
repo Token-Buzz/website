@@ -21,6 +21,8 @@
     "react": "latest",
     "react-dom": "latest",
     "react-grid-layout": "^1.5.3",
+    "@stripe/react-stripe-js": "^3",
+    "@stripe/stripe-js": "^5",
     "stripe": "^18"
   },
   "devDependencies": {
