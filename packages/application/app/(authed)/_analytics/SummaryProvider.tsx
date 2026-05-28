@@ -87,8 +87,8 @@ const SummaryContext = createContext<SummaryContextValue>({
 
 // ── Retry config (mirrors useAggregatePolling) ─────────────────────────────
 
-const DEFAULT_TIMEOUT_MS = 30_000;
-const DEFAULT_SCHEDULE_MS = [1_000, 2_000, 4_000, 8_000, 8_000, 8_000];
+export const DEFAULT_TIMEOUT_MS = 30_000;
+export const DEFAULT_SCHEDULE_MS = [1_000, 2_000, 4_000, 8_000, 8_000, 8_000];
 
 // ── Provider ───────────────────────────────────────────────────────────────
 
@@ -195,9 +195,33 @@ export function SummaryProvider({
   );
 }
 
+// ── StaticSummaryProvider ──────────────────────────────────────────────────
+
+/**
+ * Supplies pre-fetched snapshot data into `SummaryContext` without any
+ * network polling. Charts read context exactly as they do under the live
+ * `SummaryProvider`. Pass `data: null` to show all charts in their empty /
+ * loading-skeleton state.
+ */
+export function StaticSummaryProvider({
+  query,
+  data,
+  children,
+}: {
+  query: string;
+  data: SummaryData | null;
+  children: ReactNode;
+}) {
+  return (
+    <SummaryContext.Provider value={{ query, data, loading: false, error: null }}>
+      {children}
+    </SummaryContext.Provider>
+  );
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function isPopulated(data: SummaryData): boolean {
+export function isPopulated(data: SummaryData): boolean {
   return (
     (data.hashtags !== null && data.hashtags.length > 0) ||
     (data.mentions !== null && data.mentions.length > 0) ||

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import type { SavedQueryListItem } from '@monorepo-template/core/db/saved-queries'
 import type { DashboardCard } from '@monorepo-template/core/db/dashboards'
 import { groupQueriesByDate } from '@monorepo-template/core/lib/group-queries'
+import { encodeQueryId } from '@monorepo-template/core/lib/queryId'
 import { Button, Card, Eyebrow, Icon } from '../_dashboard/primitives'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import { DashboardPickerModal } from '../dashboards/_components/DashboardPickerModal'
@@ -58,8 +59,9 @@ function HistoryRow({
       onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface)')}
       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
     >
-      {/* Query string */}
-      <span
+      {/* Query string — links to the snapshot detail view */}
+      <Link
+        href={'/history/' + encodeURIComponent(encodeQueryId(item.submittedAt, item.queryHash))}
         style={{
           flex: 1,
           minWidth: 0,
@@ -70,11 +72,12 @@ function HistoryRow({
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
+          textDecoration: 'none',
         }}
         title={item.query}
       >
         {item.query}
-      </span>
+      </Link>
 
       {/* Timestamp */}
       <span
