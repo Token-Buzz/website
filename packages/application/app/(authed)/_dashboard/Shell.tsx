@@ -15,6 +15,7 @@ import { HUM_OPEN_EVENT } from './humContext'
 import type { Dashboard } from '@monorepo-template/core/db/dashboards'
 import { swatchForId } from './commandSwatch'
 import { UpgradeModalProvider } from '@/app/_billing/UpgradeModalProvider'
+import { DunningBanner } from './DunningBanner'
 
 // ── Sidebar nav items ──────────────────────────────────────────────────────
 
@@ -850,6 +851,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+        <DunningBanner />
         <TopBar
           humOpen={humOpen}
           onAskHum={() => setHumOpen((v) => !v)}
