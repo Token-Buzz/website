@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/Token-Buzz/website/compare/v0.27.0...v0.28.0) (2026-05-28)
+
+
+### 🚀 Features
+
+* **application,core:** persist Analytics query snapshots (M8 P1) ([#235](https://github.com/Token-Buzz/website/issues/235)) ([ff60041](https://github.com/Token-Buzz/website/commit/ff6004158c9b5d791b4be88dba4f8e890c560cd1))
+
 ## [0.27.0](https://github.com/Token-Buzz/website/compare/v0.26.0...v0.27.0) (2026-05-28)
 
 
