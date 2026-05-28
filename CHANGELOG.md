@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.0](https://github.com/Token-Buzz/website/compare/v0.29.0...v0.30.0) (2026-05-28)
+
+
+### 🚀 Features
+
+* **application,core:** query History page + sidebar entry (M8 P2) ([#239](https://github.com/Token-Buzz/website/issues/239)) ([2ba4586](https://github.com/Token-Buzz/website/commit/2ba458696b17490974b89be6e32514dfc66ba885))
+
 ## [0.29.0](https://github.com/Token-Buzz/website/compare/v0.28.0...v0.29.0) (2026-05-28)
 
 
