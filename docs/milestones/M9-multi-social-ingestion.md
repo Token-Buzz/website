@@ -65,9 +65,9 @@ Paid rates for the closed APIs move around and several require sales contact, so
 | Reddit | ★★★★ | Official paid API | ~$0.24/1k calls | Phase 3 |
 | Discord | ★★★★ | Bot API, server-invited | Free + per-server onboarding | Phase 5 |
 | Farcaster | ★★★ | Open API (Neynar/Pinata free tier) | Free | Phase 2 (first integration) |
-| TikTok | ★★ | Research API academics-only | No general access | Deferred |
-| Instagram | ★ | Graph API doesn't expose search | – | Skipped |
-| Facebook | ½★ | Graph API doesn't expose groups | – | Skipped |
+| TikTok | ★★ | Research API academics-only | No general access | Won't implement (Phase 7 closed) |
+| Instagram | ★ | Graph API doesn't expose search | – | Won't implement (Phase 7 closed) |
+| Facebook | ½★ | Graph API doesn't expose groups | – | Won't implement (Phase 7 closed) |
 
 ## Schema additions
 
@@ -124,10 +124,50 @@ Reddit's official API ended self-service keys (Nov 2025) and gates commercial us
 - Analytics page shows `[All] [X 87] [Reddit 23] [Telegram 12]`. Each filter restricts the aggregate cards to that source.
 - Per-source quota counters surface in Account → Plan & Billing.
 
-### Phase 7 — TikTok / IG / FB
+### Phase 7 — TikTok / IG / FB — **WON'T IMPLEMENT (closed)**
 
-- TikTok deferred indefinitely until/unless the Research API opens up.
-- IG and FB skipped — low crypto signal, no good API path.
+Decided **2026-05**: TikTok, Instagram, and Facebook will **not** be implemented — not via a direct API and not via Apify. The phase is closed.
+
+- TikTok — no general API access (Research API is academics-only); low priority relative to crypto-native sources.
+- IG / FB — low crypto signal, and the Graph API exposes neither search nor groups.
+- These were briefly reconsidered as "Apify-only" sources during Phase 8 design (Apify has mature actors for all three), but the call is to **not** ship them: the added actor adapters, normalizers, and per-source tables aren't worth it for the weak crypto signal. Apify mode (Phase 8) therefore covers only the same sources as direct mode.
+
+### Phase 8 — Apify "all-in-one" BYOK ingestion mode
+
+A master alternative to per-source keys: instead of connecting a separate credential for every platform, a user supplies **one Apify API token** and TokenBuzz drives each source through Apify **Actors** (pre-built scrapers) using that single token. Pure BYOK — the user pays Apify directly (per compute unit / per result); no project quota or metering.
+
+**Why this fits M9 cleanly:** Phase 1 already mandates a per-source adapter behind a common interface. Apify is simply a **second implementation** of each source adapter (`ApifyXAdapter` alongside the direct `XAdapter`, etc.). The user's mode setting selects which implementation runs for a given source — no new ingestion abstraction is introduced.
+
+**Scope of sources:** parity with direct mode only — **X, Reddit, Farcaster, Telegram, Discord**. No TikTok/IG/FB (see Phase 7). Each source maps to a specific Apify actor (e.g. an X/tweet-scraper, a Reddit scraper, etc.) via a small registry; each actor has its own input schema and output shape, so each gets a thin **normalizer** mapping its dataset rows into the existing per-source table records → `Aggregates`.
+
+**Mode model — global default + per-source override:**
+- A per-user **ingestion mode** setting with a **global default** of `per-source` (existing behavior; nothing changes for current users) or `apify`.
+- **Per-source override:** a user can pin an individual source to the other mode (e.g. global `apify`, but keep X on the direct twitterapi.io key). Resolution is: per-source override if set, else the global default.
+- Stored in `UserData` (e.g. `SETTINGS#ingestion` holding `{ default, overrides: { <source>: 'per-source' | 'apify' } }`). The Apify token itself stores in the existing encrypted BYOK slot as `BYOK#apify` — same KMS-encrypted pattern as every other BYOK credential, validated on entry (e.g. an Apify `GET /v2/users/me` call with the token).
+
+**Sync vs async execution (the one real architectural difference):**
+- Direct APIs are synchronous (one request returns results). **Apify actor runs are asynchronous** — start a run, wait seconds-to-minutes, then fetch the dataset.
+- **Manual search:** use Apify's `run-sync-get-dataset-items` endpoint with a tight timeout cap; if a run exceeds the cap, return partial/queued rather than blocking the request.
+- **Automated monitoring:** async — the Phase 1 monitor poller starts an actor run and an **Apify webhook** calls back an ingest Lambda when the dataset is ready. (Async actually fits polling *better* than synchronous APIs.)
+
+**UI (extends the existing tabbed API Keys section):**
+- A segmented control at the top of the API Keys tab: **`[ Per-source keys ] [ Apify ]`**.
+  - **Per-source keys** → the existing registry-driven tabbed section (X / Reddit / …), unchanged.
+  - **Apify** → a single Apify-token entry/status panel, plus a checklist of the sources Apify will cover, each with a small per-source mode toggle (the override).
+- The segmented control sets the **global default**; the per-source toggles set overrides.
+
+**Cost awareness:** Apify runs can be expensive and it's the user's own account, so surface a short cost-model note in the Apify panel (links to Apify pricing). No project-side metering — the user's Apify plan is the limit.
+
+**Tasks (rough):**
+- `providers.ts`: add `apify` to the BYOK provider registry; `providerMeta.ts`: Apify token field + setup instructions.
+- Ingestion-mode setting: `UserData` key builder + read/write helpers + dynalite integration test for the round-trip.
+- Mode resolver: given (user, source) → `'per-source' | 'apify'`, honoring override-then-default. Pure logic → unit-tested.
+- Apify client: token validation, `run-sync-get-dataset-items` for manual, async run + webhook for monitoring.
+- Per-source actor registry + normalizers (one per source: X, Reddit, Farcaster, Telegram, Discord), each with the actor id, input mapping, and dataset→record mapping. Normalizers are pure → unit-tested.
+- Wire the resolver into `/api/query` dispatch and the Phase 1 monitor poller so each source picks its adapter implementation by resolved mode.
+- UI: segmented mode control + Apify panel + per-source override toggles; real browser UI test of the switch.
+
+**Dependencies:** Phase 1 (the source-agnostic adapter interface this plugs a second implementation into) and the M10 BYOK encryption/storage pattern (this reuses it wholesale).
 
 ## Dependencies
 
