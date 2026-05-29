@@ -13,6 +13,32 @@ export const USER_AGENT = 'web:tokenbuzz:v1.0 (by /u/tokenbuzz)'
 // tests can set it to [0, 0] to skip actual waits without fake timers.
 export let RETRY_DELAYS_MS = [500, 1500]
 
+// Maximum wait (ms) for any single sleep — caps Retry-After and proactive
+// throttle sleeps so a hostile/huge header value can't hang a Lambda.
+export let MAX_BACKOFF_MS = 60_000
+
+// If X-Ratelimit-Remaining drops to this value or below after a successful
+// response, we sleep until the window resets before issuing the next page.
+export let RATE_LIMIT_THROTTLE_THRESHOLD = 2
+
+// ── Sleep seam ───────────────────────────────────────────────────────────────
+// All waits in this module go through `sleep()` which delegates to
+// `__sleepImpl`. Tests override `__sleepImpl` (or swap it via `__setSleep`)
+// to a vi.fn() that resolves immediately so no real time is spent waiting.
+export let __sleepImpl: (ms: number) => Promise<void> = (ms) =>
+  new Promise<void>((r) => setTimeout(r, ms))
+
+async function sleep(ms: number): Promise<void> {
+  return __sleepImpl(ms)
+}
+
+/** Replace the sleep implementation (for tests). Returns the previous impl. */
+export function __setSleep(fn: (ms: number) => Promise<void>): (ms: number) => Promise<void> {
+  const prev = __sleepImpl
+  __sleepImpl = fn
+  return prev
+}
+
 export class RedditApiError extends Error {
   constructor(message: string, public readonly status: number) {
     super(message)
@@ -121,9 +147,18 @@ type RedditListingResponse = {
  * Searches Reddit posts via the official API.
  * Paginates up to `maxPages` (default 3) using the listing `after` cursor.
  *
- * 4xx → throws RedditApiError immediately (no retry).
- * 5xx / network error → retries with RETRY_DELAYS_MS backoff, then throws.
+ * 4xx (non-429, non-401) → throws RedditApiError immediately (no retry).
  * 401 → clears token cache and retries the request once before counting as failure.
+ * 429 (Too Many Requests) → backs off and retries within the same RETRY_DELAYS_MS
+ *   budget. Wait = Retry-After header × 1000 ms (if present and parseable), else
+ *   RETRY_DELAYS_MS[attempt]. Capped at MAX_BACKOFF_MS. Throws RedditApiError(429)
+ *   if the retry budget is exhausted.
+ * 5xx / network error → retries with RETRY_DELAYS_MS backoff, then throws.
+ *
+ * Proactive self-throttle: after each successful paginated response, reads
+ * X-Ratelimit-Remaining and X-Ratelimit-Reset. If Remaining ≤
+ * RATE_LIMIT_THROTTLE_THRESHOLD, sleeps min(Reset × 1000, MAX_BACKOFF_MS) before
+ * fetching the next page (skipped on the last page). Logs a single console.warn.
  *
  * Returns posts collected and requestCount (number of search HTTP requests made,
  * not counting the token request — for per-call metering).
@@ -168,7 +203,7 @@ export async function searchPosts(
         // Network-level failure (DNS, TCP, etc.)
         requestCount++
         if (attempt < RETRY_DELAYS_MS.length) {
-          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]))
+          await sleep(RETRY_DELAYS_MS[attempt])
           continue
         }
         throw networkErr
@@ -188,6 +223,24 @@ export async function searchPosts(
         continue
       }
 
+      // 429 → rate-limited; back off and retry within the attempt budget
+      if (response.status === 429) {
+        if (attempt < RETRY_DELAYS_MS.length) {
+          const retryAfterHeader = response.headers.get('Retry-After')
+          const retryAfterSec = retryAfterHeader !== null ? parseFloat(retryAfterHeader) : NaN
+          const waitMs = !isNaN(retryAfterSec)
+            ? Math.min(retryAfterSec * 1000, MAX_BACKOFF_MS)
+            : Math.min(RETRY_DELAYS_MS[attempt], MAX_BACKOFF_MS)
+          await sleep(waitMs)
+          continue
+        }
+        // Retry budget exhausted for 429
+        throw new RedditApiError(
+          `Reddit API error: ${response.status} ${response.statusText}`,
+          response.status,
+        )
+      }
+
       // Other 4xx → permanent failure, throw immediately (no retry)
       if (response.status >= 400 && response.status < 500) {
         throw new RedditApiError(
@@ -198,7 +251,7 @@ export async function searchPosts(
 
       // 5xx → transient; retry if budget remains
       if (attempt < RETRY_DELAYS_MS.length) {
-        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]))
+        await sleep(RETRY_DELAYS_MS[attempt])
         continue
       }
 
@@ -217,6 +270,12 @@ export async function searchPosts(
       )
     }
 
+    // Proactive self-throttle: if the rate-limit window is nearly exhausted,
+    // sleep before the next page to avoid a 429 on the very next request.
+    const remainingHeader = response!.headers.get('X-Ratelimit-Remaining')
+    const resetHeader = response!.headers.get('X-Ratelimit-Reset')
+    const remaining = remainingHeader !== null ? parseFloat(remainingHeader) : NaN
+
     const data = (await response!.json()) as RedditListingResponse
     const posts = data.data.children
       .filter((child) => child.kind === 't3')
@@ -230,6 +289,18 @@ export async function searchPosts(
     }
 
     after = data.data.after
+
+    // Only throttle if there are more pages to fetch
+    if (!isNaN(remaining) && remaining <= RATE_LIMIT_THROTTLE_THRESHOLD) {
+      const resetSec = resetHeader !== null ? parseFloat(resetHeader) : NaN
+      const throttleMs = !isNaN(resetSec)
+        ? Math.min(resetSec * 1000, MAX_BACKOFF_MS)
+        : Math.min(1000, MAX_BACKOFF_MS)
+      console.warn(
+        `[reddit] Rate limit window nearly exhausted (remaining=${remaining}); sleeping ${throttleMs}ms before next page`,
+      )
+      await sleep(throttleMs)
+    }
   }
 
   return { posts: allPosts, requestCount }

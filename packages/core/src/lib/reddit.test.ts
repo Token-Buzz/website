@@ -3,8 +3,11 @@ import {
   RedditApiError,
   RedditQuotaError,
   RETRY_DELAYS_MS,
+  MAX_BACKOFF_MS,
+  RATE_LIMIT_THROTTLE_THRESHOLD,
   postToRawTweet,
   __resetTokenCache,
+  __setSleep,
   type RedditPost,
 } from './reddit'
 
@@ -187,7 +190,21 @@ function makeTokenResponse(): Response {
   )
 }
 
+/** Build a response carrying Reddit rate-limit headers. */
+function makeResponseWithHeaders(
+  status: number,
+  body: string,
+  headers: Record<string, string> = {},
+): Response {
+  return new Response(body, {
+    status,
+    headers: { 'Content-Type': 'application/json', ...headers },
+  })
+}
+
 describe('searchPosts', () => {
+  let restoreSleep: ((ms: number) => Promise<void>) | undefined
+
   beforeEach(() => {
     // Set env credentials
     process.env.REDDIT_CLIENT_ID = 'test-client-id'
@@ -197,10 +214,16 @@ describe('searchPosts', () => {
     // Zero out delays
     RETRY_DELAYS_MS.splice(0, RETRY_DELAYS_MS.length, 0, 0)
     vi.stubGlobal('fetch', vi.fn())
+    restoreSleep = undefined
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    // Restore sleep seam if it was replaced in this test
+    if (restoreSleep !== undefined) {
+      __setSleep(restoreSleep)
+      restoreSleep = undefined
+    }
     delete process.env.REDDIT_CLIENT_ID
     delete process.env.REDDIT_CLIENT_SECRET
   })
@@ -335,5 +358,160 @@ describe('searchPosts', () => {
     const { requestCount } = await mod.searchPosts('solana', { maxPages: 1 })
 
     expect(requestCount).toBe(1)
+  })
+
+  // ── 429 rate-limit handling ──────────────────────────────────────────────────
+
+  test('(a) 429 with Retry-After retries then succeeds; sleeps for Retry-After ms', async () => {
+    const mockFetch = vi.mocked(global.fetch)
+    const sleepFn = vi.fn().mockResolvedValue(undefined)
+    restoreSleep = __setSleep(sleepFn)
+
+    mockFetch
+      .mockResolvedValueOnce(makeTokenResponse())
+      .mockResolvedValueOnce(
+        makeResponseWithHeaders(429, '', { 'Retry-After': '1' }),
+      )
+      .mockResolvedValueOnce(makeResponse(200, makeListingBody([{ id: 'post1' }])))
+
+    const mod = await import('./reddit')
+    const { posts, requestCount } = await mod.searchPosts('solana', { maxPages: 1 })
+
+    expect(posts).toHaveLength(1)
+    expect(requestCount).toBe(2) // 1 x 429 + 1 x 200
+    // Slept for Retry-After: 1 s → 1000 ms (not capped)
+    expect(sleepFn).toHaveBeenCalledWith(1000)
+  })
+
+  test('(b) 429 without Retry-After falls back to RETRY_DELAYS_MS backoff and retries', async () => {
+    const mockFetch = vi.mocked(global.fetch)
+    const sleepFn = vi.fn().mockResolvedValue(undefined)
+    restoreSleep = __setSleep(sleepFn)
+
+    // RETRY_DELAYS_MS is already [0, 0] from beforeEach
+    mockFetch
+      .mockResolvedValueOnce(makeTokenResponse())
+      .mockResolvedValueOnce(makeResponseWithHeaders(429, ''))
+      .mockResolvedValueOnce(makeResponse(200, makeListingBody([{ id: 'post2' }])))
+
+    const mod = await import('./reddit')
+    const { posts, requestCount } = await mod.searchPosts('solana', { maxPages: 1 })
+
+    expect(posts).toHaveLength(1)
+    expect(requestCount).toBe(2) // 1 x 429 + 1 x 200
+    // No Retry-After → fell back to RETRY_DELAYS_MS[0] = 0 ms
+    expect(sleepFn).toHaveBeenCalledWith(0)
+  })
+
+  test('(c) persistent 429 beyond retry budget throws RedditApiError with status 429', async () => {
+    const mockFetch = vi.mocked(global.fetch)
+    const sleepFn = vi.fn().mockResolvedValue(undefined)
+    restoreSleep = __setSleep(sleepFn)
+
+    mockFetch
+      .mockResolvedValueOnce(makeTokenResponse())
+      .mockResolvedValue(makeResponseWithHeaders(429, 'Too Many Requests'))
+
+    const mod = await import('./reddit')
+
+    let caughtError: unknown
+    try {
+      await mod.searchPosts('solana')
+    } catch (e) {
+      caughtError = e
+    }
+
+    expect(caughtError).toBeInstanceOf(mod.RedditApiError)
+    expect((caughtError as InstanceType<typeof mod.RedditApiError>).status).toBe(429)
+    // 1 initial attempt + RETRY_DELAYS_MS.length retries = 3 search requests (RETRY_DELAYS_MS = [0, 0])
+    // token + 3 search = 4 total fetch calls
+    expect(mockFetch).toHaveBeenCalledTimes(4)
+  })
+
+  test('(d) Retry-After larger than MAX_BACKOFF_MS is clamped to MAX_BACKOFF_MS', async () => {
+    const mockFetch = vi.mocked(global.fetch)
+    const sleepFn = vi.fn().mockResolvedValue(undefined)
+    restoreSleep = __setSleep(sleepFn)
+
+    // Retry-After of 999 seconds >> MAX_BACKOFF_MS (60 s = 60_000 ms)
+    mockFetch
+      .mockResolvedValueOnce(makeTokenResponse())
+      .mockResolvedValueOnce(
+        makeResponseWithHeaders(429, '', { 'Retry-After': '999' }),
+      )
+      .mockResolvedValueOnce(makeResponse(200, makeListingBody([])))
+
+    const mod = await import('./reddit')
+    await mod.searchPosts('solana', { maxPages: 1 })
+
+    // 999 000 ms clamped to MAX_BACKOFF_MS
+    expect(sleepFn).toHaveBeenCalledWith(MAX_BACKOFF_MS)
+    expect(sleepFn).not.toHaveBeenCalledWith(999_000)
+  })
+
+  // ── Proactive self-throttle ──────────────────────────────────────────────────
+
+  test('(e) throttle sleep fires when X-Ratelimit-Remaining <= threshold between pages', async () => {
+    const mockFetch = vi.mocked(global.fetch)
+    const sleepFn = vi.fn().mockResolvedValue(undefined)
+    restoreSleep = __setSleep(sleepFn)
+
+    // Page 1: remaining=1 (≤ RATE_LIMIT_THROTTLE_THRESHOLD=2), reset=2 s, has after cursor
+    // Page 2: ok, no cursor
+    mockFetch
+      .mockResolvedValueOnce(makeTokenResponse())
+      .mockResolvedValueOnce(
+        makeResponseWithHeaders(
+          200,
+          makeListingBody([{ id: 'p1' }], 't3_p1'),
+          { 'X-Ratelimit-Remaining': '1', 'X-Ratelimit-Reset': '2' },
+        ),
+      )
+      .mockResolvedValueOnce(
+        makeResponseWithHeaders(
+          200,
+          makeListingBody([{ id: 'p2' }], null),
+          { 'X-Ratelimit-Remaining': '0', 'X-Ratelimit-Reset': '1' },
+        ),
+      )
+
+    const mod = await import('./reddit')
+    const { posts } = await mod.searchPosts('solana', { maxPages: 3 })
+
+    expect(posts).toHaveLength(2)
+    // Throttle sleep: min(2 × 1000, MAX_BACKOFF_MS) = 2000 ms
+    expect(sleepFn).toHaveBeenCalledWith(2000)
+  })
+
+  test('(f) no throttle sleep when X-Ratelimit-Remaining is above threshold', async () => {
+    const mockFetch = vi.mocked(global.fetch)
+    const sleepFn = vi.fn().mockResolvedValue(undefined)
+    restoreSleep = __setSleep(sleepFn)
+
+    // Page 1: remaining=50 (well above threshold=2), has after cursor
+    // Page 2: ok, no cursor
+    mockFetch
+      .mockResolvedValueOnce(makeTokenResponse())
+      .mockResolvedValueOnce(
+        makeResponseWithHeaders(
+          200,
+          makeListingBody([{ id: 'p1' }], 't3_p1'),
+          { 'X-Ratelimit-Remaining': '50', 'X-Ratelimit-Reset': '5' },
+        ),
+      )
+      .mockResolvedValueOnce(
+        makeResponseWithHeaders(
+          200,
+          makeListingBody([{ id: 'p2' }], null),
+          { 'X-Ratelimit-Remaining': '49', 'X-Ratelimit-Reset': '5' },
+        ),
+      )
+
+    const mod = await import('./reddit')
+    const { posts } = await mod.searchPosts('solana', { maxPages: 3 })
+
+    expect(posts).toHaveLength(2)
+    // No throttle sleep should have been called
+    expect(sleepFn).not.toHaveBeenCalled()
   })
 })
