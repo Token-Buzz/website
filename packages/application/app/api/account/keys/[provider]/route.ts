@@ -10,6 +10,7 @@ import {
   validateRedditCredential,
   encodeRedditCredential,
 } from "@monorepo-template/core/lib/reddit";
+import { validateKey as validateTelegramCredential } from "@monorepo-template/core/lib/telegram";
 import { isEnabledProvider, getProvider } from "@monorepo-template/core/providers";
 
 // ── Shared response shape ──────────────────────────────────────────────────────
@@ -92,6 +93,45 @@ async function validateAndEncodeKey(
         apiKey: encodeRedditCredential(trimmedId, trimmedSecret),
         last4,
       };
+    }
+
+    case "telegram": {
+      const apiId = body.apiId;
+      const apiHash = body.apiHash;
+      const session = body.session;
+      const apiIdNum =
+        typeof apiId === "number"
+          ? apiId
+          : typeof apiId === "string"
+            ? Number(apiId.trim())
+            : NaN;
+      if (
+        !Number.isInteger(apiIdNum) ||
+        apiIdNum <= 0 ||
+        typeof apiHash !== "string" ||
+        apiHash.trim().length === 0 ||
+        typeof session !== "string" ||
+        session.trim().length === 0
+      ) {
+        return {
+          ok: false,
+          error: "apiId (number), apiHash and session are required",
+        };
+      }
+      const credential = JSON.stringify({
+        apiId: apiIdNum,
+        apiHash: apiHash.trim(),
+        session: session.trim(),
+      });
+      const { ok, last4 } = await validateTelegramCredential(credential);
+      if (!ok) {
+        return {
+          ok: false,
+          error:
+            "Those Telegram credentials were rejected. Check your API ID, API hash, and session string and try again.",
+        };
+      }
+      return { ok: true, apiKey: credential, last4 };
     }
 
     default:

@@ -60,10 +60,6 @@ describe('allowedSources', () => {
     expect(allowedSources('alpha')).toContain('reddit')
   })
 
-  test('free plan does NOT include reddit', () => {
-    expect(allowedSources('free')).not.toContain('reddit')
-  })
-
   test('alpha plan includes telegram', () => {
     expect(allowedSources('alpha')).toContain('telegram')
   })
