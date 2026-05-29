@@ -172,3 +172,16 @@ new sst.aws.Cron("DailyRollup", {
     memory: "256 MB",
   },
 });
+
+// M8 Phase 6 — Saved-query retention sweep — daily at 00:30 UTC.
+// Deletes SavedQuery rows whose stored `ttl` is in the past (native DynamoDB
+// TTL is also enabled on UserData; this gives deterministic ~daily cleanup).
+new sst.aws.Cron("SavedQueryRetention", {
+  schedule: "cron(30 0 * * ? *)",
+  function: {
+    handler: "packages/jobs/src/saved-query-retention.handler",
+    link: allTables,
+    timeout: "300 seconds",
+    memory: "256 MB",
+  },
+});

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { PutCommand, GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
+import { PutCommand, GetCommand, QueryCommand, ScanCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from './client'
 import { savedQueryKey } from './keys'
 
@@ -94,4 +94,70 @@ export async function getSavedQuery(
     }),
   )
   return (Item as SavedQuery) ?? null
+}
+
+/**
+ * Delete all SavedQuery rows whose stored `ttl` is <= `now` (epoch seconds).
+ *
+ * Deletion is based on the TTL value that was baked into each row at write
+ * time — NOT on the user's current plan. This is deliberate: a user who
+ * downgrades should not have historical rows retroactively removed on a
+ * subsequent sweep; only rows that were already past their stored expiry are
+ * collected.
+ *
+ * Alpha-tier rows (written without a `ttl` attribute) are never touched
+ * because the FilterExpression requires `attribute_exists(#ttl)`.
+ */
+export async function sweepExpiredSavedQueries(
+  opts: { now?: number } = {},
+): Promise<{ deleted: number }> {
+  const now = opts.now ?? Math.floor(Date.now() / 1000)
+
+  // Collect all expired QUERY# rows across all users via a full-table scan.
+  const expiredKeys: Array<{ pk: string; sk: string }> = []
+  let lastKey: Record<string, unknown> | undefined
+
+  do {
+    const { Items = [], LastEvaluatedKey } = await ddb.send(
+      new ScanCommand({
+        TableName: TableNames.userData,
+        FilterExpression: 'begins_with(sk, :q) AND attribute_exists(#ttl) AND #ttl <= :now',
+        ExpressionAttributeNames: { '#ttl': 'ttl' },
+        ExpressionAttributeValues: { ':q': 'QUERY#', ':now': now },
+        ProjectionExpression: 'pk, sk',
+        ExclusiveStartKey: lastKey as Record<string, import('@aws-sdk/client-dynamodb').AttributeValue> | undefined,
+      }),
+    )
+    for (const item of Items) {
+      expiredKeys.push({ pk: item.pk as string, sk: item.sk as string })
+    }
+    lastKey = LastEvaluatedKey as Record<string, unknown> | undefined
+  } while (lastKey !== undefined)
+
+  if (expiredKeys.length === 0) {
+    return { deleted: 0 }
+  }
+
+  // Delete in chunks of 25 (DynamoDB BatchWrite limit).
+  const CHUNK_SIZE = 25
+  const MAX_RETRIES = 5
+  let deleted = 0
+
+  for (let i = 0; i < expiredKeys.length; i += CHUNK_SIZE) {
+    const chunk = expiredKeys.slice(i, i + CHUNK_SIZE)
+    let unprocessed = chunk.map((key) => ({ DeleteRequest: { Key: key } }))
+
+    for (let attempt = 0; attempt < MAX_RETRIES && unprocessed.length > 0; attempt++) {
+      const { UnprocessedItems = {} } = await ddb.send(
+        new BatchWriteCommand({
+          RequestItems: { [TableNames.userData]: unprocessed },
+        }),
+      )
+      const remaining = UnprocessedItems[TableNames.userData] ?? []
+      deleted += unprocessed.length - remaining.length
+      unprocessed = remaining as typeof unprocessed
+    }
+  }
+
+  return { deleted }
 }
