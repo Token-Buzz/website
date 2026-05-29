@@ -90,6 +90,25 @@ const META: Record<ProviderId, ProviderMeta> = {
     docUrl2: 'https://gram.js.org/',
     docLabel2: 'GramJS (session strings)',
   },
+  discord: {
+    id: 'discord',
+    label: 'Discord',
+    fields: [
+      { name: 'token', label: 'Bot token', placeholder: 'Your Discord bot token', secret: true },
+    ],
+    instructions: [
+      'Go to https://discord.com/developers/applications and create a New Application',
+      'Open the "Bot" tab, add a bot, and click "Reset Token" to reveal it',
+      'Enable the "Message Content Intent" toggle on the Bot tab (required to read message text)',
+      'Invite the bot to the servers you want to monitor (OAuth2 → URL Generator → scope "bot", permissions: View Channels + Read Message History)',
+      'Paste the bot token below and click "Validate & save"',
+      'Your token is stored encrypted and never shared',
+    ],
+    docUrl: 'https://discord.com/developers/docs/intro',
+    docLabel: 'Discord Developer Portal',
+    docUrl2: 'https://discord.com/developers/docs/topics/oauth2#bot-authorization-flow',
+    docLabel2: 'Discord bot setup',
+  },
 }
 
 /**

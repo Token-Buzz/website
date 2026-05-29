@@ -1,5 +1,6 @@
 import { TwitterApiError } from "@monorepo-template/core/lib/twitter";
 import { TelegramApiError } from "@monorepo-template/core/lib/telegram";
+import { DiscordApiError } from "@monorepo-template/core/lib/discord";
 import { markByokKeyInvalid } from "@monorepo-template/core/db/byok";
 
 /**
@@ -94,7 +95,7 @@ export async function handleKeyError(
   provider: string,
 ): Promise<boolean> {
   if (
-    (err instanceof TwitterApiError || err instanceof TelegramApiError) &&
+    (err instanceof TwitterApiError || err instanceof TelegramApiError || err instanceof DiscordApiError) &&
     (err.status === 401 || err.status === 403)
   ) {
     try {

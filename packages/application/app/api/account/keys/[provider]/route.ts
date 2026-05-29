@@ -11,6 +11,7 @@ import {
   encodeRedditCredential,
 } from "@monorepo-template/core/lib/reddit";
 import { validateKey as validateTelegramCredential } from "@monorepo-template/core/lib/telegram";
+import { validateToken as validateDiscordToken } from "@monorepo-template/core/lib/discord";
 import { isEnabledProvider, getProvider } from "@monorepo-template/core/providers";
 
 // ── Shared response shape ──────────────────────────────────────────────────────
@@ -132,6 +133,22 @@ async function validateAndEncodeKey(
         };
       }
       return { ok: true, apiKey: credential, last4 };
+    }
+
+    case "discord": {
+      const token = body.token;
+      if (typeof token !== "string" || token.trim().length === 0) {
+        return { ok: false, error: "token (string) is required" };
+      }
+      const trimmed = token.trim();
+      const { ok, last4 } = await validateDiscordToken(trimmed);
+      if (!ok) {
+        return {
+          ok: false,
+          error: "That Discord bot token was rejected. Double-check it and try again.",
+        };
+      }
+      return { ok: true, apiKey: trimmed, last4 };
     }
 
     default:

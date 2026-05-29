@@ -26,8 +26,8 @@ describe('getAdapter', () => {
 })
 
 describe('listImplementedSources', () => {
-  test('returns ["twitter", "farcaster", "reddit", "telegram"] — all implemented as of Phase 4', () => {
-    expect(listImplementedSources()).toEqual(['twitter', 'farcaster', 'reddit', 'telegram'])
+  test('returns ["twitter", "farcaster", "reddit", "telegram", "discord"] — all implemented as of Phase 5', () => {
+    expect(listImplementedSources()).toEqual(['twitter', 'farcaster', 'reddit', 'telegram', 'discord'])
   })
 })
 
@@ -70,6 +70,18 @@ describe('allowedSources', () => {
 
   test('pro plan does NOT include telegram', () => {
     expect(allowedSources('pro')).not.toContain('telegram')
+  })
+
+  test('free plan includes discord', () => {
+    expect(allowedSources('free')).toContain('discord')
+  })
+
+  test('pro plan includes discord', () => {
+    expect(allowedSources('pro')).toContain('discord')
+  })
+
+  test('alpha plan includes discord', () => {
+    expect(allowedSources('alpha')).toContain('discord')
   })
 })
 
@@ -206,6 +218,42 @@ describe('reddit adapter metadata', () => {
 
   test('byokProvider is "reddit"', () => {
     expect(adapter.byokProvider).toBe('reddit')
+  })
+
+  test('search is a function', () => {
+    expect(typeof adapter.search).toBe('function')
+  })
+
+  test('since is a function', () => {
+    expect(typeof adapter.since).toBe('function')
+  })
+})
+
+describe('discord adapter metadata', () => {
+  const adapter = SOURCE_ADAPTERS.discord!
+
+  test('id is "discord"', () => {
+    expect(adapter.id).toBe('discord')
+  })
+
+  test('displayName is "Discord"', () => {
+    expect(adapter.displayName).toBe('Discord')
+  })
+
+  test('minPlan is "free"', () => {
+    expect(adapter.minPlan).toBe('free')
+  })
+
+  test('pollIntervalMs is 15 minutes (900000)', () => {
+    expect(adapter.pollIntervalMs).toBe(15 * 60 * 1000)
+  })
+
+  test('implemented is true', () => {
+    expect(adapter.implemented).toBe(true)
+  })
+
+  test('byokProvider is "discord"', () => {
+    expect(adapter.byokProvider).toBe('discord')
   })
 
   test('search is a function', () => {

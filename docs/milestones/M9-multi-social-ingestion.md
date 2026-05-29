@@ -20,6 +20,7 @@ Expands ingestion beyond X/Twitter to crypto-native social platforms. Reorders t
   - Free: X (BYOK — user's twitterapi.io key) + Farcaster (free + free) + **Reddit (BYOK — user's own Reddit app credentials)**
   - Alpha: + Telegram + Discord (operationally heavy — premium tier)
 - **Reddit pivoted to BYOK (Nov 2025).** Reddit ended self-service API keys and gates commercial use behind manual approval (Responsible Builder Policy), so the project can't hold one shared paid credential. Reddit is now a **per-user BYOK provider** (exactly like the X/twitterapi.io key): each user supplies their own Reddit app `client_id` + `client_secret`, uses their own quota, and bears their own cost. This removes the original Pro-gate + project-side metering rationale — Reddit is **Free-tier** like the other BYOK sources, with **no project quota/`USAGE#…#reddit` counter**. The in-client rate-limit throttle (Retry-After/`X-Ratelimit`) stays.
+- **Milestone pivoted: all new sources are BYOK and tier-independent.** The earlier Alpha-gating for Telegram and Discord is superseded. As implemented, Reddit (Phase 3), Telegram (Phase 4), and Discord (Phase 5) are all per-user BYOK providers available on the Free tier — each user bears their own cost via their own credentials, so there is no project quota or tier gate. The tiering bullet above reflects the original design intent and is preserved for historical context.
 
 ## Ingestion modes — manual + automated (mirrors X/Twitter)
 
@@ -127,6 +128,15 @@ Reddit's official API ended self-service keys (Nov 2025) and gates commercial us
 - Indexes messages matching queries with admin consent.
 - Gate to Alpha.
 - Operational onboarding: each server is a manual invite.
+
+**Status: Implemented.**
+
+- **Pivoted to per-user BYOK** (NOT a project-owned verified bot), consistent with Reddit (Phase 3) and Telegram (Phase 4). Each user supplies their own **Discord bot token** (a single secret string) in Account → API Keys. Stored AWS-KMS-encrypted in the `UserData` table exactly like the other BYOK keys (M10 BYOK). Provider id is `discord`; credentials are resolved per-user at request time by the `/api/query` route and by the `TweetPoller` cron via `byokProvider: 'discord'`.
+- **Available on every pricing tier** — `minPlan: 'free'`. The original "Gate to Alpha" is superseded; the whole milestone pivoted to BYOK, so each user runs on their own bot's quota and rate limits. There is no project quota or metering for Discord.
+- **How search works:** Discord bots cannot do a global message search, so the adapter iterates the channels the user's bot can see — lists the bot's guilds (`GET /users/@me/guilds`), then each guild's text/announcement channels, then recent messages per channel (`GET /channels/{id}/messages`), filtering client-side for the query (case-insensitive substring). Per-channel bounded retry with skip-on-failure: a 403/permission error on one channel or guild is skipped rather than aborting the whole run, mirroring the Telegram FLOOD_WAIT resilience pattern.
+- **Two ingestion paths** (same as the others): manual live search via `/api/query`, and automated monitoring via the Phase 1 monitor on a coarse default interval (`pollIntervalMs = 15 min`, bounded by Discord rate limits, not by dollar cost).
+- Reuses the existing `Tweets` table via `putTweet` with `source: 'discord'` — there is **no** new per-source table. This is consistent with how Reddit, Telegram, and Farcaster actually shipped (the "Schema additions" per-source-tables section above was never built).
+- The Account → API Keys UI gains a registry-driven **Discord** tab (single "Bot token" field) — no component change required, just a new `providerMeta` entry in the provider registry.
 
 ### Phase 6 — UI: source filter chips + per-source quotas
 
