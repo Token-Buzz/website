@@ -8,6 +8,7 @@ export const contactToAddress = new sst.Secret("CONTACT_TO_ADDRESS");
 export const contactFromAddress = new sst.Secret("CONTACT_FROM_ADDRESS");
 export const opencageApiKey = new sst.Secret("OPENCAGE_API_KEY");
 export const changelogGithubToken = new sst.Secret("CHANGELOG_GITHUB_TOKEN");
+export const neynarApiKey = new sst.Secret("NEYNAR_API_KEY");
 export const stripeSecretKey = new sst.Secret("STRIPE_SECRET_KEY");
 export const stripePublishableKey = new sst.Secret("STRIPE_PUBLISHABLE_KEY");
 export const stripeWebhookSecret = new sst.Secret("STRIPE_WEBHOOK_SECRET");

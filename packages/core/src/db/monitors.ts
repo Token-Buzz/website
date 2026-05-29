@@ -1,6 +1,6 @@
 import { DeleteCommand, GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from './client'
-import { monitorKey, monitorSkPrefix } from './keys'
+import { monitorKey, monitorSkPrefix, monitorGsi, MONITOR_GSI_PK } from './keys'
 import { isSocialSource, type SocialSource } from '../sources/types'
 
 export interface Monitor {
@@ -29,6 +29,7 @@ export async function putMonitor(monitor: Monitor): Promise<void> {
       TableName: TableNames.userData,
       Item: {
         ...monitorKey(normalized.userId, normalized.query),
+        ...monitorGsi(normalized.userId, normalized.query),
         ...normalized,
       },
     }),
@@ -90,4 +91,43 @@ export async function deleteMonitor(userId: string, query: string): Promise<void
       Key: monitorKey(userId, query),
     }),
   )
+}
+
+/**
+ * Enumerate ALL monitors across all users via the ByokHolders GSI
+ * (gsi1pk = MONITOR_GSI_PK). Paginates until exhausted so large result sets
+ * are never truncated.
+ */
+export async function listAllMonitors(): Promise<Monitor[]> {
+  const results: Monitor[] = []
+  let lastKey: Record<string, unknown> | undefined
+
+  do {
+    const { Items = [], LastEvaluatedKey } = await ddb.send(
+      new QueryCommand({
+        TableName: TableNames.userData,
+        IndexName: 'ByokHolders',
+        KeyConditionExpression: 'gsi1pk = :pk',
+        ExpressionAttributeValues: {
+          ':pk': MONITOR_GSI_PK,
+        },
+        ...(lastKey ? { ExclusiveStartKey: lastKey } : {}),
+      }),
+    )
+
+    for (const item of Items) {
+      results.push({
+        userId: item.userId as string,
+        query: item.query as string,
+        sources: (item.sources as SocialSource[] | undefined) ?? [],
+        intervalMs: (item.intervalMs as number | undefined) ?? 0,
+        createdAt: item.createdAt as string,
+        updatedAt: item.updatedAt as string,
+      })
+    }
+
+    lastKey = LastEvaluatedKey as Record<string, unknown> | undefined
+  } while (lastKey)
+
+  return results
 }

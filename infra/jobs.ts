@@ -1,5 +1,5 @@
 import { tweetsTable, aggregatesTable, tokensTable, userDataTable } from "./db";
-import { clerkSecretKey, resendApiKey, contactFromAddress, webDomain } from "./secrets";
+import { clerkSecretKey, resendApiKey, contactFromAddress, webDomain, neynarApiKey } from "./secrets";
 import { byokKmsKey } from "./byok";
 
 
@@ -27,6 +27,7 @@ if (isProd) {
         RESEND_API_KEY: resendApiKey.value,
         CONTACT_FROM_ADDRESS: contactFromAddress.value,
         WEB_DOMAIN: webDomain.value,
+        NEYNAR_API_KEY: neynarApiKey.value,
       },
       link: allTables,
       timeout: "90 seconds",

@@ -13,7 +13,7 @@ export interface SourceMeta {
 // Mirrors the M9 tier plan: Free = X + Farcaster, Pro = + Reddit, Alpha = + Telegram + Discord.
 export const SOURCE_META: SourceMeta[] = [
   { id: "twitter",   displayName: "X",         minPlan: "free",  implemented: true  },
-  { id: "farcaster", displayName: "Farcaster", minPlan: "free",  implemented: false },
+  { id: "farcaster", displayName: "Farcaster", minPlan: "free",  implemented: true  },
   { id: "reddit",    displayName: "Reddit",    minPlan: "pro",   implemented: false },
   { id: "telegram",  displayName: "Telegram",  minPlan: "alpha", implemented: false },
   { id: "discord",   displayName: "Discord",   minPlan: "alpha", implemented: false },

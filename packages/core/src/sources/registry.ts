@@ -1,10 +1,12 @@
 import { type SocialSource, type SourceAdapter, ALL_SOURCES } from './types'
 import { twitterAdapter } from './twitter-adapter'
+import { farcasterAdapter } from './farcaster-adapter'
 import { type Plan, planMeets } from '../billing/tiers'
 
-// Only twitter is implemented in Phase 1; later phases register more adapters here.
+// Phase 1: twitter. Phase 2: farcaster. Later phases register more adapters here.
 export const SOURCE_ADAPTERS: Partial<Record<SocialSource, SourceAdapter>> = {
   twitter: twitterAdapter,
+  farcaster: farcasterAdapter,
 }
 
 export function getAdapter(id: string): SourceAdapter | undefined {

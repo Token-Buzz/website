@@ -124,7 +124,9 @@ Secrets are declared in `infra/secrets.ts` as `sst.Secret` and seeded via the SS
 `CLOUDFLARE_API_TOKEN` is the exception: it is read as `process.env` in `app()` (before secrets load) and must be set as a Console **environment variable**, not a secret, in both environments.
 
 Secrets to configure in Console (same names for both environments, different values):
-`WEB_DOMAIN`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `RESEND_API_KEY`, `CONTACT_TO_ADDRESS`, `CONTACT_FROM_ADDRESS`, `CHANGELOG_GITHUB_TOKEN`
+`WEB_DOMAIN`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `RESEND_API_KEY`, `CONTACT_TO_ADDRESS`, `CONTACT_FROM_ADDRESS`, `CHANGELOG_GITHUB_TOKEN`, `NEYNAR_API_KEY`
+
+`NEYNAR_API_KEY` is the free-tier Neynar key used by the Farcaster ingestor (M9), read server-side by the `/api/query` route and the `TweetPoller` cron.
 
 `CHANGELOG_GITHUB_TOKEN` is read server-side by the marketing `/changelog` page to fetch this (private) repo's GitHub Releases. Use a **fine-grained PAT scoped to only `Token-Buzz/website` with `Contents: Read-only`** (least privilege). It's wired into the marketing app's `environment` in `infra/marketing.ts` (not `NEXT_PUBLIC_`, so it stays server-side).
 
@@ -155,7 +157,7 @@ Set under **Settings → Secrets and variables → Actions → Secrets** before 
 
 The workflows authenticate to AWS via OIDC (`aws-actions/configure-aws-credentials@v4` with `role-to-assume`), so no long-lived AWS access keys are stored in GitHub.
 
-SST application secrets (`sst.Secret` entries in `infra/secrets.ts`: `WEB_DOMAIN`, `CLERK_*`, `TURNSTILE_*`, `RESEND_API_KEY`, `CONTACT_*`, `OPENCAGE_API_KEY`, `CHANGELOG_GITHUB_TOKEN`) are stored in AWS SSM Parameter Store, not in GitHub. Seed them per stage with `npx sst secret set <NAME> <value> --stage <stage>` (or use the `npm run set-sst-vars` script with a `.env.local`).
+SST application secrets (`sst.Secret` entries in `infra/secrets.ts`: `WEB_DOMAIN`, `CLERK_*`, `TURNSTILE_*`, `RESEND_API_KEY`, `CONTACT_*`, `OPENCAGE_API_KEY`, `CHANGELOG_GITHUB_TOKEN`, `NEYNAR_API_KEY`) are stored in AWS SSM Parameter Store, not in GitHub. Seed them per stage with `npx sst secret set <NAME> <value> --stage <stage>` (or use the `npm run set-sst-vars` script with a `.env.local`).
 
 ## GitHub tooling
 

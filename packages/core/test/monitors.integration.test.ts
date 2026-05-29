@@ -15,6 +15,7 @@ import {
   putMonitor,
   getMonitor,
   listMonitors,
+  listAllMonitors,
   deleteMonitor,
   type Monitor,
 } from '@monorepo-template/core/db/monitors'
@@ -173,6 +174,27 @@ describe('monitors (dynalite integration)', () => {
   test('deleteMonitor is a no-op when the record does not exist', async () => {
     // Should not throw.
     await expect(deleteMonitor('ghost_user', '$PHANTOM')).resolves.toBeUndefined()
+  })
+
+  test('listAllMonitors returns a monitor written by putMonitor (GSI round-trip)', async () => {
+    const monitor = makeMonitor({ userId: 'user_gsi_a', query: '$BTC', sources: ['farcaster'] })
+    await putMonitor(monitor)
+
+    const all = await listAllMonitors()
+    const found = all.find((m) => m.userId === 'user_gsi_a' && m.query === '$BTC')
+    expect(found).toBeDefined()
+    expect(found!.sources).toEqual(['farcaster'])
+    expect(found!.intervalMs).toBe(120_000)
+  })
+
+  test('listAllMonitors returns monitors from multiple users', async () => {
+    await putMonitor(makeMonitor({ userId: 'user_gsi_b', query: '$ETH', sources: ['twitter'] }))
+    await putMonitor(makeMonitor({ userId: 'user_gsi_c', query: '$SOL', sources: ['farcaster'] }))
+
+    const all = await listAllMonitors()
+    const userIds = all.map((m) => m.userId)
+    expect(userIds).toContain('user_gsi_b')
+    expect(userIds).toContain('user_gsi_c')
   })
 
   test('putMonitor overwrites an existing record (upsert)', async () => {

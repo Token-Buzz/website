@@ -3,7 +3,7 @@ import { type SocialSource } from '../sources/types'
 import { getUserPlan } from './usage'
 import { type Plan, planMeets } from '../billing/tiers'
 import { listKeyHolders, getByokKey } from './byok'
-import { listMonitors, type Monitor } from './monitors'
+import { listMonitors, listAllMonitors, type Monitor } from './monitors'
 import { getAllTrackedQueries } from './user-data'
 import { assignQueriesToHolders, type PollHolder } from '../lib/poll-assignment'
 
@@ -53,61 +53,111 @@ export async function getMonitorAssignments(): Promise<MonitorTask[]> {
     return monitorsCache.get(userId)!
   }
 
-  // Iterate over all source adapters that are implemented and have a byokProvider
+  // Lazily fetched once and reused across all keyless adapters in the loop.
+  let allMonitorsCache: Monitor[] | null = null
+
+  async function getAllMonitorsCached(): Promise<Monitor[]> {
+    if (allMonitorsCache === null) {
+      allMonitorsCache = await listAllMonitors()
+    }
+    return allMonitorsCache
+  }
+
   for (const [sourceId, adapter] of Object.entries(SOURCE_ADAPTERS) as Array<[SocialSource, (typeof SOURCE_ADAPTERS)[SocialSource]]>) {
-    if (!adapter || !adapter.implemented || !adapter.byokProvider) continue
+    if (!adapter || !adapter.implemented) continue
 
-    const provider = adapter.byokProvider
-    const holders = await listKeyHolders(provider)
-    const eligible = holders.filter((h) => h.status === 'active' && h.backgroundPolling)
+    if (adapter.byokProvider !== null) {
+      // ── BYOK path (e.g. twitter) ──────────────────────────────────────────
+      const provider = adapter.byokProvider
+      const holders = await listKeyHolders(provider)
+      const eligible = holders.filter((h) => h.status === 'active' && h.backgroundPolling)
 
-    const pollHolders: PollHolder[] = []
+      const pollHolders: PollHolder[] = []
 
-    for (const holder of eligible) {
-      const { userId } = holder
+      for (const holder of eligible) {
+        const { userId } = holder
 
-      // Entitlement check
-      const userPlan = await getCachedPlan(userId)
-      if (!planMeets(userPlan, adapter.minPlan)) continue
+        // Entitlement check
+        const userPlan = await getCachedPlan(userId)
+        if (!planMeets(userPlan, adapter.minPlan)) continue
 
-      // Determine queries for this source
-      const monitors = await getCachedMonitors(userId)
-      let queries: string[]
+        // Determine queries for this source
+        const monitors = await getCachedMonitors(userId)
+        let queries: string[]
 
-      if (monitors.length === 0) {
-        // Fallback: use getAllTrackedQueries, but only for twitter
-        if (sourceId === 'twitter') {
-          queries = await getAllTrackedQueries(userId)
+        if (monitors.length === 0) {
+          // Fallback: use getAllTrackedQueries, but only for twitter
+          if (sourceId === 'twitter') {
+            queries = await getAllTrackedQueries(userId)
+          } else {
+            queries = []
+          }
         } else {
-          queries = []
+          // Use monitor records that include this source
+          queries = monitors
+            .filter((m) => m.sources.includes(sourceId))
+            .map((m) => m.query)
         }
-      } else {
-        // Use monitor records that include this source
-        queries = monitors
-          .filter((m) => m.sources.includes(sourceId))
-          .map((m) => m.query)
+
+        if (queries.length > 0) {
+          pollHolders.push({ userId, queries })
+        }
       }
 
-      if (queries.length > 0) {
+      // Dedup queries across holders for this source
+      const assigned = assignQueriesToHolders(pollHolders)
+
+      // Decrypt keys and build MonitorTasks
+      for (const [userId, queries] of assigned) {
+        const keyData = await getByokKey(userId, provider)
+        if (!keyData || keyData.status !== 'active') continue
+
+        for (const query of queries) {
+          tasks.push({
+            source: sourceId,
+            userId,
+            apiKey: keyData.apiKey,
+            query,
+          })
+        }
+      }
+    } else {
+      // ── Keyless path (e.g. farcaster) ─────────────────────────────────────
+      // Eligibility = the user has a Monitor record that includes this source.
+      // No per-user BYOK key; the adapter reads process.env.NEYNAR_API_KEY.
+      const allMonitors = await getAllMonitorsCached()
+
+      // Collect monitors for this source, grouped by userId.
+      const byUser = new Map<string, string[]>()
+      for (const monitor of allMonitors) {
+        if (!monitor.sources.includes(sourceId)) continue
+        const existing = byUser.get(monitor.userId) ?? []
+        existing.push(monitor.query)
+        byUser.set(monitor.userId, existing)
+      }
+
+      const pollHolders: PollHolder[] = []
+
+      for (const [userId, queries] of byUser) {
+        // Entitlement check
+        const userPlan = await getCachedPlan(userId)
+        if (!planMeets(userPlan, adapter.minPlan)) continue
+
         pollHolders.push({ userId, queries })
       }
-    }
 
-    // Dedup queries across holders for this source
-    const assigned = assignQueriesToHolders(pollHolders)
+      // Dedup queries across users for this source
+      const assigned = assignQueriesToHolders(pollHolders)
 
-    // Decrypt keys and build MonitorTasks
-    for (const [userId, queries] of assigned) {
-      const keyData = await getByokKey(userId, provider)
-      if (!keyData || keyData.status !== 'active') continue
-
-      for (const query of queries) {
-        tasks.push({
-          source: sourceId,
-          userId,
-          apiKey: keyData.apiKey,
-          query,
-        })
+      for (const [userId, queries] of assigned) {
+        for (const query of queries) {
+          tasks.push({
+            source: sourceId,
+            userId,
+            apiKey: '', // no per-user key; adapter reads process.env.NEYNAR_API_KEY
+            query,
+          })
+        }
       }
     }
   }
