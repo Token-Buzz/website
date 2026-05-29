@@ -9,6 +9,8 @@ export interface Monitor {
   sources: SocialSource[]
   /** Requested polling cadence in ms (the poller still bounds this by each source's floor). */
   intervalMs: number
+  /** When false, the monitor exists but is skipped by the poller (paused). */
+  enabled: boolean
   createdAt: string
   updatedAt: string
 }
@@ -22,6 +24,7 @@ export async function putMonitor(monitor: Monitor): Promise<void> {
     ...monitor,
     query: monitor.query.trim(),
     sources: monitor.sources.filter(isSocialSource),
+    enabled: monitor.enabled ?? true,
   }
 
   await ddb.send(
@@ -52,6 +55,7 @@ export async function getMonitor(userId: string, query: string): Promise<Monitor
     query: Item.query,
     sources: (Item.sources as SocialSource[] | undefined) ?? [],
     intervalMs: (Item.intervalMs as number | undefined) ?? 0,
+    enabled: (Item.enabled as boolean | undefined) ?? true,
     createdAt: Item.createdAt,
     updatedAt: Item.updatedAt,
   }
@@ -76,6 +80,7 @@ export async function listMonitors(userId: string): Promise<Monitor[]> {
     query: item.query as string,
     sources: (item.sources as SocialSource[] | undefined) ?? [],
     intervalMs: (item.intervalMs as number | undefined) ?? 0,
+    enabled: (item.enabled as boolean | undefined) ?? true,
     createdAt: item.createdAt as string,
     updatedAt: item.updatedAt as string,
   }))
@@ -121,6 +126,7 @@ export async function listAllMonitors(): Promise<Monitor[]> {
         query: item.query as string,
         sources: (item.sources as SocialSource[] | undefined) ?? [],
         intervalMs: (item.intervalMs as number | undefined) ?? 0,
+        enabled: (item.enabled as boolean | undefined) ?? true,
         createdAt: item.createdAt as string,
         updatedAt: item.updatedAt as string,
       })

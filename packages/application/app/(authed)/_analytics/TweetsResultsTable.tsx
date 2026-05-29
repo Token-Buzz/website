@@ -1,9 +1,23 @@
 "use client";
 
+import type { SocialSource } from "@monorepo-template/core/sources/types";
 import { AnalyzingIndicator } from "./AnalyzingIndicator";
 import { useSummaryField } from "./SummaryProvider";
+import { SOURCE_META } from "./sources";
 
-type Props = { query: string };
+// Build a short label map from SOURCE_META
+const SOURCE_LABELS: Record<string, string> = Object.fromEntries(
+  SOURCE_META.map((m) => [m.id, m.displayName]),
+);
+
+function sourceLabel(source: string): string {
+  return SOURCE_LABELS[source] ?? source;
+}
+
+type Props = {
+  query: string;
+  selectedSource: SocialSource | "all";
+};
 
 function fmtTime(iso: string | undefined): string {
   if (!iso) return "—";
@@ -45,7 +59,7 @@ const HEADER_STYLE: React.CSSProperties = {
   textAlign: "left",
 };
 
-export function TweetsResultsTable({ query: _query }: Props) {
+export function TweetsResultsTable({ query: _query, selectedSource }: Props) {
   const { data, loading, error } = useSummaryField("tweets");
 
   if (error)
@@ -55,7 +69,27 @@ export function TweetsResultsTable({ query: _query }: Props) {
 
   if (loading && !data) return <AnalyzingIndicator label="Loading tweets…" />;
 
-  const tweets = data?.tweets ?? [];
+  const allTweets = data?.tweets ?? [];
+
+  if (allTweets.length === 0) {
+    return (
+      <div
+        style={{
+          padding: "24px 0",
+          textAlign: "center",
+          font: "500 12px var(--font-mono)",
+          color: "var(--fg-4)",
+        }}
+      >
+        No data
+      </div>
+    );
+  }
+
+  const tweets =
+    selectedSource === "all"
+      ? allTweets
+      : allTweets.filter((t) => (t.source ?? "twitter") === selectedSource);
 
   if (tweets.length === 0) {
     return (
@@ -67,7 +101,7 @@ export function TweetsResultsTable({ query: _query }: Props) {
           color: "var(--fg-4)",
         }}
       >
-        No data
+        No results from {sourceLabel(selectedSource)}
       </div>
     );
   }
@@ -84,6 +118,7 @@ export function TweetsResultsTable({ query: _query }: Props) {
         <colgroup>
           <col style={{ width: 120 }} />
           <col style={{ width: 100 }} />
+          <col style={{ width: 80 }} />
           <col />
           <col style={{ width: 60 }} />
         </colgroup>
@@ -91,6 +126,7 @@ export function TweetsResultsTable({ query: _query }: Props) {
           <tr>
             <th style={HEADER_STYLE}>Time</th>
             <th style={HEADER_STYLE}>Author</th>
+            <th style={HEADER_STYLE}>Source</th>
             <th style={HEADER_STYLE}>Tweet</th>
             <th style={{ ...HEADER_STYLE, textAlign: "right" }}>Likes</th>
           </tr>
@@ -117,6 +153,16 @@ export function TweetsResultsTable({ query: _query }: Props) {
                 }}
               >
                 @{t.authorUsername}
+              </td>
+              <td
+                style={{
+                  ...COL_STYLES,
+                  color: "var(--fg-4)",
+                  fontSize: 11,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {sourceLabel(t.source ?? "twitter")}
               </td>
               <td
                 style={{

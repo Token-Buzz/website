@@ -24,6 +24,7 @@ import { GeographicDistributionMapChart } from "./GeographicDistributionMapChart
 import { ContentLengthEngagementChart } from "./ContentLengthEngagementChart";
 import { fromCard } from "../_dashboard/humContext";
 import type { DashboardCardType } from "@monorepo-template/core/db/dashboards";
+import type { SocialSource } from "@monorepo-template/core/sources/types";
 
 // ── AnalyticsChartGrid ────────────────────────────────────────────────────────
 // Renders the full chart grid + tweet results section.
@@ -32,6 +33,7 @@ import type { DashboardCardType } from "@monorepo-template/core/db/dashboards";
 interface AnalyticsChartGridProps {
   query: string;
   isMobile: boolean;
+  selectedSource: SocialSource | "all";
   onAddToContext: (cardType: DashboardCardType, label: string) => void;
   onAddToDashboard: (cardType: DashboardCardType) => void;
 }
@@ -39,6 +41,7 @@ interface AnalyticsChartGridProps {
 export function AnalyticsChartGrid({
   query,
   isMobile,
+  selectedSource,
   onAddToContext,
   onAddToDashboard,
 }: AnalyticsChartGridProps) {
@@ -49,7 +52,7 @@ export function AnalyticsChartGrid({
         <Card padding={20}>
           <SectionHead eyebrow="Tweet results" meta={`query: ${query}`} />
           <ChartErrorBoundary chartName="Tweet results">
-            <TweetsResultsTable query={query} />
+            <TweetsResultsTable query={query} selectedSource={selectedSource} />
           </ChartErrorBoundary>
         </Card>
       )}

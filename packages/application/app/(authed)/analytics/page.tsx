@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import type { DashboardCard, DashboardCardType } from "@monorepo-template/core/db/dashboards";
+import type { SocialSource } from "@monorepo-template/core/sources/types";
 import { Eyebrow, Icon } from "../_dashboard/primitives";
 import { SearchBar } from "../_analytics/SearchBar";
 import { useIsMobile } from "@/app/_hooks/useIsMobile";
@@ -10,9 +11,10 @@ import { SummaryProvider } from "../_analytics/SummaryProvider";
 import { HistorySaver } from "../_analytics/HistorySaver";
 import { AnalyticsChartGrid } from "../_analytics/AnalyticsChartGrid";
 import { SourceChips } from "../_analytics/SourceChips";
-import { MonitorToggle } from "../_analytics/MonitorToggle";
+import { MonitorManager } from "../_analytics/MonitorManager";
 import { DashboardPickerModal } from "../dashboards/_components/DashboardPickerModal";
 import { addHumContext, buildHumContextItem } from "../dashboards/_components/cardActions";
+import { SOURCE_META } from "../_analytics/sources";
 
 // ── Analytics page ─────────────────────────────────────────────────────────
 
@@ -32,6 +34,7 @@ function AnalyticsPageInner() {
   const [pickerCard, setPickerCard] = useState<DashboardCard | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [submission, setSubmission] = useState<{ query: string; id: string } | null>(null);
+  const [selectedSource, setSelectedSource] = useState<SocialSource | "all">("all");
 
   // Auto-dismiss notice after 4000ms
   useEffect(() => {
@@ -127,20 +130,46 @@ function AnalyticsPageInner() {
           <div
             style={{
               display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
+              flexDirection: "column",
+              gap: 8,
             }}
           >
-            <SourceChips query={query} />
-            <MonitorToggle query={query} />
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <SourceChips
+                query={query}
+                selected={selectedSource}
+                onSelect={setSelectedSource}
+              />
+              <MonitorManager query={query} />
+            </div>
+            {selectedSource !== "all" && (
+              <div
+                style={{
+                  font: "500 11px var(--font-sans)",
+                  color: "var(--fg-4)",
+                  letterSpacing: "0.01em",
+                }}
+              >
+                Results table filtered to{" "}
+                {SOURCE_META.find((m) => m.id === selectedSource)?.displayName ?? selectedSource}.
+                {" "}Charts reflect all sources.
+              </div>
+            )}
           </div>
         )}
 
         <AnalyticsChartGrid
           query={query}
           isMobile={isMobile}
+          selectedSource={selectedSource}
           onAddToContext={handleAddToContext}
           onAddToDashboard={handleAddToDashboard}
         />

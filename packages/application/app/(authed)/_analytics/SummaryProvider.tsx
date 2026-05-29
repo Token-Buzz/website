@@ -63,6 +63,7 @@ export interface SummaryData {
       createdAt: string;
       likeCount: number;
       retweetCount: number;
+      source: string;
     }[];
     query: string;
   } | null;

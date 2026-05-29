@@ -53,7 +53,7 @@ import {
   TWITTER_PROVIDER,
 } from '@monorepo-template/core/db/byok'
 import { putWatchlist } from '@monorepo-template/core/db/user-data'
-import { putMonitor } from '@monorepo-template/core/db/monitors'
+import { putMonitor, getMonitor, listMonitors } from '@monorepo-template/core/db/monitors'
 import { getMonitorAssignments } from '@monorepo-template/core/db/monitor-poll'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -316,5 +316,88 @@ describe('getMonitorAssignments (dynalite integration)', () => {
     expect(userTasks).toHaveLength(2)
     const queries = userTasks.map((t) => t.query).sort()
     expect(queries).toEqual(['$BTC', '$ETH'])
+  })
+
+  // ── Paused (enabled=false) scenarios ─────────────────────────────────────────
+
+  test('paused twitter monitor (enabled=false) yields no task', async () => {
+    const userId = 'user_paused_twitter_f'
+    await putByokKey({ userId, provider: TWITTER_PROVIDER, apiKey: 'key_paused_f' })
+    await setByokBackgroundPolling(userId, TWITTER_PROVIDER, true)
+    await putMonitor({
+      userId,
+      query: '$LINK',
+      sources: ['twitter'],
+      intervalMs: 120_000,
+      enabled: false,
+      createdAt: iso(),
+      updatedAt: iso(),
+    })
+
+    const tasks = await getMonitorAssignments()
+
+    const userTasks = tasks.filter((t) => t.userId === userId)
+    expect(userTasks).toHaveLength(0)
+  })
+
+  test('enabled twitter monitor (enabled=true) yields a task', async () => {
+    const userId = 'user_enabled_twitter_g'
+    await putByokKey({ userId, provider: TWITTER_PROVIDER, apiKey: 'key_enabled_g' })
+    await setByokBackgroundPolling(userId, TWITTER_PROVIDER, true)
+    await putMonitor({
+      userId,
+      query: '$LINK',
+      sources: ['twitter'],
+      intervalMs: 120_000,
+      enabled: true,
+      createdAt: iso(),
+      updatedAt: iso(),
+    })
+
+    const tasks = await getMonitorAssignments()
+
+    const userTasks = tasks.filter((t) => t.userId === userId && t.source === 'twitter')
+    expect(userTasks).toHaveLength(1)
+    expect(userTasks[0].query).toBe('$LINK')
+  })
+
+  test('paused farcaster monitor (enabled=false) yields no task', async () => {
+    const userId = 'user_paused_farc_h'
+    await putMonitor({
+      userId,
+      query: '$UNI',
+      sources: ['farcaster'],
+      intervalMs: 120_000,
+      enabled: false,
+      createdAt: iso(),
+      updatedAt: iso(),
+    })
+
+    const tasks = await getMonitorAssignments()
+
+    const farcasterTasks = tasks.filter((t) => t.source === 'farcaster' && t.userId === userId)
+    expect(farcasterTasks).toHaveLength(0)
+  })
+
+  test('monitor put without enabled field round-trips as enabled=true (legacy default)', async () => {
+    const userId = 'user_legacy_enabled_i'
+    // Cast to bypass TypeScript so we can simulate a legacy record without `enabled`.
+    await putMonitor({
+      userId,
+      query: '$AVAX',
+      sources: ['twitter'],
+      intervalMs: 120_000,
+      enabled: undefined as unknown as boolean,
+      createdAt: iso(),
+      updatedAt: iso(),
+    })
+
+    const fetched = await getMonitor(userId, '$AVAX')
+    expect(fetched).not.toBeNull()
+    expect(fetched!.enabled).toBe(true)
+
+    const listed = await listMonitors(userId)
+    expect(listed).toHaveLength(1)
+    expect(listed[0].enabled).toBe(true)
   })
 })

@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
 import type { SocialSource } from "@monorepo-template/core/sources/types";
 import { useSummaryContext } from "./SummaryProvider";
 import { SOURCE_META } from "./sources";
 
 interface SourceChipsProps {
   query: string;
+  selected: SocialSource | "all";
+  onSelect: (s: SocialSource | "all") => void;
 }
 
-export function SourceChips({ query }: SourceChipsProps) {
+export function SourceChips({ query, selected, onSelect }: SourceChipsProps) {
   const { data } = useSummaryContext();
-  const [selected, setSelected] = useState<SocialSource | "all">("all");
 
   if (!query) return null;
 
@@ -63,7 +63,7 @@ export function SourceChips({ query }: SourceChipsProps) {
       {/* All chip */}
       <button
         type="button"
-        onClick={() => setSelected("all")}
+        onClick={() => onSelect("all")}
         style={{
           ...chipBase,
           ...(selected === "all" ? selectedStyle : unselectedStyle),
@@ -123,7 +123,7 @@ export function SourceChips({ query }: SourceChipsProps) {
           <button
             key={meta.id}
             type="button"
-            onClick={() => setSelected(meta.id)}
+            onClick={() => onSelect(meta.id)}
             style={{
               ...chipBase,
               ...(selected === meta.id ? selectedStyle : unselectedStyle),

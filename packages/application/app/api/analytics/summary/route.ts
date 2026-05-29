@@ -326,6 +326,7 @@ async function fetchTweets(query: string) {
     createdAt: t.createdAt,
     likeCount: t.likeCount,
     retweetCount: t.retweetCount,
+    source: t.source ?? "twitter",
   }));
   return { tweets, query };
 }
