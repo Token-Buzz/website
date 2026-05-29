@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.0](https://github.com/Token-Buzz/website/compare/v0.35.0...v0.36.0) (2026-05-29)
+
+
+### 🚀 Features
+
+* **core,application:** Farcaster ingestor (M9 Phase 2) ([#253](https://github.com/Token-Buzz/website/issues/253)) ([8618886](https://github.com/Token-Buzz/website/commit/8618886bfa9cc5f260bf5089ee19cdc4a704282a)), closes [#73](https://github.com/Token-Buzz/website/issues/73)
+
 ## [0.35.0](https://github.com/Token-Buzz/website/compare/v0.34.0...v0.35.0) (2026-05-29)
 
 
