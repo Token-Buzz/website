@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.0](https://github.com/Token-Buzz/website/compare/v0.38.0...v0.39.0) (2026-05-29)
+
+
+### 🚀 Features
+
+* **core,application,jobs:** Discord source — per-user BYOK + Account API Keys tab (M9 Phase 5) ([#284](https://github.com/Token-Buzz/website/issues/284)) ([0a60d20](https://github.com/Token-Buzz/website/commit/0a60d20ca88c131996fb59ac7c3353a35f36ddde))
+
 ## [0.38.0](https://github.com/Token-Buzz/website/compare/v0.37.0...v0.38.0) (2026-05-29)
 
 
