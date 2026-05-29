@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.0](https://github.com/Token-Buzz/website/compare/v0.36.0...v0.37.0) (2026-05-29)
+
+
+### 🚀 Features
+
+* **core,application,jobs:** Reddit ingestor (M9 Phase 3) ([#257](https://github.com/Token-Buzz/website/issues/257)) ([6198050](https://github.com/Token-Buzz/website/commit/619805080b90e17af89d4a4c0ebe4f3db94e7258))
+
 ## [0.36.0](https://github.com/Token-Buzz/website/compare/v0.35.0...v0.36.0) (2026-05-29)
 
 
