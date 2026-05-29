@@ -1,7 +1,7 @@
 import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from './client'
 import { planKey, usageKey } from './keys'
-import { type Plan, DEFAULT_PLAN, evaluateHumQuota, evaluateIngestionQuota } from '../billing/tiers'
+import { type Plan, DEFAULT_PLAN, evaluateHumQuota, evaluateIngestionQuota, evaluateRedditQuota } from '../billing/tiers'
 import { effectivePlan } from '../billing/stripe'
 
 export type { Plan }
@@ -117,6 +117,56 @@ export async function recordIngestionUsage(
       ExpressionAttributeNames: { '#count': 'count' },
       ExpressionAttributeValues: {
         ':one': 1,
+        ':now': new Date().toISOString(),
+      },
+      ReturnValues: 'ALL_NEW',
+    }),
+  )
+  return (Attributes?.count as number) ?? 0
+}
+
+export interface RedditQuotaStatus {
+  allowed: boolean
+  used: number
+  limit: number | null
+  plan: Plan
+}
+
+export async function getRedditUsage(
+  userId: string,
+  period = currentPeriod(),
+): Promise<number> {
+  const { Item } = await ddb.send(
+    new GetCommand({
+      TableName: TableNames.userData,
+      Key: usageKey(userId, period, 'reddit'),
+    }),
+  )
+  return (Item?.count as number) ?? 0
+}
+
+export async function canUseReddit(userId: string): Promise<RedditQuotaStatus> {
+  const [{ plan }, used] = await Promise.all([
+    getUserPlan(userId),
+    getRedditUsage(userId),
+  ])
+  const { allowed, limit } = evaluateRedditQuota(plan, used)
+  return { allowed, used, limit, plan }
+}
+
+export async function recordRedditUsage(
+  userId: string,
+  count = 1,
+  period = currentPeriod(),
+): Promise<number> {
+  const { Attributes } = await ddb.send(
+    new UpdateCommand({
+      TableName: TableNames.userData,
+      Key: usageKey(userId, period, 'reddit'),
+      UpdateExpression: 'ADD #count :n SET updatedAt = :now',
+      ExpressionAttributeNames: { '#count': 'count' },
+      ExpressionAttributeValues: {
+        ':n': count,
         ':now': new Date().toISOString(),
       },
       ReturnValues: 'ALL_NEW',

@@ -50,6 +50,7 @@
     "./lib/poll-assignment": "./src/lib/poll-assignment.ts",
     "./lib/queryId": "./src/lib/queryId.ts",
     "./lib/twitter": "./src/lib/twitter.ts",
+    "./lib/reddit": "./src/lib/reddit.ts",
     "./movers": "./src/movers.ts",
     "./ticker": "./src/ticker.ts",
     "./providers": "./src/providers.ts",

@@ -13,6 +13,8 @@ export interface IngestOpts {
   maxPages?: number
   /** Optional offline geo dataset (cities) passed by callers that geo-enrich authors. */
   offlineCities?: unknown[]
+  /** Caller's user id — used by metered sources (Reddit) to check/record per-user quota. */
+  userId?: string
 }
 
 export interface IngestResult {

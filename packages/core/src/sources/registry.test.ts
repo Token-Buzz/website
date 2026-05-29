@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest'
 
 // Mock db/client so the SST Resource lookup doesn't fire at module load.
-// registry → twitter-adapter → db/tweets → db/client (accesses Resource at import time).
+// registry → twitter-adapter / reddit-adapter → db/tweets / db/usage → db/client (accesses Resource at import time).
 vi.mock('../db/client', () => ({
   ddb: {},
   TableNames: { aggregates: 'Aggregates', tokens: 'Tokens', tweets: 'Tweets', userData: 'UserData' },
@@ -26,8 +26,8 @@ describe('getAdapter', () => {
 })
 
 describe('listImplementedSources', () => {
-  test('returns ["twitter", "farcaster"] — both implemented as of Phase 2', () => {
-    expect(listImplementedSources()).toEqual(['twitter', 'farcaster'])
+  test('returns ["twitter", "farcaster", "reddit"] — all implemented as of Phase 3', () => {
+    expect(listImplementedSources()).toEqual(['twitter', 'farcaster', 'reddit'])
   })
 })
 
@@ -46,6 +46,18 @@ describe('allowedSources', () => {
 
   test('free plan includes farcaster', () => {
     expect(allowedSources('free')).toContain('farcaster')
+  })
+
+  test('pro plan includes reddit', () => {
+    expect(allowedSources('pro')).toContain('reddit')
+  })
+
+  test('alpha plan includes reddit', () => {
+    expect(allowedSources('alpha')).toContain('reddit')
+  })
+
+  test('free plan does NOT include reddit', () => {
+    expect(allowedSources('free')).not.toContain('reddit')
   })
 })
 
@@ -102,6 +114,42 @@ describe('farcaster adapter metadata', () => {
 
   test('pollIntervalMs is 2 minutes (120000)', () => {
     expect(adapter.pollIntervalMs).toBe(2 * 60 * 1000)
+  })
+
+  test('implemented is true', () => {
+    expect(adapter.implemented).toBe(true)
+  })
+
+  test('byokProvider is null', () => {
+    expect(adapter.byokProvider).toBeNull()
+  })
+
+  test('search is a function', () => {
+    expect(typeof adapter.search).toBe('function')
+  })
+
+  test('since is a function', () => {
+    expect(typeof adapter.since).toBe('function')
+  })
+})
+
+describe('reddit adapter metadata', () => {
+  const adapter = SOURCE_ADAPTERS.reddit!
+
+  test('id is "reddit"', () => {
+    expect(adapter.id).toBe('reddit')
+  })
+
+  test('displayName is "Reddit"', () => {
+    expect(adapter.displayName).toBe('Reddit')
+  })
+
+  test('minPlan is "pro"', () => {
+    expect(adapter.minPlan).toBe('pro')
+  })
+
+  test('pollIntervalMs is 20 minutes (1200000)', () => {
+    expect(adapter.pollIntervalMs).toBe(20 * 60 * 1000)
   })
 
   test('implemented is true', () => {

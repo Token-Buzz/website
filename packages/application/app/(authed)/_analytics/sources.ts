@@ -14,7 +14,7 @@ export interface SourceMeta {
 export const SOURCE_META: SourceMeta[] = [
   { id: "twitter",   displayName: "X",         minPlan: "free",  implemented: true  },
   { id: "farcaster", displayName: "Farcaster", minPlan: "free",  implemented: true  },
-  { id: "reddit",    displayName: "Reddit",    minPlan: "pro",   implemented: false },
+  { id: "reddit",    displayName: "Reddit",    minPlan: "pro",   implemented: true  },
   { id: "telegram",  displayName: "Telegram",  minPlan: "alpha", implemented: false },
   { id: "discord",   displayName: "Discord",   minPlan: "alpha", implemented: false },
 ];
