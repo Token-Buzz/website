@@ -26,6 +26,53 @@ export function __setSleep(fn: (ms: number) => Promise<void>): (ms: number) => P
   return prev
 }
 
+// ── BYOK credentials ───────────────────────────────────────────────────────────
+// Telegram needs three fields (api_id, api_hash, session); they are JSON-encoded
+// into the single opaque BYOK string per (user, provider) — no DB schema change.
+
+export interface TelegramCreds {
+  apiId: number
+  apiHash: string
+  session: string
+}
+
+/**
+ * Parses the opaque BYOK string into Telegram credentials. Accepts both camelCase
+ * (`{ apiId, apiHash, session }`) and snake_case (`{ api_id, api_hash, session }`)
+ * for resilience and normalizes to camelCase. Throws TelegramApiError(401) on any
+ * malformed/missing field so an invalid stored key surfaces as a 401 (BYOK invalidation).
+ */
+export function parseTelegramCreds(apiKey: string): TelegramCreds {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(apiKey)
+  } catch {
+    throw new TelegramApiError('Invalid Telegram credentials', 401)
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    throw new TelegramApiError('Invalid Telegram credentials', 401)
+  }
+
+  const o = parsed as Record<string, unknown>
+  const rawApiId = o.apiId ?? o.api_id
+  const rawApiHash = o.apiHash ?? o.api_hash
+  const session = o.session
+
+  const apiId = Number(rawApiId)
+  if (rawApiId == null || rawApiId === '' || !Number.isFinite(apiId)) {
+    throw new TelegramApiError('Invalid Telegram credentials', 401)
+  }
+  if (typeof rawApiHash !== 'string' || rawApiHash.length === 0) {
+    throw new TelegramApiError('Invalid Telegram credentials', 401)
+  }
+  if (typeof session !== 'string' || session.length === 0) {
+    throw new TelegramApiError('Invalid Telegram credentials', 401)
+  }
+
+  return { apiId, apiHash: rawApiHash, session }
+}
+
 export class TelegramApiError extends Error {
   constructor(
     message: string,
@@ -115,53 +162,43 @@ export interface TgClient {
   getMessages(channel: string, params: { search: string; limit: number }): Promise<unknown[]>
 }
 
-let _cachedClient: TgClient | null = null
-
-/** Reset the cached client (for tests). */
-export function __resetClient(): void {
-  _cachedClient = null
-}
-
-async function defaultClientFactory(): Promise<TgClient> {
-  if (_cachedClient) return _cachedClient
-
-  const apiId = process.env.TELEGRAM_API_ID
-  const apiHash = process.env.TELEGRAM_API_HASH
-  const session = process.env.TELEGRAM_SESSION
-
-  if (!apiId || !apiHash || !session) {
-    throw new TelegramApiError('TELEGRAM_SESSION is not configured', 500)
-  }
-
+// No client cache: BYOK means different users have different credentials, so a
+// fresh client is built per call from the caller-supplied creds.
+async function defaultClientFactory(creds: TelegramCreds): Promise<TgClient> {
   // Lazy import so the (heavy, Node-only) GramJS SDK is only loaded when a real
   // connection is actually needed — never in unit tests (which inject a fake).
   const { TelegramClient } = await import('telegram')
   const { StringSession } = await import('telegram/sessions')
 
   const client = new TelegramClient(
-    new StringSession(session),
-    Number(apiId),
-    apiHash,
+    new StringSession(creds.session),
+    creds.apiId,
+    creds.apiHash,
     { connectionRetries: 5 },
   )
-  await client.connect()
+
+  try {
+    await client.connect()
+  } catch {
+    // Map any connect/auth failure to a 401 so invalid sessions surface as a
+    // BYOK-invalidation signal to the query path.
+    throw new TelegramApiError('Telegram authentication failed', 401)
+  }
 
   // TelegramClient.getMessages is structurally compatible with TgClient.
-  _cachedClient = client as unknown as TgClient
-  return _cachedClient
+  return client as unknown as TgClient
 }
 
-let _clientFactory: () => Promise<TgClient> = defaultClientFactory
+let _clientFactory: (creds: TelegramCreds) => Promise<TgClient> = defaultClientFactory
 
 /** Inject a client factory (for tests). */
-export function __setClientFactory(fn: () => Promise<TgClient>): void {
+export function __setClientFactory(fn: (creds: TelegramCreds) => Promise<TgClient>): void {
   _clientFactory = fn
 }
 
 /** Restore the default (real GramJS) client factory. */
 export function __resetClientFactory(): void {
   _clientFactory = defaultClientFactory
-  _cachedClient = null
 }
 
 // ── FloodWait detection ─────────────────────────────────────────────────────────
@@ -177,7 +214,8 @@ function isFloodWait(err: unknown): err is { seconds: number } {
 
 /**
  * Searches public crypto channels for `query`, aggregating matching messages
- * across all channels. Reads project MTProto credentials from env.
+ * across all channels. MTProto credentials are supplied per-call as the opaque
+ * BYOK `apiKey` string (JSON-encoded api_id/api_hash/session).
  *
  * Per channel: bounded retry over `client.getMessages`.
  *  - FLOOD_WAIT (small, ≤ 60s): sleep that long and retry the channel once.
@@ -187,17 +225,12 @@ function isFloodWait(err: unknown): err is { seconds: number } {
  *    the budget throws TelegramApiError.
  */
 export async function searchMessages(
+  apiKey: string,
   query: string,
   opts?: { channels?: string[]; perChannelLimit?: number },
 ): Promise<TelegramMessage[]> {
-  const apiId = process.env.TELEGRAM_API_ID
-  const apiHash = process.env.TELEGRAM_API_HASH
-  const session = process.env.TELEGRAM_SESSION
-  if (!apiId || !apiHash || !session) {
-    throw new TelegramApiError('TELEGRAM_SESSION is not configured', 500)
-  }
-
-  const client = await _clientFactory()
+  const creds = parseTelegramCreds(apiKey)
+  const client = await _clientFactory(creds)
   const channels = opts?.channels ?? CRYPTO_CHANNELS
   const limit = opts?.perChannelLimit ?? 50
 
@@ -274,4 +307,31 @@ export async function searchMessages(
   }
 
   return all
+}
+
+// ── validateKey ──────────────────────────────────────────────────────────────────
+
+/**
+ * Validates a Telegram BYOK credential string. Parses the creds, builds a client,
+ * and does a lightweight liveness probe (a tiny getMessages against the first
+ * channel). Returns `{ ok: true, last4 }` (last 4 chars of the session) if the
+ * probe resolves; `{ ok: false, last4: '' }` on malformed creds or any failure.
+ */
+export async function validateKey(apiKey: string): Promise<{ ok: boolean; last4: string }> {
+  let creds: TelegramCreds
+  try {
+    creds = parseTelegramCreds(apiKey)
+  } catch {
+    return { ok: false, last4: '' }
+  }
+
+  try {
+    const client = await _clientFactory(creds)
+    // Lightweight liveness probe — the fake TgClient only implements getMessages,
+    // so probe with a minimal getMessages against the first channel.
+    await client.getMessages(CRYPTO_CHANNELS[0], { search: '', limit: 1 })
+    return { ok: true, last4: creds.session.slice(-4) }
+  } catch {
+    return { ok: false, last4: '' }
+  }
 }

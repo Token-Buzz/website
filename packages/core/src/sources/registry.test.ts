@@ -145,6 +145,42 @@ describe('farcaster adapter metadata', () => {
   })
 })
 
+describe('telegram adapter metadata', () => {
+  const adapter = SOURCE_ADAPTERS.telegram!
+
+  test('id is "telegram"', () => {
+    expect(adapter.id).toBe('telegram')
+  })
+
+  test('displayName is "Telegram"', () => {
+    expect(adapter.displayName).toBe('Telegram')
+  })
+
+  test('minPlan is "alpha"', () => {
+    expect(adapter.minPlan).toBe('alpha')
+  })
+
+  test('pollIntervalMs is 15 minutes (900000)', () => {
+    expect(adapter.pollIntervalMs).toBe(15 * 60 * 1000)
+  })
+
+  test('implemented is true', () => {
+    expect(adapter.implemented).toBe(true)
+  })
+
+  test('byokProvider is "telegram"', () => {
+    expect(adapter.byokProvider).toBe('telegram')
+  })
+
+  test('search is a function', () => {
+    expect(typeof adapter.search).toBe('function')
+  })
+
+  test('since is a function', () => {
+    expect(typeof adapter.since).toBe('function')
+  })
+})
+
 describe('reddit adapter metadata', () => {
   const adapter = SOURCE_ADAPTERS.reddit!
 

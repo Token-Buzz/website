@@ -1,15 +1,17 @@
 import { searchMessages, messageToRawTweet } from '../lib/telegram'
 import { enrichRawTweet } from '../lib/enrich'
 import { putTweet } from '../db/tweets'
+import { TELEGRAM_PROVIDER } from '../providers'
 import type { SourceAdapter, IngestOpts, IngestResult } from './types'
 
 async function ingestTelegram(
+  apiKey: string,
   query: string,
   _opts: IngestOpts | undefined,
   perChannelLimit: number,
   methodName: string,
 ): Promise<IngestResult> {
-  const messages = await searchMessages(query, { perChannelLimit })
+  const messages = await searchMessages(apiKey, query, { perChannelLimit })
 
   const writeResults = await Promise.allSettled(
     messages.map(async (msg) => {
@@ -38,14 +40,14 @@ export const telegramAdapter: SourceAdapter = {
   // Conservative cadence — bounded by Telegram rate limits / FLOOD_WAIT, not dollars.
   pollIntervalMs: 15 * 60 * 1000,
   implemented: true,
-  byokProvider: null,
+  byokProvider: TELEGRAM_PROVIDER,
 
   // Telegram is free and Alpha (unlimited) — no per-user metering/quota.
-  async search(_apiKey: string, query: string, opts?: IngestOpts): Promise<IngestResult> {
-    return ingestTelegram(query, opts, opts?.maxPages ? opts.maxPages * 25 : 50, 'search')
+  async search(apiKey: string, query: string, opts?: IngestOpts): Promise<IngestResult> {
+    return ingestTelegram(apiKey, query, opts, opts?.maxPages ? opts.maxPages * 25 : 50, 'search')
   },
 
-  async since(_apiKey: string, query: string, opts?: IngestOpts): Promise<IngestResult> {
-    return ingestTelegram(query, opts, 25, 'since')
+  async since(apiKey: string, query: string, opts?: IngestOpts): Promise<IngestResult> {
+    return ingestTelegram(apiKey, query, opts, 25, 'since')
   },
 }

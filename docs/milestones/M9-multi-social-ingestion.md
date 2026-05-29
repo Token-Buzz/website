@@ -113,8 +113,8 @@ Each source-specific table has its own GSIs sized to the platform's natural acce
 
 **Status: Implemented.**
 
-- MTProto user-account-as-bot via GramJS (the `telegram` npm package), driven by a project-owned user account (not a Bot API token).
-- Three new SST secrets — `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TELEGRAM_SESSION` (a GramJS `StringSession`). Read server-side by the `/api/query` route (application Next app) and the `TweetPoller` cron; declared in `infra/secrets.ts` and wired into `infra/application.ts` + the `TweetPoller` cron in `infra/jobs.ts`.
+- MTProto user-account-as-bot via GramJS (the `telegram` npm package), driven by a user account (not a Bot API token).
+- **Credentials are now per-user BYOK** (NOT project `sst.Secret`s). Each user supplies `{ apiId, apiHash, session }` (a GramJS `StringSession`), JSON-encoded and AWS-KMS-encrypted in the `UserData` table exactly like the twitterapi.io key (M10 BYOK). They are resolved per-user at request time by the `/api/query` route (application Next app) and by the `TweetPoller` cron, via `byokProvider: 'telegram'` on the source adapter. The earlier project-wide `TELEGRAM_API_ID` / `TELEGRAM_API_HASH` / `TELEGRAM_SESSION` `sst.Secret`s were **removed** (they broke a PR deploy because the secrets were never seeded). The account-UI key-entry flow for Telegram is a follow-up release.
 - Alpha-gated.
 - `pollIntervalMs` is 15 min — bounded by Telegram FLOOD_WAIT (rate limits), not by dollar cost.
 - Reuses the existing `Tweets` table via `putTweet` with `source: 'telegram'` — there is **no** new per-source table. This is a deliberate deviation from the "Schema additions" section above (which described per-source tables that were never built); it's consistent with how the Reddit and Farcaster ingestors actually shipped.

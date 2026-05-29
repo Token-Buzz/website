@@ -2,6 +2,8 @@ import { describe, it, test, expect, beforeEach, afterEach } from 'vitest'
 import {
   messageToRawTweet,
   searchMessages,
+  parseTelegramCreds,
+  validateKey,
   TelegramApiError,
   RETRY_DELAYS_MS,
   __setSleep,
@@ -10,6 +12,9 @@ import {
   type TelegramMessage,
   type TgClient,
 } from './telegram'
+
+// A valid BYOK credentials string (JSON-encoded api_id/api_hash/session).
+const CREDS = JSON.stringify({ apiId: 12345, apiHash: 'abc-hash', session: 'sess-string-ssss' })
 
 // ── messageToRawTweet (pure mapper) ────────────────────────────────────────────
 
@@ -141,9 +146,6 @@ describe('searchMessages', () => {
   let originalDelays: number[]
 
   beforeEach(() => {
-    process.env.TELEGRAM_API_ID = '12345'
-    process.env.TELEGRAM_API_HASH = 'abc-hash'
-    process.env.TELEGRAM_SESSION = 'sess-string'
     originalDelays = [...RETRY_DELAYS_MS]
     RETRY_DELAYS_MS.splice(0, RETRY_DELAYS_MS.length, 0, 0)
     restoreSleep = __setSleep(async () => {})
@@ -153,17 +155,6 @@ describe('searchMessages', () => {
     RETRY_DELAYS_MS.splice(0, RETRY_DELAYS_MS.length, ...originalDelays)
     __setSleep(restoreSleep)
     __resetClientFactory()
-    delete process.env.TELEGRAM_API_ID
-    delete process.env.TELEGRAM_API_HASH
-    delete process.env.TELEGRAM_SESSION
-  })
-
-  it('throws TelegramApiError(500) when env credentials are missing', async () => {
-    delete process.env.TELEGRAM_SESSION
-    await expect(searchMessages('btc')).rejects.toMatchObject({
-      name: 'TelegramApiError',
-      status: 500,
-    })
   })
 
   it('aggregates messages across channels and maps GramJS fields', async () => {
@@ -176,7 +167,7 @@ describe('searchMessages', () => {
     }
     __setClientFactory(async () => fakeClient)
 
-    const messages = await searchMessages('btc', {
+    const messages = await searchMessages(CREDS, 'btc', {
       channels: ['binance', 'cointelegraph'],
       perChannelLimit: 5,
     })
@@ -209,7 +200,7 @@ describe('searchMessages', () => {
     }
     __setClientFactory(async () => fakeClient)
 
-    const messages = await searchMessages('btc', { channels: ['binance'] })
+    const messages = await searchMessages(CREDS, 'btc', { channels: ['binance'] })
     expect(messages).toHaveLength(1)
     expect(messages[0].id).toBe(3)
   })
@@ -223,7 +214,7 @@ describe('searchMessages', () => {
     }
     __setClientFactory(async () => fakeClient)
 
-    const [m] = await searchMessages('btc', { channels: ['binance'] })
+    const [m] = await searchMessages(CREDS, 'btc', { channels: ['binance'] })
     expect(m.views).toBe(0)
     expect(m.forwards).toBe(0)
     expect(m.replies).toBe(0)
@@ -249,7 +240,7 @@ describe('searchMessages', () => {
     }
     __setClientFactory(async () => fakeClient)
 
-    const messages = await searchMessages('btc', { channels: ['binance'] })
+    const messages = await searchMessages(CREDS, 'btc', { channels: ['binance'] })
     expect(attempts).toBe(2)
     expect(messages).toHaveLength(1)
   })
@@ -268,7 +259,7 @@ describe('searchMessages', () => {
     }
     __setClientFactory(async () => fakeClient)
 
-    const messages = await searchMessages('btc', {
+    const messages = await searchMessages(CREDS, 'btc', {
       channels: ['binance', 'cointelegraph'],
     })
     // binance skipped, cointelegraph still ingested
@@ -285,7 +276,84 @@ describe('searchMessages', () => {
     __setClientFactory(async () => fakeClient)
 
     await expect(
-      searchMessages('btc', { channels: ['binance'] }),
+      searchMessages(CREDS, 'btc', { channels: ['binance'] }),
     ).rejects.toMatchObject({ name: 'TelegramApiError', status: 500 })
+  })
+})
+
+// ── parseTelegramCreds ──────────────────────────────────────────────────────────
+
+describe('parseTelegramCreds', () => {
+  it('parses valid camelCase creds and normalizes apiId to a Number', () => {
+    const creds = parseTelegramCreds(JSON.stringify({ apiId: 12345, apiHash: 'abc', session: 'sess' }))
+    expect(creds).toEqual({ apiId: 12345, apiHash: 'abc', session: 'sess' })
+  })
+
+  it('parses valid snake_case creds and normalizes to camelCase', () => {
+    const creds = parseTelegramCreds(JSON.stringify({ api_id: '54321', api_hash: 'xyz', session: 'sess2' }))
+    expect(creds).toEqual({ apiId: 54321, apiHash: 'xyz', session: 'sess2' })
+  })
+
+  it('throws TelegramApiError(401) on non-JSON input', () => {
+    expect(() => parseTelegramCreds('not-json')).toThrow(TelegramApiError)
+    try {
+      parseTelegramCreds('not-json')
+    } catch (e) {
+      expect((e as TelegramApiError).status).toBe(401)
+    }
+  })
+
+  it('throws TelegramApiError(401) when session is missing', () => {
+    expect(() => parseTelegramCreds(JSON.stringify({ apiId: 1, apiHash: 'h' }))).toThrow(TelegramApiError)
+  })
+
+  it('throws TelegramApiError(401) when apiHash is empty', () => {
+    expect(() => parseTelegramCreds(JSON.stringify({ apiId: 1, apiHash: '', session: 's' }))).toThrow(
+      TelegramApiError,
+    )
+  })
+
+  it('throws TelegramApiError(401) when apiId is missing', () => {
+    expect(() => parseTelegramCreds(JSON.stringify({ apiHash: 'h', session: 's' }))).toThrow(TelegramApiError)
+  })
+
+  it('throws TelegramApiError(401) when apiId is non-numeric', () => {
+    expect(() => parseTelegramCreds(JSON.stringify({ apiId: 'nope', apiHash: 'h', session: 's' }))).toThrow(
+      TelegramApiError,
+    )
+  })
+})
+
+// ── validateKey ──────────────────────────────────────────────────────────────────
+
+describe('validateKey', () => {
+  afterEach(() => {
+    __resetClientFactory()
+  })
+
+  it('returns { ok: true, last4 } for valid creds and a live client', async () => {
+    const fakeClient: TgClient = {
+      async getMessages() {
+        return []
+      },
+    }
+    __setClientFactory(async () => fakeClient)
+
+    const result = await validateKey(JSON.stringify({ apiId: 1, apiHash: 'h', session: 'abcdssss' }))
+    expect(result).toEqual({ ok: true, last4: 'ssss' })
+  })
+
+  it('returns { ok: false } when the client throws an auth error', async () => {
+    __setClientFactory(async () => {
+      throw new TelegramApiError('Telegram authentication failed', 401)
+    })
+
+    const result = await validateKey(JSON.stringify({ apiId: 1, apiHash: 'h', session: 'sess' }))
+    expect(result).toEqual({ ok: false, last4: '' })
+  })
+
+  it('returns { ok: false } for malformed creds', async () => {
+    const result = await validateKey('not-json')
+    expect(result).toEqual({ ok: false, last4: '' })
   })
 })

@@ -74,6 +74,8 @@ export function getProvider(id: string): ByokProvider | undefined { /* ... */ }
 export function isEnabledProvider(id: string): id is ProviderId { /* ... */ }
 ```
 
+**Telegram is now a second BYOK provider** (provider id `telegram`, exported as `TELEGRAM_PROVIDER`). Unlike the single-string twitterapi.io key, its credential is a JSON-encoded three-field object `{ apiId, apiHash, session }` (a GramJS `StringSession`), stored KMS-encrypted in `UserData` and resolved per-user by the source adapter's `byokProvider: 'telegram'` (M9 Phase 4). Auth failures (401/403) invalidate the key via the same path as twitterapi.io.
+
 ## Request Paths
 
 ### Interactive Query

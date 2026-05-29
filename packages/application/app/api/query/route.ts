@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { TwitterApiError } from "@monorepo-template/core/lib/twitter";
+import { TelegramApiError } from "@monorepo-template/core/lib/telegram";
 import { RedditQuotaError } from "@monorepo-template/core/lib/reddit";
 import {
   getByokKey,
@@ -204,7 +205,10 @@ export async function POST(req: Request) {
       const err = settledResult.reason;
       if (err instanceof RedditQuotaError) {
         ingestErrors.push({ source, error: "quota_exhausted" });
-      } else if (err instanceof TwitterApiError && (err.status === 401 || err.status === 403)) {
+      } else if (
+        (err instanceof TwitterApiError || err instanceof TelegramApiError) &&
+        (err.status === 401 || err.status === 403)
+      ) {
         if (adapter.byokProvider) {
           await markByokKeyInvalid(userId, adapter.byokProvider);
         }

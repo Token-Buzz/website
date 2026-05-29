@@ -1,5 +1,5 @@
 import { router } from "./router";
-import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey, neynarApiKey, redditClientId, redditClientSecret, telegramApiId, telegramApiHash, telegramSession, stripeSecretKey, stripeWebhookSecret, stripePublishableKey, stripePriceProMonth, stripePriceProYear, stripePriceAlphaMonth, stripePriceAlphaYear, resendApiKey, contactFromAddress } from "./secrets";
+import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey, neynarApiKey, redditClientId, redditClientSecret, stripeSecretKey, stripeWebhookSecret, stripePublishableKey, stripePriceProMonth, stripePriceProYear, stripePriceAlphaMonth, stripePriceAlphaYear, resendApiKey, contactFromAddress } from "./secrets";
 import { tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable } from "./db";
 import { byokKmsKey } from "./byok";
 
@@ -46,9 +46,6 @@ export const app = new sst.aws.Nextjs("Application", {
         NEYNAR_API_KEY: neynarApiKey.value,
         REDDIT_CLIENT_ID: redditClientId.value,
         REDDIT_CLIENT_SECRET: redditClientSecret.value,
-        TELEGRAM_API_ID: telegramApiId.value,
-        TELEGRAM_API_HASH: telegramApiHash.value,
-        TELEGRAM_SESSION: telegramSession.value,
         BYOK_KMS_KEY_ID: byokKmsKey.id,
         STRIPE_SECRET_KEY: stripeSecretKey.value,
         STRIPE_WEBHOOK_SECRET: stripeWebhookSecret.value,
