@@ -111,6 +111,27 @@ describe('BYOK DB layer (dynalite integration)', () => {
     expect(result!.validatedAt).toBeTruthy()
   })
 
+  test('putByokKey with explicit last4 override stores the provided last4, not apiKey.slice(-4)', async () => {
+    // Simulates Reddit's JSON-encoded credential where apiKey.slice(-4) would be garbage.
+    const encodedKey = JSON.stringify({ clientId: 'my_client_id_xyz', clientSecret: 'secret' })
+    const explicitLast4 = '_xyz' // last4 of clientId
+
+    await putByokKey({ userId: USER_ID, provider: PROVIDER, apiKey: encodedKey, last4: explicitLast4 })
+
+    const result = await getByokKey(USER_ID, PROVIDER)
+    expect(result).not.toBeNull()
+    expect(result!.last4).toBe(explicitLast4)
+    // The raw stored key should round-trip correctly via decrypt
+    expect(result!.apiKey).toBe(encodedKey)
+  })
+
+  test('putByokKey without last4 override falls back to apiKey.slice(-4)', async () => {
+    await putByokKey({ userId: USER_ID, provider: PROVIDER, apiKey: API_KEY })
+
+    const result = await getByokKey(USER_ID, PROVIDER)
+    expect(result!.last4).toBe(API_KEY.slice(-4))
+  })
+
   test('hasByokKey returns true when a key exists, false otherwise', async () => {
     expect(await hasByokKey(USER_ID, PROVIDER)).toBe(false)
 

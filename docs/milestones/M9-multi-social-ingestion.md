@@ -17,9 +17,9 @@ Expands ingestion beyond X/Twitter to crypto-native social platforms. Reorders t
 - **Per-source tables** (one new DDB table per platform). Existing `Tweets` table untouched. All sources unify only at the source-agnostic `Aggregates` table.
 - **Two ingestion modes for every source — manual *and* automated.** Mirrors the existing X/Twitter design: a user can run an on-demand search, *and* can opt into automated monitoring (polling) of a query. Automated monitoring is a **first-class part of the source-agnostic layer (Phase 1)**, not a bolt-on — see "Ingestion modes" below.
 - **Tier-gated by API economics** — cheapest in Free, paid/operationally-heavy APIs gated:
-  - Free: X (fixed-cost subscription, scale-friendly) + Farcaster (free + free)
-  - Pro: + Reddit (~$0.24/1k calls — variable cost, gate to recover spend)
+  - Free: X (BYOK — user's twitterapi.io key) + Farcaster (free + free) + **Reddit (BYOK — user's own Reddit app credentials)**
   - Alpha: + Telegram + Discord (operationally heavy — premium tier)
+- **Reddit pivoted to BYOK (Nov 2025).** Reddit ended self-service API keys and gates commercial use behind manual approval (Responsible Builder Policy), so the project can't hold one shared paid credential. Reddit is now a **per-user BYOK provider** (exactly like the X/twitterapi.io key): each user supplies their own Reddit app `client_id` + `client_secret`, uses their own quota, and bears their own cost. This removes the original Pro-gate + project-side metering rationale — Reddit is **Free-tier** like the other BYOK sources, with **no project quota/`USAGE#…#reddit` counter**. The in-client rate-limit throttle (Retry-After/`X-Ratelimit`) stays.
 
 ## Ingestion modes — manual + automated (mirrors X/Twitter)
 
@@ -96,13 +96,14 @@ Each source-specific table has its own GSIs sized to the platform's natural acce
 - Free tier covers v1 volume.
 - Lowest-risk integration to prove the multi-source plumbing without paying per-call costs or maintaining a user account.
 
-### Phase 3 — Reddit ingestor
+### Phase 3 — Reddit ingestor (per-user BYOK)
 
-- Official paid API (~$0.24/1k calls; commercial use needs an enterprise quote). Two ingestion paths:
-  - **Manual** live search for new posts matching a query.
-  - **Automated** monitoring via the Phase 1 monitor abstraction, on a **coarser default interval (≈15–30 min)** to control per-call spend (plus per-subreddit top-of-hour polling for designated crypto subs: r/CryptoCurrency, r/SolanaMemecoins, r/SatoshiStreetBets, token-specific subs).
-- Gate to Pro tier.
-- Meter **every** Reddit call — manual and polled — against a new monthly counter `USAGE#<yyyymm>#reddit` (extends M5's entitlement layer); automated monitoring auto-pauses when the quota is exhausted.
+Reddit's official API ended self-service keys (Nov 2025) and gates commercial use behind manual approval, so Reddit ships as a **per-user BYOK provider** — modeled on the existing X/twitterapi.io key, not on a project-held credential.
+
+- **Credentials:** each user creates their own Reddit "script" app and supplies its `client_id` + `client_secret` in Account → API Keys. Stored encrypted in the `UserData` BYOK slot (combined as a JSON credential), validated on entry via an app-only OAuth token fetch. The provider registry (`providers.ts`) gains `reddit`; the Account UI is now a registry-driven tabbed multi-provider section.
+- **Two ingestion paths** (same as X): **manual** live search, and **automated** monitoring via the Phase 1 monitor on a coarse default interval (~20 min). Reddit flows through the generic BYOK path in the `/api/query` route and the monitor poller — no source-specific special-casing.
+- **Free tier**, no project quota/metering (the user's own Reddit app quota — 100 QPM — is the limit). The client is a good API citizen: per-credential token cache, `Retry-After`/`X-Ratelimit` aware backoff + proactive throttle.
+- Client uses app-only OAuth (`client_credentials`) against `oauth.reddit.com/search`. No project `REDDIT_CLIENT_ID/SECRET` secret — pure BYOK.
 
 ### Phase 4 — Telegram ingestor
 
