@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { TIERS, DEFAULT_PLAN, evaluateHumQuota, evaluateIngestionQuota, evaluateRedditQuota, PAID_PLANS, BILLING_INTERVALS, stripePriceId, historyRetentionTtl, PLAN_RANK, planMeets } from './tiers'
+import { TIERS, DEFAULT_PLAN, evaluateHumQuota, evaluateIngestionQuota, PAID_PLANS, BILLING_INTERVALS, stripePriceId, historyRetentionTtl, PLAN_RANK, planMeets } from './tiers'
 
 describe('TIERS', () => {
   test('free tier has humMonthly=10, label=Free', () => {
@@ -268,61 +268,3 @@ describe('historyRetentionTtl', () => {
   })
 })
 
-describe('redditMonthly', () => {
-  test('free has redditMonthly=0 (Reddit is Pro-gated)', () => {
-    expect(TIERS.free.redditMonthly).toBe(0)
-  })
-
-  test('pro has redditMonthly=1000', () => {
-    expect(TIERS.pro.redditMonthly).toBe(1000)
-  })
-
-  test('alpha has redditMonthly=null (unlimited)', () => {
-    expect(TIERS.alpha.redditMonthly).toBeNull()
-  })
-})
-
-describe('evaluateRedditQuota', () => {
-  test('free: blocked at used=0 (limit is 0)', () => {
-    const result = evaluateRedditQuota('free', 0)
-    expect(result.allowed).toBe(false)
-    expect(result.limit).toBe(0)
-  })
-
-  test('free: blocked when used=1 (over limit)', () => {
-    const result = evaluateRedditQuota('free', 1)
-    expect(result.allowed).toBe(false)
-    expect(result.limit).toBe(0)
-  })
-
-  test('pro: allowed when used=0', () => {
-    const result = evaluateRedditQuota('pro', 0)
-    expect(result.allowed).toBe(true)
-    expect(result.limit).toBe(1000)
-  })
-
-  test('pro: allowed when used=999 (one below limit)', () => {
-    const result = evaluateRedditQuota('pro', 999)
-    expect(result.allowed).toBe(true)
-    expect(result.limit).toBe(1000)
-  })
-
-  test('pro: blocked at limit (used=1000)', () => {
-    const result = evaluateRedditQuota('pro', 1000)
-    expect(result.allowed).toBe(false)
-    expect(result.limit).toBe(1000)
-  })
-
-  test('pro: blocked over limit (used=1001)', () => {
-    const result = evaluateRedditQuota('pro', 1001)
-    expect(result.allowed).toBe(false)
-    expect(result.limit).toBe(1000)
-  })
-
-  test('alpha: always allowed regardless of usage, limit=null', () => {
-    expect(evaluateRedditQuota('alpha', 0).allowed).toBe(true)
-    expect(evaluateRedditQuota('alpha', 10000).allowed).toBe(true)
-    expect(evaluateRedditQuota('alpha', 0).limit).toBeNull()
-    expect(evaluateRedditQuota('alpha', 10000).limit).toBeNull()
-  })
-})

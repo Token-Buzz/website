@@ -1,13 +1,16 @@
 import { describe, it, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   RedditApiError,
-  RedditQuotaError,
   RETRY_DELAYS_MS,
   MAX_BACKOFF_MS,
   RATE_LIMIT_THROTTLE_THRESHOLD,
   postToRawTweet,
+  encodeRedditCredential,
+  decodeRedditCredential,
+  validateRedditCredential,
   __resetTokenCache,
   __setSleep,
+  getAccessToken,
   type RedditPost,
 } from './reddit'
 
@@ -28,6 +31,10 @@ const basePost: RedditPost = {
   url: 'https://reddit.com/r/CryptoMoonShots/comments/abc123/',
   over_18: false,
 }
+
+const TEST_CLIENT_ID = 'test-client-id'
+const TEST_CLIENT_SECRET = 'test-client-secret'
+const TEST_CREDENTIAL = encodeRedditCredential(TEST_CLIENT_ID, TEST_CLIENT_SECRET)
 
 // ── postToRawTweet ────────────────────────────────────────────────────────────
 
@@ -150,15 +157,180 @@ describe('RedditApiError', () => {
   })
 })
 
-// ── RedditQuotaError ──────────────────────────────────────────────────────────
+// ── encodeRedditCredential / decodeRedditCredential ───────────────────────────
 
-describe('RedditQuotaError', () => {
-  it('is an Error with the correct name and message', () => {
-    const err = new RedditQuotaError('Reddit quota exceeded for this month')
-    expect(err.name).toBe('RedditQuotaError')
-    expect(err.message).toBe('Reddit quota exceeded for this month')
-    expect(err instanceof Error).toBe(true)
-    expect(err instanceof RedditQuotaError).toBe(true)
+describe('encodeRedditCredential', () => {
+  test('round-trip: encode then decode returns original values', () => {
+    const encoded = encodeRedditCredential('myClientId', 'myClientSecret')
+    const decoded = decodeRedditCredential(encoded)
+    expect(decoded.clientId).toBe('myClientId')
+    expect(decoded.clientSecret).toBe('myClientSecret')
+  })
+
+  test('produces valid JSON string', () => {
+    const encoded = encodeRedditCredential('id123', 'secret456')
+    expect(() => JSON.parse(encoded)).not.toThrow()
+    const parsed = JSON.parse(encoded)
+    expect(parsed.clientId).toBe('id123')
+    expect(parsed.clientSecret).toBe('secret456')
+  })
+})
+
+describe('decodeRedditCredential', () => {
+  test('throws RedditApiError(500) on non-JSON input', () => {
+    expect(() => decodeRedditCredential('not-json')).toThrow(RedditApiError)
+    try {
+      decodeRedditCredential('not-json')
+    } catch (e) {
+      expect((e as RedditApiError).status).toBe(500)
+    }
+  })
+
+  test('throws RedditApiError(500) when clientId is missing', () => {
+    const bad = JSON.stringify({ clientSecret: 'secret' })
+    expect(() => decodeRedditCredential(bad)).toThrow(RedditApiError)
+  })
+
+  test('throws RedditApiError(500) when clientSecret is missing', () => {
+    const bad = JSON.stringify({ clientId: 'id' })
+    expect(() => decodeRedditCredential(bad)).toThrow(RedditApiError)
+  })
+
+  test('throws RedditApiError(500) when clientId is empty string', () => {
+    const bad = JSON.stringify({ clientId: '', clientSecret: 'secret' })
+    expect(() => decodeRedditCredential(bad)).toThrow(RedditApiError)
+  })
+
+  test('throws RedditApiError(500) when clientSecret is empty string', () => {
+    const bad = JSON.stringify({ clientId: 'id', clientSecret: '' })
+    expect(() => decodeRedditCredential(bad)).toThrow(RedditApiError)
+  })
+
+  test('throws RedditApiError(500) on empty string input', () => {
+    expect(() => decodeRedditCredential('')).toThrow(RedditApiError)
+  })
+
+  test('throws RedditApiError(500) on JSON null', () => {
+    expect(() => decodeRedditCredential('null')).toThrow(RedditApiError)
+  })
+})
+
+// ── validateRedditCredential ──────────────────────────────────────────────────
+
+describe('validateRedditCredential', () => {
+  beforeEach(() => {
+    __resetTokenCache()
+    vi.stubGlobal('fetch', vi.fn())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  test('returns ok=true and last4=clientId.slice(-4) when token fetch succeeds', async () => {
+    const mockFetch = vi.mocked(global.fetch)
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ access_token: 'tok', expires_in: 3600 }), { status: 200 }),
+    )
+
+    const result = await validateRedditCredential('myClientId1234', 'mySecret')
+    expect(result.ok).toBe(true)
+    expect(result.last4).toBe('1234')
+  })
+
+  test('returns ok=false on 401 (invalid credentials)', async () => {
+    const mockFetch = vi.mocked(global.fetch)
+    mockFetch.mockResolvedValueOnce(
+      new Response('Unauthorized', { status: 401, statusText: 'Unauthorized' }),
+    )
+
+    const result = await validateRedditCredential('id-ending-ABCD', 'wrong-secret')
+    expect(result.ok).toBe(false)
+    expect(result.last4).toBe('ABCD')
+  })
+
+  test('returns ok=false on 403', async () => {
+    const mockFetch = vi.mocked(global.fetch)
+    mockFetch.mockResolvedValueOnce(
+      new Response('Forbidden', { status: 403, statusText: 'Forbidden' }),
+    )
+
+    const result = await validateRedditCredential('myId', 'badSecret')
+    expect(result.ok).toBe(false)
+  })
+
+  test('re-throws on 500 (transient server error)', async () => {
+    const mockFetch = vi.mocked(global.fetch)
+    mockFetch.mockResolvedValueOnce(
+      new Response('Internal Server Error', { status: 500, statusText: 'Internal Server Error' }),
+    )
+
+    await expect(validateRedditCredential('myId', 'mySecret')).rejects.toBeInstanceOf(RedditApiError)
+  })
+})
+
+// ── Per-clientId token cache isolation ───────────────────────────────────────
+
+describe('token cache isolation', () => {
+  beforeEach(() => {
+    __resetTokenCache()
+    vi.stubGlobal('fetch', vi.fn())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  test('two different clientIds each fetch their own token', async () => {
+    const mockFetch = vi.mocked(global.fetch)
+    mockFetch
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: 'token-for-user-A', expires_in: 3600 }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: 'token-for-user-B', expires_in: 3600 }), { status: 200 }),
+      )
+
+    const tokenA = await getAccessToken('clientIdA', 'secretA')
+    const tokenB = await getAccessToken('clientIdB', 'secretB')
+
+    expect(tokenA).toBe('token-for-user-A')
+    expect(tokenB).toBe('token-for-user-B')
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+  })
+
+  test('same clientId reuses cached token on second call', async () => {
+    const mockFetch = vi.mocked(global.fetch)
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ access_token: 'cached-token', expires_in: 3600 }), { status: 200 }),
+    )
+
+    const token1 = await getAccessToken('sameClientId', 'secret')
+    const token2 = await getAccessToken('sameClientId', 'secret')
+
+    expect(token1).toBe('cached-token')
+    expect(token2).toBe('cached-token')
+    // Only one fetch — second call hits cache
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+
+  test('user A token is not visible to user B (cache keyed by clientId)', async () => {
+    const mockFetch = vi.mocked(global.fetch)
+    // User A fetches
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ access_token: 'token-A', expires_in: 3600 }), { status: 200 }),
+    )
+    // User B must fetch their own
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ access_token: 'token-B', expires_in: 3600 }), { status: 200 }),
+    )
+
+    const tokenA = await getAccessToken('userA-client', 'secretA')
+    // userB-client is different — must fetch separately
+    const tokenB = await getAccessToken('userB-client', 'secretB')
+
+    expect(tokenA).not.toBe(tokenB)
+    expect(mockFetch).toHaveBeenCalledTimes(2)
   })
 })
 
@@ -206,9 +378,6 @@ describe('searchPosts', () => {
   let restoreSleep: ((ms: number) => Promise<void>) | undefined
 
   beforeEach(() => {
-    // Set env credentials
-    process.env.REDDIT_CLIENT_ID = 'test-client-id'
-    process.env.REDDIT_CLIENT_SECRET = 'test-client-secret'
     // Clear token cache so each test starts fresh
     __resetTokenCache()
     // Zero out delays
@@ -224,8 +393,6 @@ describe('searchPosts', () => {
       __setSleep(restoreSleep)
       restoreSleep = undefined
     }
-    delete process.env.REDDIT_CLIENT_ID
-    delete process.env.REDDIT_CLIENT_SECRET
   })
 
   test('fetches a token then performs a search and returns posts', async () => {
@@ -234,7 +401,9 @@ describe('searchPosts', () => {
       .mockResolvedValueOnce(makeTokenResponse()) // token fetch
       .mockResolvedValueOnce(makeResponse(200, makeListingBody([{ id: 'post1' }]))) // search
 
-    const { posts, requestCount } = await import('./reddit').then((m) => m.searchPosts('solana'))
+    const { posts, requestCount } = await import('./reddit').then((m) =>
+      m.searchPosts(TEST_CREDENTIAL, 'solana'),
+    )
 
     expect(posts).toHaveLength(1)
     expect(posts[0].id).toBe('post1')
@@ -250,8 +419,8 @@ describe('searchPosts', () => {
       .mockResolvedValueOnce(makeResponse(200, makeListingBody([]))) // search 2
 
     const mod = await import('./reddit')
-    await mod.searchPosts('solana')
-    await mod.searchPosts('bitcoin')
+    await mod.searchPosts(TEST_CREDENTIAL, 'solana')
+    await mod.searchPosts(TEST_CREDENTIAL, 'bitcoin')
 
     // Only 1 token call + 2 search calls = 3 total
     expect(mockFetch).toHaveBeenCalledTimes(3)
@@ -269,7 +438,7 @@ describe('searchPosts', () => {
       )
 
     const mod = await import('./reddit')
-    const { posts, requestCount } = await mod.searchPosts('solana', { maxPages: 3 })
+    const { posts, requestCount } = await mod.searchPosts(TEST_CREDENTIAL, 'solana', { maxPages: 3 })
 
     expect(posts).toHaveLength(3)
     expect(posts.map((p) => p.id)).toEqual(['p1', 'p2', 'p3'])
@@ -285,7 +454,7 @@ describe('searchPosts', () => {
       )
 
     const mod = await import('./reddit')
-    const { posts, requestCount } = await mod.searchPosts('solana', { maxPages: 1 })
+    const { posts, requestCount } = await mod.searchPosts(TEST_CREDENTIAL, 'solana', { maxPages: 1 })
 
     expect(posts).toHaveLength(1)
     expect(requestCount).toBe(1)
@@ -300,7 +469,7 @@ describe('searchPosts', () => {
 
     const mod = await import('./reddit')
 
-    await expect(mod.searchPosts('solana')).rejects.toBeInstanceOf(mod.RedditApiError)
+    await expect(mod.searchPosts(TEST_CREDENTIAL, 'solana')).rejects.toBeInstanceOf(mod.RedditApiError)
     // 1 token + 1 search (no retry for 4xx)
     expect(mockFetch).toHaveBeenCalledTimes(2)
   })
@@ -316,7 +485,7 @@ describe('searchPosts', () => {
 
     let caughtError: unknown
     try {
-      await mod.searchPosts('solana')
+      await mod.searchPosts(TEST_CREDENTIAL, 'solana')
     } catch (e) {
       caughtError = e
     }
@@ -327,18 +496,14 @@ describe('searchPosts', () => {
     expect(mockFetch).toHaveBeenCalledTimes(4)
   })
 
-  test('missing env creds throws RedditApiError with status 500', async () => {
-    delete process.env.REDDIT_CLIENT_ID
-    delete process.env.REDDIT_CLIENT_SECRET
-
-    // fetch should not be called at all — error thrown before any network activity
+  test('malformed credential throws RedditApiError with status 500 before any network call', async () => {
     const mockFetch = vi.mocked(global.fetch)
 
     const mod = await import('./reddit')
 
     let caughtError: unknown
     try {
-      await mod.searchPosts('solana')
+      await mod.searchPosts('not-valid-json', 'solana')
     } catch (e) {
       caughtError = e
     }
@@ -355,7 +520,7 @@ describe('searchPosts', () => {
       .mockResolvedValueOnce(makeResponse(200, makeListingBody([])))
 
     const mod = await import('./reddit')
-    const { requestCount } = await mod.searchPosts('solana', { maxPages: 1 })
+    const { requestCount } = await mod.searchPosts(TEST_CREDENTIAL, 'solana', { maxPages: 1 })
 
     expect(requestCount).toBe(1)
   })
@@ -375,7 +540,7 @@ describe('searchPosts', () => {
       .mockResolvedValueOnce(makeResponse(200, makeListingBody([{ id: 'post1' }])))
 
     const mod = await import('./reddit')
-    const { posts, requestCount } = await mod.searchPosts('solana', { maxPages: 1 })
+    const { posts, requestCount } = await mod.searchPosts(TEST_CREDENTIAL, 'solana', { maxPages: 1 })
 
     expect(posts).toHaveLength(1)
     expect(requestCount).toBe(2) // 1 x 429 + 1 x 200
@@ -395,7 +560,7 @@ describe('searchPosts', () => {
       .mockResolvedValueOnce(makeResponse(200, makeListingBody([{ id: 'post2' }])))
 
     const mod = await import('./reddit')
-    const { posts, requestCount } = await mod.searchPosts('solana', { maxPages: 1 })
+    const { posts, requestCount } = await mod.searchPosts(TEST_CREDENTIAL, 'solana', { maxPages: 1 })
 
     expect(posts).toHaveLength(1)
     expect(requestCount).toBe(2) // 1 x 429 + 1 x 200
@@ -416,7 +581,7 @@ describe('searchPosts', () => {
 
     let caughtError: unknown
     try {
-      await mod.searchPosts('solana')
+      await mod.searchPosts(TEST_CREDENTIAL, 'solana')
     } catch (e) {
       caughtError = e
     }
@@ -442,7 +607,7 @@ describe('searchPosts', () => {
       .mockResolvedValueOnce(makeResponse(200, makeListingBody([])))
 
     const mod = await import('./reddit')
-    await mod.searchPosts('solana', { maxPages: 1 })
+    await mod.searchPosts(TEST_CREDENTIAL, 'solana', { maxPages: 1 })
 
     // 999 000 ms clamped to MAX_BACKOFF_MS
     expect(sleepFn).toHaveBeenCalledWith(MAX_BACKOFF_MS)
@@ -476,7 +641,7 @@ describe('searchPosts', () => {
       )
 
     const mod = await import('./reddit')
-    const { posts } = await mod.searchPosts('solana', { maxPages: 3 })
+    const { posts } = await mod.searchPosts(TEST_CREDENTIAL, 'solana', { maxPages: 3 })
 
     expect(posts).toHaveLength(2)
     // Throttle sleep: min(2 × 1000, MAX_BACKOFF_MS) = 2000 ms
@@ -508,7 +673,7 @@ describe('searchPosts', () => {
       )
 
     const mod = await import('./reddit')
-    const { posts } = await mod.searchPosts('solana', { maxPages: 3 })
+    const { posts } = await mod.searchPosts(TEST_CREDENTIAL, 'solana', { maxPages: 3 })
 
     expect(posts).toHaveLength(2)
     // No throttle sleep should have been called

@@ -16,8 +16,6 @@ export interface TierConfig {
   humMonthly: number | null
   /** Tweet-ingestion queries per month; null = unlimited. */
   ingestionMonthly: number | null
-  /** Reddit ingestion calls per month; null = unlimited. Reddit is Pro-gated, so free = 0. */
-  redditMonthly: number | null
   /** Stripe pricing per interval; null for the free tier. */
   prices: Record<BillingInterval, TierPrice> | null
   /** Query-history snapshot retention in days; null = no expiry. */
@@ -25,13 +23,12 @@ export interface TierConfig {
 }
 
 export const TIERS: Record<Plan, TierConfig> = {
-  free: { plan: 'free', label: 'Free', humMonthly: 10, ingestionMonthly: 5, redditMonthly: 0, prices: null, historyRetentionDays: 30 },
+  free: { plan: 'free', label: 'Free', humMonthly: 10, ingestionMonthly: 5, prices: null, historyRetentionDays: 30 },
   pro: {
     plan: 'pro',
     label: 'Pro',
     humMonthly: 500,
     ingestionMonthly: 50,
-    redditMonthly: 1000,
     prices: {
       month: { amount: 2400, priceIdEnvVar: 'STRIPE_PRICE_PRO_MONTH' },
       year: { amount: 24000, priceIdEnvVar: 'STRIPE_PRICE_PRO_YEAR' },
@@ -43,7 +40,6 @@ export const TIERS: Record<Plan, TierConfig> = {
     label: 'Alpha',
     humMonthly: null,
     ingestionMonthly: null,
-    redditMonthly: null,
     prices: {
       month: { amount: 24000, priceIdEnvVar: 'STRIPE_PRICE_ALPHA_MONTH' },
       year: { amount: 240000, priceIdEnvVar: 'STRIPE_PRICE_ALPHA_YEAR' },
@@ -73,15 +69,6 @@ export function evaluateIngestionQuota(
   used: number,
 ): { allowed: boolean; limit: number | null } {
   const limit = TIERS[plan].ingestionMonthly
-  const allowed = limit === null || used < limit
-  return { allowed, limit }
-}
-
-export function evaluateRedditQuota(
-  plan: Plan,
-  used: number,
-): { allowed: boolean; limit: number | null } {
-  const limit = TIERS[plan].redditMonthly
   const allowed = limit === null || used < limit
   return { allowed, limit }
 }

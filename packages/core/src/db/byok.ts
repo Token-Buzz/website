@@ -34,15 +34,20 @@ export interface ByokKeyData {
  * Encrypts and stores a user's API key for the given provider.
  * The `gsi1pk`/`gsi1sk` attributes are required for the ByokHolders GSI —
  * omitting them would make the row invisible to `listKeyHolders`.
+ *
+ * `last4` is optional: when provided it is stored as-is (useful when the stored
+ * `apiKey` is an encoded composite value whose last 4 chars would be garbage,
+ * e.g. Reddit's JSON-encoded credential). When omitted, defaults to `apiKey.slice(-4)`.
  */
 export async function putByokKey(params: {
   userId: string
   provider: string
   apiKey: string
+  last4?: string
 }): Promise<void> {
   const { userId, provider, apiKey } = params
   const ciphertext = await encryptSecret(apiKey)
-  const last4 = apiKey.slice(-4)
+  const last4 = params.last4 ?? apiKey.slice(-4)
   const validatedAt = new Date().toISOString()
 
   const item: ByokRecord = {
