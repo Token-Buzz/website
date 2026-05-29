@@ -1,6 +1,7 @@
 // Reddit official API client (app-only OAuth2, client_credentials)
-// Uses PROJECT credentials from env vars REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET.
-// Per-user BYOK is NOT used here — Reddit ingestion is project-wide.
+// Per-user BYOK: each user supplies their own Reddit app client_id + client_secret,
+// encoded as a JSON string via encodeRedditCredential / decodeRedditCredential.
+// Token cache is keyed per clientId so one user's token never leaks to another.
 
 import type { RawTweet } from './twitter'
 
@@ -46,46 +47,66 @@ export class RedditApiError extends Error {
   }
 }
 
+// ── Credential codec ──────────────────────────────────────────────────────────
+
 /**
- * Thrown when a user's monthly Reddit quota is exhausted.
- * Defined here (rather than in the adapter) so it can be shared across
- * the client and any adapter/route that catches it.
+ * Encodes a Reddit app credential pair into a single opaque string suitable
+ * for storage via the BYOK infrastructure (one `apiKey` field per user/provider).
  */
-export class RedditQuotaError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = 'RedditQuotaError'
-  }
+export function encodeRedditCredential(clientId: string, clientSecret: string): string {
+  return JSON.stringify({ clientId, clientSecret })
 }
 
-// ── OAuth token cache ──────────────────────────────────────────────────────────
+/**
+ * Decodes an encoded Reddit credential string back into its constituent parts.
+ * Throws `RedditApiError(500)` if the credential is malformed or missing fields.
+ */
+export function decodeRedditCredential(credential: string): { clientId: string; clientSecret: string } {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(credential)
+  } catch {
+    throw new RedditApiError('malformed Reddit credential', 500)
+  }
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    typeof (parsed as Record<string, unknown>).clientId !== 'string' ||
+    !(parsed as Record<string, unknown>).clientId ||
+    typeof (parsed as Record<string, unknown>).clientSecret !== 'string' ||
+    !(parsed as Record<string, unknown>).clientSecret
+  ) {
+    throw new RedditApiError('malformed Reddit credential', 500)
+  }
+  const { clientId, clientSecret } = parsed as { clientId: string; clientSecret: string }
+  return { clientId, clientSecret }
+}
 
-type TokenCache = {
+// ── OAuth token cache (per clientId) ─────────────────────────────────────────
+
+type TokenEntry = {
   token: string
   expiresAt: number // epoch ms
-} | null
-
-let _tokenCache: TokenCache = null
-
-/** Reset the module-level token cache between tests. */
-export function __resetTokenCache(): void {
-  _tokenCache = null
 }
 
-async function getAccessToken(): Promise<string> {
-  const clientId = process.env.REDDIT_CLIENT_ID
-  const clientSecret = process.env.REDDIT_CLIENT_SECRET
+// Keyed by clientId so separate users' tokens never collide.
+const _tokenCache = new Map<string, TokenEntry>()
 
-  if (!clientId || !clientSecret) {
-    throw new RedditApiError(
-      'Missing Reddit credentials: REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET must be set',
-      500,
-    )
-  }
+/** Reset the token cache between tests. */
+export function __resetTokenCache(): void {
+  _tokenCache.clear()
+}
+
+/**
+ * Fetches (or returns a cached) OAuth2 token for the given credentials.
+ * Token is refreshed when it will expire within the next 60 seconds.
+ */
+export async function getAccessToken(clientId: string, clientSecret: string): Promise<string> {
+  const cached = _tokenCache.get(clientId)
 
   // Return cached token if it won't expire within the next 60 seconds
-  if (_tokenCache && _tokenCache.expiresAt - Date.now() > 60_000) {
-    return _tokenCache.token
+  if (cached && cached.expiresAt - Date.now() > 60_000) {
+    return cached.token
   }
 
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
@@ -108,12 +129,38 @@ async function getAccessToken(): Promise<string> {
   }
 
   const data = (await response.json()) as { access_token: string; expires_in: number }
-  _tokenCache = {
+  const entry: TokenEntry = {
     token: data.access_token,
     expiresAt: Date.now() + data.expires_in * 1000,
   }
+  _tokenCache.set(clientId, entry)
 
-  return _tokenCache.token
+  return entry.token
+}
+
+/**
+ * Validates a Reddit credential pair by attempting a token fetch.
+ * Returns `ok=true` if a token is obtained, `ok=false` on 401/403 (invalid
+ * credentials). 5xx / network errors are re-thrown so the caller can surface
+ * them as a transient failure rather than silently marking the key invalid.
+ *
+ * `last4` is the last 4 characters of the clientId, used for display in the
+ * Account UI without exposing the full credential.
+ */
+export async function validateRedditCredential(
+  clientId: string,
+  clientSecret: string,
+): Promise<{ ok: boolean; last4: string }> {
+  const last4 = clientId.slice(-4)
+  try {
+    await getAccessToken(clientId, clientSecret)
+    return { ok: true, last4 }
+  } catch (err) {
+    if (err instanceof RedditApiError && err.status >= 400 && err.status < 500) {
+      return { ok: false, last4 }
+    }
+    throw err
+  }
 }
 
 // ── Reddit API types ──────────────────────────────────────────────────────────
@@ -144,11 +191,15 @@ type RedditListingResponse = {
 // ── searchPosts ───────────────────────────────────────────────────────────────
 
 /**
- * Searches Reddit posts via the official API.
+ * Searches Reddit posts via the official API using per-user credentials.
+ * The first argument is the encoded credential string (from `encodeRedditCredential`);
+ * it is decoded internally before use.
+ *
  * Paginates up to `maxPages` (default 3) using the listing `after` cursor.
  *
  * 4xx (non-429, non-401) → throws RedditApiError immediately (no retry).
- * 401 → clears token cache and retries the request once before counting as failure.
+ * 401 → clears token cache for this clientId and retries the request once before
+ *   counting as failure.
  * 429 (Too Many Requests) → backs off and retries within the same RETRY_DELAYS_MS
  *   budget. Wait = Retry-After header × 1000 ms (if present and parseable), else
  *   RETRY_DELAYS_MS[attempt]. Capped at MAX_BACKOFF_MS. Throws RedditApiError(429)
@@ -161,12 +212,14 @@ type RedditListingResponse = {
  * fetching the next page (skipped on the last page). Logs a single console.warn.
  *
  * Returns posts collected and requestCount (number of search HTTP requests made,
- * not counting the token request — for per-call metering).
+ * not counting the token request).
  */
 export async function searchPosts(
+  credential: string,
   query: string,
   opts: { maxPages?: number; after?: string } = {},
 ): Promise<{ posts: RedditPost[]; requestCount: number }> {
+  const { clientId, clientSecret } = decodeRedditCredential(credential)
   const maxPages = opts.maxPages ?? 3
 
   const allPosts: RedditPost[] = []
@@ -189,7 +242,7 @@ export async function searchPosts(
     let tokenRefreshed = false
 
     for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
-      const token = await getAccessToken()
+      const token = await getAccessToken(clientId, clientSecret)
 
       try {
         response = await fetch(url.toString(), {
@@ -213,9 +266,9 @@ export async function searchPosts(
         break
       }
 
-      // 401 → token may have expired early; clear cache and retry once
+      // 401 → token may have expired early; clear cache for this clientId and retry once
       if (response.status === 401 && !tokenRefreshed) {
-        _tokenCache = null
+        _tokenCache.delete(clientId)
         tokenRefreshed = true
         // Don't count against attempt budget — just retry immediately
         // but we need to decrement attempt so the loop increment brings us back

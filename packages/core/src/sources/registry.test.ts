@@ -48,16 +48,16 @@ describe('allowedSources', () => {
     expect(allowedSources('free')).toContain('farcaster')
   })
 
+  test('free plan includes reddit', () => {
+    expect(allowedSources('free')).toContain('reddit')
+  })
+
   test('pro plan includes reddit', () => {
     expect(allowedSources('pro')).toContain('reddit')
   })
 
   test('alpha plan includes reddit', () => {
     expect(allowedSources('alpha')).toContain('reddit')
-  })
-
-  test('free plan does NOT include reddit', () => {
-    expect(allowedSources('free')).not.toContain('reddit')
   })
 })
 
@@ -144,8 +144,8 @@ describe('reddit adapter metadata', () => {
     expect(adapter.displayName).toBe('Reddit')
   })
 
-  test('minPlan is "pro"', () => {
-    expect(adapter.minPlan).toBe('pro')
+  test('minPlan is "free"', () => {
+    expect(adapter.minPlan).toBe('free')
   })
 
   test('pollIntervalMs is 20 minutes (1200000)', () => {
@@ -156,8 +156,8 @@ describe('reddit adapter metadata', () => {
     expect(adapter.implemented).toBe(true)
   })
 
-  test('byokProvider is null', () => {
-    expect(adapter.byokProvider).toBeNull()
+  test('byokProvider is "reddit"', () => {
+    expect(adapter.byokProvider).toBe('reddit')
   })
 
   test('search is a function', () => {

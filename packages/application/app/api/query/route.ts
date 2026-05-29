@@ -1,6 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
 import { TwitterApiError } from "@monorepo-template/core/lib/twitter";
-import { RedditQuotaError } from "@monorepo-template/core/lib/reddit";
 import {
   getByokKey,
   getByokKeyStatus,
@@ -172,7 +171,7 @@ export async function POST(req: Request) {
     sourceKeys.map(async ({ source, apiKey }) => {
       anyAttempted = true;
       const adapter = getAdapter(source)!;
-      const result = await adapter.search(apiKey, query, { maxPages, offlineCities, userId });
+      const result = await adapter.search(apiKey, query, { maxPages, offlineCities });
       return result;
     }),
   );
@@ -202,9 +201,7 @@ export async function POST(req: Request) {
       successes.push({ source, ingested: settledResult.value.ingested });
     } else {
       const err = settledResult.reason;
-      if (err instanceof RedditQuotaError) {
-        ingestErrors.push({ source, error: "quota_exhausted" });
-      } else if (err instanceof TwitterApiError && (err.status === 401 || err.status === 403)) {
+      if (err instanceof TwitterApiError && (err.status === 401 || err.status === 403)) {
         if (adapter.byokProvider) {
           await markByokKeyInvalid(userId, adapter.byokProvider);
         }
@@ -240,9 +237,6 @@ export async function POST(req: Request) {
     // Ingest-time errors
     if (ingestErrors.length > 0) {
       const ingestErr = ingestErrors[0]!;
-      if (ingestErr.error === "quota_exhausted") {
-        return Response.json({ error: "quota_exhausted", source }, { status: 402 });
-      }
       if (ingestErr.error === "byok_required") {
         return Response.json({ error: "byok_required", reason: ingestErr.reason }, { status: 403 });
       }

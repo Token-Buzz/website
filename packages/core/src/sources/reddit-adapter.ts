@@ -1,37 +1,17 @@
-import { searchPosts, postToRawTweet, RedditQuotaError } from '../lib/reddit'
+import { searchPosts, postToRawTweet } from '../lib/reddit'
 import { enrichRawTweet } from '../lib/enrich'
 import { putTweet } from '../db/tweets'
-import { canUseReddit, recordRedditUsage } from '../db/usage'
+import { REDDIT_PROVIDER } from '../providers'
 import type { SourceAdapter, IngestOpts, IngestResult } from './types'
 
 async function ingestReddit(
+  apiKey: string,
   query: string,
   opts: IngestOpts | undefined,
   maxPages: number,
   methodName: string,
 ): Promise<IngestResult> {
-  const userId = opts?.userId
-
-  // Quota gate — check before fetching
-  if (userId) {
-    const q = await canUseReddit(userId)
-    if (!q.allowed) {
-      throw new RedditQuotaError(
-        `Reddit monthly quota exhausted (${q.used}/${q.limit})`,
-      )
-    }
-  }
-
-  const { posts, requestCount } = await searchPosts(query, { maxPages })
-
-  // Metering — record usage best-effort after fetching
-  if (userId) {
-    try {
-      await recordRedditUsage(userId, requestCount)
-    } catch (err) {
-      console.error(`[redditAdapter.${methodName}] recordRedditUsage failed:`, err)
-    }
-  }
+  const { posts } = await searchPosts(apiKey, query, { maxPages })
 
   const writeResults = await Promise.allSettled(
     posts.map(async (post) => {
@@ -56,16 +36,16 @@ async function ingestReddit(
 export const redditAdapter: SourceAdapter = {
   id: 'reddit',
   displayName: 'Reddit',
-  minPlan: 'pro',
+  minPlan: 'free',
   pollIntervalMs: 20 * 60 * 1000,
   implemented: true,
-  byokProvider: null,
+  byokProvider: REDDIT_PROVIDER,
 
-  async search(_apiKey: string, query: string, opts?: IngestOpts): Promise<IngestResult> {
-    return ingestReddit(query, opts, opts?.maxPages ?? 3, 'search')
+  async search(apiKey: string, query: string, opts?: IngestOpts): Promise<IngestResult> {
+    return ingestReddit(apiKey, query, opts, opts?.maxPages ?? 3, 'search')
   },
 
-  async since(_apiKey: string, query: string, opts?: IngestOpts): Promise<IngestResult> {
-    return ingestReddit(query, opts, 2, 'since')
+  async since(apiKey: string, query: string, opts?: IngestOpts): Promise<IngestResult> {
+    return ingestReddit(apiKey, query, opts, 2, 'since')
   },
 }
