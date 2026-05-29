@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.0](https://github.com/Token-Buzz/website/compare/v0.37.0...v0.38.0) (2026-05-29)
+
+
+### 🚀 Features
+
+* **core,application,jobs:** Telegram source — per-user BYOK + Account API Keys tab (M9 Phase 4) ([#266](https://github.com/Token-Buzz/website/issues/266)) ([a057451](https://github.com/Token-Buzz/website/commit/a05745159e8d72e3d83f778580c8dab2acd96f12))
+
 ## [0.37.0](https://github.com/Token-Buzz/website/compare/v0.36.0...v0.37.0) (2026-05-29)
 
 
