@@ -42,6 +42,7 @@
     "./sources/types": "./src/sources/types.ts",
     "./sources/registry": "./src/sources/registry.ts",
     "./sources/twitter-adapter": "./src/sources/twitter-adapter.ts",
+    "./sources/telegram-adapter": "./src/sources/telegram-adapter.ts",
     "./live-feed": "./src/live-feed.ts",
     "./lib/crypto": "./src/lib/crypto.ts",
     "./lib/enrich": "./src/lib/enrich.ts",
@@ -51,6 +52,7 @@
     "./lib/queryId": "./src/lib/queryId.ts",
     "./lib/twitter": "./src/lib/twitter.ts",
     "./lib/reddit": "./src/lib/reddit.ts",
+    "./lib/telegram": "./src/lib/telegram.ts",
     "./movers": "./src/movers.ts",
     "./ticker": "./src/ticker.ts",
     "./providers": "./src/providers.ts",
@@ -67,7 +69,8 @@
     "@aws-sdk/client-kms": "^3",
     "@aws-sdk/lib-dynamodb": "^3",
     "node-rake": "^1.0.1",
-    "sst": "*"
+    "sst": "*",
+    "telegram": "^2.26.22"
   },
   "devDependencies": {
     "@tsconfig/node22": "^22",

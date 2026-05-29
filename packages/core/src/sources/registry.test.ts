@@ -26,8 +26,8 @@ describe('getAdapter', () => {
 })
 
 describe('listImplementedSources', () => {
-  test('returns ["twitter", "farcaster", "reddit"] — all implemented as of Phase 3', () => {
-    expect(listImplementedSources()).toEqual(['twitter', 'farcaster', 'reddit'])
+  test('returns ["twitter", "farcaster", "reddit", "telegram"] — all implemented as of Phase 4', () => {
+    expect(listImplementedSources()).toEqual(['twitter', 'farcaster', 'reddit', 'telegram'])
   })
 })
 
@@ -58,6 +58,18 @@ describe('allowedSources', () => {
 
   test('free plan does NOT include reddit', () => {
     expect(allowedSources('free')).not.toContain('reddit')
+  })
+
+  test('alpha plan includes telegram', () => {
+    expect(allowedSources('alpha')).toContain('telegram')
+  })
+
+  test('free plan does NOT include telegram', () => {
+    expect(allowedSources('free')).not.toContain('telegram')
+  })
+
+  test('pro plan does NOT include telegram', () => {
+    expect(allowedSources('pro')).not.toContain('telegram')
   })
 })
 

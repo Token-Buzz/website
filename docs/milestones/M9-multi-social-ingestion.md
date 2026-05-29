@@ -111,6 +111,15 @@ Each source-specific table has its own GSIs sized to the platform's natural acce
 - Real operational complexity: account ban risk, session storage, rate limits.
 - Gate to Alpha.
 
+**Status: Implemented.**
+
+- MTProto user-account-as-bot via GramJS (the `telegram` npm package), driven by a project-owned user account (not a Bot API token).
+- Three new SST secrets — `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TELEGRAM_SESSION` (a GramJS `StringSession`). Read server-side by the `/api/query` route (application Next app) and the `TweetPoller` cron; declared in `infra/secrets.ts` and wired into `infra/application.ts` + the `TweetPoller` cron in `infra/jobs.ts`.
+- Alpha-gated.
+- `pollIntervalMs` is 15 min — bounded by Telegram FLOOD_WAIT (rate limits), not by dollar cost.
+- Reuses the existing `Tweets` table via `putTweet` with `source: 'telegram'` — there is **no** new per-source table. This is a deliberate deviation from the "Schema additions" section above (which described per-source tables that were never built); it's consistent with how the Reddit and Farcaster ingestors actually shipped.
+- FLOOD_WAIT is handled with bounded per-channel retry/skip (retry within a cap, then skip the channel for the cycle rather than block the whole poll).
+
 ### Phase 5 — Discord ingestor
 
 - Verified bot deployed to crypto-community servers that opt in. Server admins invite the bot.

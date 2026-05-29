@@ -1,5 +1,5 @@
 import { tweetsTable, aggregatesTable, tokensTable, userDataTable } from "./db";
-import { clerkSecretKey, resendApiKey, contactFromAddress, webDomain, neynarApiKey, redditClientId, redditClientSecret } from "./secrets";
+import { clerkSecretKey, resendApiKey, contactFromAddress, webDomain, neynarApiKey, redditClientId, redditClientSecret, telegramApiId, telegramApiHash, telegramSession } from "./secrets";
 import { byokKmsKey } from "./byok";
 
 
@@ -30,6 +30,9 @@ if (isProd) {
         NEYNAR_API_KEY: neynarApiKey.value,
         REDDIT_CLIENT_ID: redditClientId.value,
         REDDIT_CLIENT_SECRET: redditClientSecret.value,
+        TELEGRAM_API_ID: telegramApiId.value,
+        TELEGRAM_API_HASH: telegramApiHash.value,
+        TELEGRAM_SESSION: telegramSession.value,
       },
       link: allTables,
       timeout: "90 seconds",
