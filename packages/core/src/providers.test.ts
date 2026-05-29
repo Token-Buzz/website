@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getProvider, isEnabledProvider, TWITTER_PROVIDER, TELEGRAM_PROVIDER, PROVIDERS } from './providers'
+import { getProvider, isEnabledProvider, TWITTER_PROVIDER, TELEGRAM_PROVIDER, DISCORD_PROVIDER, PROVIDERS } from './providers'
 
 describe('providers registry', () => {
   it('TWITTER_PROVIDER equals "twitter"', () => {
@@ -10,6 +10,10 @@ describe('providers registry', () => {
     expect(TELEGRAM_PROVIDER).toBe('telegram')
   })
 
+  it('DISCORD_PROVIDER equals "discord"', () => {
+    expect(DISCORD_PROVIDER).toBe('discord')
+  })
+
   it('PROVIDERS.twitter is enabled', () => {
     expect(PROVIDERS.twitter.enabled).toBe(true)
   })
@@ -17,6 +21,11 @@ describe('providers registry', () => {
   it('PROVIDERS.telegram is enabled and named "Telegram"', () => {
     expect(PROVIDERS.telegram.enabled).toBe(true)
     expect(PROVIDERS.telegram.name).toBe('Telegram')
+  })
+
+  it('PROVIDERS.discord is enabled and named "Discord"', () => {
+    expect(PROVIDERS.discord.enabled).toBe(true)
+    expect(PROVIDERS.discord.name).toBe('Discord')
   })
 
   describe('getProvider', () => {
@@ -54,8 +63,8 @@ describe('providers registry', () => {
       expect(isEnabledProvider('telegram')).toBe(true)
     })
 
-    it('returns false for "discord"', () => {
-      expect(isEnabledProvider('discord')).toBe(false)
+    it('returns true for "discord"', () => {
+      expect(isEnabledProvider('discord')).toBe(true)
     })
 
     it('returns false for an empty string', () => {

@@ -53,6 +53,7 @@
     "./lib/twitter": "./src/lib/twitter.ts",
     "./lib/reddit": "./src/lib/reddit.ts",
     "./lib/telegram": "./src/lib/telegram.ts",
+    "./lib/discord": "./src/lib/discord.ts",
     "./movers": "./src/movers.ts",
     "./ticker": "./src/ticker.ts",
     "./providers": "./src/providers.ts",
