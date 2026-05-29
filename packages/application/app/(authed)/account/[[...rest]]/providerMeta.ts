@@ -69,6 +69,27 @@ const META: Record<ProviderId, ProviderMeta> = {
     docUrl2: 'https://support.reddithelp.com/hc/en-us/articles/16160319875092-Reddit-Data-API-Wiki',
     docLabel2: 'Reddit Data API Wiki',
   },
+  telegram: {
+    id: 'telegram',
+    label: 'Telegram',
+    fields: [
+      { name: 'apiId', label: 'API ID', placeholder: 'Your Telegram api_id (a number)', secret: false },
+      { name: 'apiHash', label: 'API hash', placeholder: 'Your Telegram api_hash', secret: true },
+      { name: 'session', label: 'Session string', placeholder: 'Your GramJS StringSession', secret: true },
+    ],
+    instructions: [
+      'Log in at https://my.telegram.org with your phone number',
+      'Open "API development tools" and create an application (any title and short name)',
+      'Copy the api_id (a number) and the api_hash it shows you',
+      'Generate a login session string (a GramJS StringSession) by signing in once with those credentials — see the docs link below',
+      'Paste the API ID, API hash, and session string into the fields above',
+      'Your credentials are stored encrypted and never shared',
+    ],
+    docUrl: 'https://core.telegram.org/api/obtaining_api_id',
+    docLabel: 'Obtaining api_id (Telegram docs)',
+    docUrl2: 'https://gram.js.org/',
+    docLabel2: 'GramJS (session strings)',
+  },
 }
 
 /**

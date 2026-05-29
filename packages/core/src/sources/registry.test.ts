@@ -26,8 +26,8 @@ describe('getAdapter', () => {
 })
 
 describe('listImplementedSources', () => {
-  test('returns ["twitter", "farcaster", "reddit"] — all implemented as of Phase 3', () => {
-    expect(listImplementedSources()).toEqual(['twitter', 'farcaster', 'reddit'])
+  test('returns ["twitter", "farcaster", "reddit", "telegram"] — all implemented as of Phase 4', () => {
+    expect(listImplementedSources()).toEqual(['twitter', 'farcaster', 'reddit', 'telegram'])
   })
 })
 
@@ -58,6 +58,18 @@ describe('allowedSources', () => {
 
   test('alpha plan includes reddit', () => {
     expect(allowedSources('alpha')).toContain('reddit')
+  })
+
+  test('alpha plan includes telegram', () => {
+    expect(allowedSources('alpha')).toContain('telegram')
+  })
+
+  test('free plan does NOT include telegram', () => {
+    expect(allowedSources('free')).not.toContain('telegram')
+  })
+
+  test('pro plan does NOT include telegram', () => {
+    expect(allowedSources('pro')).not.toContain('telegram')
   })
 })
 
@@ -122,6 +134,42 @@ describe('farcaster adapter metadata', () => {
 
   test('byokProvider is null', () => {
     expect(adapter.byokProvider).toBeNull()
+  })
+
+  test('search is a function', () => {
+    expect(typeof adapter.search).toBe('function')
+  })
+
+  test('since is a function', () => {
+    expect(typeof adapter.since).toBe('function')
+  })
+})
+
+describe('telegram adapter metadata', () => {
+  const adapter = SOURCE_ADAPTERS.telegram!
+
+  test('id is "telegram"', () => {
+    expect(adapter.id).toBe('telegram')
+  })
+
+  test('displayName is "Telegram"', () => {
+    expect(adapter.displayName).toBe('Telegram')
+  })
+
+  test('minPlan is "alpha"', () => {
+    expect(adapter.minPlan).toBe('alpha')
+  })
+
+  test('pollIntervalMs is 15 minutes (900000)', () => {
+    expect(adapter.pollIntervalMs).toBe(15 * 60 * 1000)
+  })
+
+  test('implemented is true', () => {
+    expect(adapter.implemented).toBe(true)
+  })
+
+  test('byokProvider is "telegram"', () => {
+    expect(adapter.byokProvider).toBe('telegram')
   })
 
   test('search is a function', () => {

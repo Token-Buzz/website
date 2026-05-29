@@ -112,6 +112,15 @@ Reddit's official API ended self-service keys (Nov 2025) and gates commercial us
 - Real operational complexity: account ban risk, session storage, rate limits.
 - Gate to Alpha.
 
+**Status: Implemented.**
+
+- MTProto user-account-as-bot via GramJS (the `telegram` npm package), driven by a user account (not a Bot API token).
+- **Credentials are now per-user BYOK** (NOT project `sst.Secret`s). Each user supplies `{ apiId, apiHash, session }` (a GramJS `StringSession`), JSON-encoded and AWS-KMS-encrypted in the `UserData` table exactly like the twitterapi.io key (M10 BYOK). They are resolved per-user at request time by the `/api/query` route (application Next app) and by the `TweetPoller` cron, via `byokProvider: 'telegram'` on the source adapter. The earlier project-wide `TELEGRAM_API_ID` / `TELEGRAM_API_HASH` / `TELEGRAM_SESSION` `sst.Secret`s were **removed** (they broke a PR deploy because the secrets were never seeded). The account-UI key-entry flow for Telegram is a follow-up release.
+- Alpha-gated.
+- `pollIntervalMs` is 15 min — bounded by Telegram FLOOD_WAIT (rate limits), not by dollar cost.
+- Reuses the existing `Tweets` table via `putTweet` with `source: 'telegram'` — there is **no** new per-source table. This is a deliberate deviation from the "Schema additions" section above (which described per-source tables that were never built); it's consistent with how the Reddit and Farcaster ingestors actually shipped.
+- FLOOD_WAIT is handled with bounded per-channel retry/skip (retry within a cap, then skip the channel for the cycle rather than block the whole poll).
+
 ### Phase 5 — Discord ingestor
 
 - Verified bot deployed to crypto-community servers that opt in. Server admins invite the bot.

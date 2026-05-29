@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { TwitterApiError } from "@monorepo-template/core/lib/twitter";
+import { TelegramApiError } from "@monorepo-template/core/lib/telegram";
 import {
   getByokKey,
   getByokKeyStatus,
@@ -201,7 +202,10 @@ export async function POST(req: Request) {
       successes.push({ source, ingested: settledResult.value.ingested });
     } else {
       const err = settledResult.reason;
-      if (err instanceof TwitterApiError && (err.status === 401 || err.status === 403)) {
+      if (
+        (err instanceof TwitterApiError || err instanceof TelegramApiError) &&
+        (err.status === 401 || err.status === 403)
+      ) {
         if (adapter.byokProvider) {
           await markByokKeyInvalid(userId, adapter.byokProvider);
         }

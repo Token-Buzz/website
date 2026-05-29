@@ -196,6 +196,28 @@ describe('BYOK DB layer (dynalite integration)', () => {
   })
 })
 
+describe('Telegram BYOK credentials round-trip', () => {
+  const USER_ID = 'user_telegram_test'
+  const TELEGRAM_CREDS = { apiId: 12345, apiHash: 'h', session: 's' }
+
+  test('JSON-encoded Telegram creds round-trip through put/get and appear in listKeyHolders', async () => {
+    await putByokKey({
+      userId: USER_ID,
+      provider: 'telegram',
+      apiKey: JSON.stringify(TELEGRAM_CREDS),
+    })
+
+    const stored = await getByokKey(USER_ID, 'telegram')
+    expect(stored).not.toBeNull()
+
+    const decoded = JSON.parse(stored!.apiKey)
+    expect(decoded).toEqual(TELEGRAM_CREDS)
+
+    const holders = await listKeyHolders('telegram')
+    expect(holders.map((h) => h.userId)).toContain(USER_ID)
+  })
+})
+
 describe('getByokKeyStatus', () => {
   const USER_ID = 'user_status_test'
   const PROVIDER = TWITTER_PROVIDER
