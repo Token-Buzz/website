@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.0](https://github.com/Token-Buzz/website/compare/v0.34.0...v0.35.0) (2026-05-29)
+
+
+### 🚀 Features
+
+* **jobs,core:** saved-query retention sweep (M8 Phase 6) ([#254](https://github.com/Token-Buzz/website/issues/254)) ([0baeec8](https://github.com/Token-Buzz/website/commit/0baeec861e740417b372f9c31052e1fe23b5ebfb)), closes [#70](https://github.com/Token-Buzz/website/issues/70)
+
 ## [0.34.0](https://github.com/Token-Buzz/website/compare/v0.33.0...v0.34.0) (2026-05-28)
 
 
