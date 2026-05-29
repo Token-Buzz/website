@@ -1,5 +1,5 @@
 import { router } from "./router";
-import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey, neynarApiKey, stripeSecretKey, stripeWebhookSecret, stripePublishableKey, stripePriceProMonth, stripePriceProYear, stripePriceAlphaMonth, stripePriceAlphaYear, resendApiKey, contactFromAddress } from "./secrets";
+import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey, neynarApiKey, redditClientId, redditClientSecret, stripeSecretKey, stripeWebhookSecret, stripePublishableKey, stripePriceProMonth, stripePriceProYear, stripePriceAlphaMonth, stripePriceAlphaYear, resendApiKey, contactFromAddress } from "./secrets";
 import { tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable } from "./db";
 import { byokKmsKey } from "./byok";
 
@@ -44,6 +44,8 @@ export const app = new sst.aws.Nextjs("Application", {
         NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: "/dashboard",
         OPENCAGE_API_KEY: opencageApiKey.value,
         NEYNAR_API_KEY: neynarApiKey.value,
+        REDDIT_CLIENT_ID: redditClientId.value,
+        REDDIT_CLIENT_SECRET: redditClientSecret.value,
         BYOK_KMS_KEY_ID: byokKmsKey.id,
         STRIPE_SECRET_KEY: stripeSecretKey.value,
         STRIPE_WEBHOOK_SECRET: stripeWebhookSecret.value,

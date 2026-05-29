@@ -2,6 +2,7 @@ import type { Handler } from "aws-lambda";
 import { getMonitorAssignments } from "@monorepo-template/core/db/monitor-poll";
 import { getAdapter } from "@monorepo-template/core/sources/registry";
 import { shouldPollNow, markPolled } from "@monorepo-template/core/db/poll-state";
+import { RedditQuotaError } from "@monorepo-template/core/lib/reddit";
 import { handleKeyError } from "./key-errors";
 
 export const handler: Handler = async () => {
@@ -15,10 +16,14 @@ export const handler: Handler = async () => {
     if (!(await shouldPollNow(task.source, task.query, adapter.pollIntervalMs))) continue;
 
     try {
-      const { ingested } = await adapter.since(task.apiKey, task.query);
+      const { ingested } = await adapter.since(task.apiKey, task.query, { userId: task.userId });
       await markPolled(task.source, task.query);
       console.log(`Polled ${ingested} ${task.source} posts for ${task.query} (user ${task.userId})`);
     } catch (err) {
+      if (err instanceof RedditQuotaError) {
+        console.log(`Reddit poll auto-paused for ${task.query} (user ${task.userId}): quota exhausted`);
+        continue;
+      }
       // handleKeyError needs the source's BYOK provider, not a hardcoded one.
       const provider = adapter.byokProvider;
       if (provider && (await handleKeyError(err, task.userId, provider))) continue;
