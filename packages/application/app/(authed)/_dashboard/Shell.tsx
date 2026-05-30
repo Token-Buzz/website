@@ -201,7 +201,7 @@ function SidebarContent({
   const pathname = usePathname()
   const router = useRouter()
 
-  const activeNav = NAV_ITEMS_BASE.find((n) => pathname.startsWith(n.href))?.id ?? 'dashboard'
+  const activeNav = NAV_ITEMS_BASE.find((n) => pathname === n.href || pathname.startsWith(n.href + '/'))?.id ?? 'dashboard'
 
   return (
     <>
