@@ -58,9 +58,13 @@ export async function POST(req: Request) {
       ? Math.max(60000, rawIntervalMs)
       : 120000;
 
+  // enabled: accept boolean; preserve existing value on update; default true on create
+  const rawEnabled = body.enabled;
+  const enabled = typeof rawEnabled === "boolean" ? rawEnabled : undefined;
+
   const now = new Date().toISOString();
 
-  // Look up existing monitor to preserve createdAt
+  // Look up existing monitor to preserve createdAt and enabled
   const existing = await getMonitor(userId, query);
 
   await putMonitor({
@@ -68,6 +72,7 @@ export async function POST(req: Request) {
     query,
     sources,
     intervalMs,
+    enabled: enabled !== undefined ? enabled : (existing?.enabled ?? true),
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   });

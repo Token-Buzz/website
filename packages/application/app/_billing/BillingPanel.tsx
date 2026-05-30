@@ -17,6 +17,21 @@ interface PlanData {
   currentPeriodEnd: string | null
 }
 
+interface SourceStatus {
+  provider: string
+  providerName: string
+  configured: boolean
+  status: 'active' | 'invalid' | null
+  backgroundPolling: boolean
+}
+
+interface UsageData {
+  ingestion: { used: number; limit: number | null }
+  hum: { used: number; limit: number | null }
+  plan: string
+  sources: SourceStatus[]
+}
+
 interface CardInfo {
   brand: string
   last4: string
@@ -122,6 +137,11 @@ export function BillingPanel() {
   const [invoicesLoading, setInvoicesLoading] = useState(false)
   const [invoicesError, setInvoicesError] = useState<string | null>(null)
 
+  // Usage state
+  const [usageData, setUsageData] = useState<UsageData | null>(null)
+  const [usageLoading, setUsageLoading] = useState(true)
+  const [usageError, setUsageError] = useState<string | null>(null)
+
   // Cancel / reactivate state
   const [cancelConfirm, setCancelConfirm] = useState(false)
   const [cancelLoading, setCancelLoading] = useState(false)
@@ -183,12 +203,35 @@ export function BillingPanel() {
     }
   }, [])
 
+  const fetchUsage = useCallback(async () => {
+    setUsageLoading(true)
+    setUsageError(null)
+    try {
+      const res = await fetch('/api/account/usage')
+      if (!res.ok) {
+        setUsageError(`Couldn't load usage.`)
+        return
+      }
+      const data = (await res.json()) as UsageData
+      setUsageData(data)
+    } catch {
+      setUsageError(`Couldn't load usage.`)
+    } finally {
+      setUsageLoading(false)
+    }
+  }, [])
+
   // ── Effects ───────────────────────────────────────────────────────────────
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchPlan()
   }, [fetchPlan])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchUsage()
+  }, [fetchUsage])
 
   // Once we know the user is on a paid plan, load card + invoices
   useEffect(() => {
@@ -357,6 +400,233 @@ export function BillingPanel() {
           </div>
         </Section>
       ) : null}
+
+      {/* ── Usage this month ──────────────────────────────────────────────── */}
+      <Section label="Usage this month">
+        {usageLoading ? (
+          <div
+            style={{
+              padding: '12px 16px',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              font: '400 13px/1.5 var(--font-sans)',
+              color: 'var(--fg-3)',
+            }}
+          >
+            Loading usage…
+          </div>
+        ) : usageError ? (
+          <div
+            style={{
+              padding: '12px 16px',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              font: '400 13px/1.5 var(--font-sans)',
+              color: 'var(--fg-3)',
+            }}
+          >
+            {usageError}
+          </div>
+        ) : usageData ? (
+          <div
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              overflow: 'hidden',
+            }}
+          >
+            {/* Ingestion queries row */}
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: 6,
+                }}
+              >
+                <span
+                  style={{
+                    font: '500 13px/1.3 var(--font-sans)',
+                    color: 'var(--fg-2)',
+                  }}
+                >
+                  Ingestion queries
+                </span>
+                <span
+                  style={{
+                    font: '400 12px/1.3 var(--font-sans)',
+                    color: 'var(--fg-3)',
+                  }}
+                >
+                  {usageData.ingestion.limit === null
+                    ? `${usageData.ingestion.used.toLocaleString()} · Unlimited`
+                    : `${usageData.ingestion.used.toLocaleString()} / ${usageData.ingestion.limit.toLocaleString()}`}
+                </span>
+              </div>
+              {usageData.ingestion.limit !== null && (
+                <div
+                  style={{
+                    height: 4,
+                    borderRadius: 999,
+                    background: 'var(--bg-elevated, var(--border))',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      height: '100%',
+                      borderRadius: 999,
+                      background: 'var(--buzz-500)',
+                      width: `${Math.min(100, (usageData.ingestion.used / usageData.ingestion.limit) * 100)}%`,
+                      transition: 'width 0.3s ease',
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Hum AI queries row */}
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: 6,
+                }}
+              >
+                <span
+                  style={{
+                    font: '500 13px/1.3 var(--font-sans)',
+                    color: 'var(--fg-2)',
+                  }}
+                >
+                  Hum AI queries
+                </span>
+                <span
+                  style={{
+                    font: '400 12px/1.3 var(--font-sans)',
+                    color: 'var(--fg-3)',
+                  }}
+                >
+                  {usageData.hum.limit === null
+                    ? `${usageData.hum.used.toLocaleString()} · Unlimited`
+                    : `${usageData.hum.used.toLocaleString()} / ${usageData.hum.limit.toLocaleString()}`}
+                </span>
+              </div>
+              {usageData.hum.limit !== null && (
+                <div
+                  style={{
+                    height: 4,
+                    borderRadius: 999,
+                    background: 'var(--bg-elevated, var(--border))',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      height: '100%',
+                      borderRadius: 999,
+                      background: 'var(--buzz-500)',
+                      width: `${Math.min(100, (usageData.hum.used / usageData.hum.limit) * 100)}%`,
+                      transition: 'width 0.3s ease',
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Connected sources subsection */}
+            <div style={{ padding: '12px 16px' }}>
+              <div
+                style={{
+                  font: '600 11px/1 var(--font-sans)',
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  color: 'var(--fg-3)',
+                  marginBottom: 10,
+                }}
+              >
+                Connected sources
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {usageData.sources.map((src) => (
+                  <div
+                    key={src.provider}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <span
+                      style={{
+                        font: '400 13px/1.3 var(--font-sans)',
+                        color: 'var(--fg-2)',
+                        flex: 1,
+                      }}
+                    >
+                      {src.providerName}
+                      {src.backgroundPolling && (
+                        <span
+                          style={{
+                            font: '400 11px/1.3 var(--font-sans)',
+                            color: 'var(--fg-4, var(--fg-3))',
+                            marginLeft: 6,
+                          }}
+                        >
+                          · background polling on
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      style={{
+                        font: '600 11px/1 var(--font-sans)',
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        padding: '3px 8px',
+                        borderRadius: 999,
+                        whiteSpace: 'nowrap',
+                        ...(src.configured && src.status === 'active'
+                          ? {
+                              background: 'var(--bull-100, rgba(34,197,94,0.12))',
+                              color: 'var(--bull-500, #16a34a)',
+                            }
+                          : src.configured && src.status === 'invalid'
+                          ? {
+                              background: 'var(--bear-100, rgba(220,53,69,0.1))',
+                              color: 'var(--bear-500, #dc3545)',
+                            }
+                          : {
+                              background: 'var(--neutral-100, rgba(107,114,128,0.12))',
+                              color: 'var(--fg-3)',
+                            }),
+                      }}
+                    >
+                      {src.configured && src.status === 'active'
+                        ? 'Connected'
+                        : src.configured && src.status === 'invalid'
+                        ? 'Invalid key'
+                        : 'Not connected'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div
+                style={{
+                  font: '400 12px/1.5 var(--font-sans)',
+                  color: 'var(--fg-3)',
+                  marginTop: 12,
+                }}
+              >
+                Manage API keys in the <strong>API Keys</strong> tab.
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </Section>
 
       {/* ── Paid-only sections ─────────────────────────────────────────────── */}
       {!loading && !fetchError && planData && isPaid && (

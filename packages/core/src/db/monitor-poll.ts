@@ -93,9 +93,9 @@ export async function getMonitorAssignments(): Promise<MonitorTask[]> {
             queries = []
           }
         } else {
-          // Use monitor records that include this source
+          // Use monitor records that include this source (skip paused monitors)
           queries = monitors
-            .filter((m) => m.sources.includes(sourceId))
+            .filter((m) => m.enabled !== false && m.sources.includes(sourceId))
             .map((m) => m.query)
         }
 
@@ -130,6 +130,7 @@ export async function getMonitorAssignments(): Promise<MonitorTask[]> {
       // Collect monitors for this source, grouped by userId.
       const byUser = new Map<string, string[]>()
       for (const monitor of allMonitors) {
+        if (monitor.enabled === false) continue
         if (!monitor.sources.includes(sourceId)) continue
         const existing = byUser.get(monitor.userId) ?? []
         existing.push(monitor.query)

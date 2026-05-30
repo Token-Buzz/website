@@ -330,6 +330,7 @@ export function SnapshotView({ query, submittedAt, queryHash: _queryHash, snapsh
         <AnalyticsChartGrid
           query={query}
           isMobile={isMobile}
+          selectedSource="all"
           onAddToContext={handleAddToContext}
           onAddToDashboard={handleAddToDashboard}
         />
