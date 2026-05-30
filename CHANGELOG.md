@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.0](https://github.com/Token-Buzz/website/compare/v0.42.0...v0.43.0) (2026-05-30)
+
+
+### 🚀 Features
+
+* **application:** watchlist tab — real data + CRUD, drag-reorder, set-alert modal ([#268](https://github.com/Token-Buzz/website/issues/268)) ([#295](https://github.com/Token-Buzz/website/issues/295)) ([ba2839d](https://github.com/Token-Buzz/website/commit/ba2839dffa77fbb2b512849f95b6ec8515f8671a))
+
 ## [0.42.0](https://github.com/Token-Buzz/website/compare/v0.41.0...v0.42.0) (2026-05-30)
 
 
