@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.0](https://github.com/Token-Buzz/website/compare/v0.41.0...v0.42.0) (2026-05-30)
+
+
+### 🚀 Features
+
+* **core,infra:** M13 Phase 1 — Feeds table + token-profile data layer ([#291](https://github.com/Token-Buzz/website/issues/291)) ([e8b62ac](https://github.com/Token-Buzz/website/commit/e8b62acb01fd5bbe65a0488cebede8686752fb74))
+
 ## [0.41.0](https://github.com/Token-Buzz/website/compare/v0.40.0...v0.41.0) (2026-05-30)
 
 
