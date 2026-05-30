@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { TwitterApiError } from "@monorepo-template/core/lib/twitter";
 import { TelegramApiError } from "@monorepo-template/core/lib/telegram";
 import { DiscordApiError } from "@monorepo-template/core/lib/discord";
+import { ApifyApiError } from "@monorepo-template/core/lib/apify";
 import {
   getByokKey,
   getByokKeyStatus,
@@ -10,6 +11,8 @@ import {
 import { canIngestQuery, recordIngestionUsage, getUserPlan } from "@monorepo-template/core/db/usage";
 import { getAdapter, allowedSources } from "@monorepo-template/core/sources/registry";
 import { isSocialSource, type SocialSource } from "@monorepo-template/core/sources/types";
+import { getIngestionSettings } from "@monorepo-template/core/db/ingestion-mode";
+import { resolveIngestionMode } from "@monorepo-template/core/sources/ingestion-mode";
 import { type City } from "@monorepo-template/core/db/geo";
 import citiesData from "@/lib/geo/cities5000.json";
 
@@ -80,8 +83,12 @@ export async function POST(req: Request) {
 
   const isSingleSource = requestedSources.length === 1;
 
-  // ── Resolve plan + allowed sources ─────────────────────────────────────────
-  const { plan } = await getUserPlan(userId);
+  // ── Resolve plan + ingestion settings + allowed sources ───────────────────
+  const [{ plan }, settings] = await Promise.all([
+    getUserPlan(userId),
+    getIngestionSettings(userId),
+  ]);
+  const modeFor = (s: SocialSource) => resolveIngestionMode(settings, s);
   const allowed = allowedSources(plan);
 
   // ── Partition into unsupported / locked / runnable ─────────────────────────
@@ -90,7 +97,7 @@ export async function POST(req: Request) {
   const runnable: SocialSource[] = [];
 
   for (const s of requestedSources) {
-    const adapter = getAdapter(s);
+    const adapter = getAdapter(s, modeFor(s));
     if (!adapter || !adapter.implemented) {
       unsupported.push(s);
     } else if (!allowed.includes(s)) {
@@ -122,7 +129,7 @@ export async function POST(req: Request) {
   const byokErrors: ByokError[] = [];
 
   for (const s of runnable) {
-    const adapter = getAdapter(s)!;
+    const adapter = getAdapter(s, modeFor(s))!;
     const provider = adapter.byokProvider;
 
     if (provider === null) {
@@ -172,7 +179,7 @@ export async function POST(req: Request) {
   const ingestResults = await Promise.allSettled(
     sourceKeys.map(async ({ source, apiKey }) => {
       anyAttempted = true;
-      const adapter = getAdapter(source)!;
+      const adapter = getAdapter(source, modeFor(source))!;
       const result = await adapter.search(apiKey, query, { maxPages, offlineCities });
       return result;
     }),
@@ -196,7 +203,7 @@ export async function POST(req: Request) {
 
   for (let i = 0; i < sourceKeys.length; i++) {
     const { source } = sourceKeys[i]!;
-    const adapter = getAdapter(source)!;
+    const adapter = getAdapter(source, modeFor(source))!;
     const settledResult = ingestResults[i]!;
 
     if (settledResult.status === "fulfilled") {
@@ -204,7 +211,10 @@ export async function POST(req: Request) {
     } else {
       const err = settledResult.reason;
       if (
-        (err instanceof TwitterApiError || err instanceof TelegramApiError || err instanceof DiscordApiError) &&
+        (err instanceof TwitterApiError ||
+          err instanceof TelegramApiError ||
+          err instanceof DiscordApiError ||
+          err instanceof ApifyApiError) &&
         (err.status === 401 || err.status === 403)
       ) {
         if (adapter.byokProvider) {

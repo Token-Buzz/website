@@ -7,7 +7,7 @@ import { handleKeyError } from "./key-errors";
 export const handler: Handler = async () => {
   const tasks = await getMonitorAssignments();
   for (const task of tasks) {
-    const adapter = getAdapter(task.source);
+    const adapter = getAdapter(task.source, task.mode);
     if (!adapter || !adapter.implemented) continue;
 
     // Cadence policy: free/zero-cost sources poll at their floor interval (~2 min),
