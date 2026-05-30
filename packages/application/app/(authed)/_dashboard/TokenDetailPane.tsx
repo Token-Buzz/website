@@ -1,12 +1,18 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { Icon, Button, Eyebrow, Ticker, Pill, BuzzDot, Avatar, Delta, fmtCount, fmtPrice } from './primitives'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import type { Token, OHLCVBar, LiveFeedTweet } from './types'
 import { CandleChart } from './CandleChart'
 import { fromChart } from './humContext'
+
+// Sentiment is classified by a DynamoDB Stream lambda; poll after ingest to wait
+// for it to catch up. Stop when >= half the returned tweets have sentiment set.
+const SENTIMENT_POLL_INTERVAL_MS = 3000
+const SENTIMENT_POLL_MAX_ATTEMPTS = 6
+const SENTIMENT_READY_THRESHOLD = 0.5
 
 // ── Sentiment Meter ────────────────────────────────────────────────────────
 
@@ -304,9 +310,12 @@ interface TokenDetailPaneProps {
   token: Token
   onClose?: () => void
   onAskHum?: (question: string) => void
+  // Controlled expand state — managed by the parent page (desktop only)
+  expanded?: boolean
+  onToggleExpand?: () => void
 }
 
-export function TokenDetailPane({ token, onClose, onAskHum }: TokenDetailPaneProps) {
+export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleExpand }: TokenDetailPaneProps) {
   const [paneData, setPaneData] = useState<PaneData | null>(null)
   const [paneLoading, setPaneLoading] = useState(true)
   const [showAlertModal, setShowAlertModal] = useState(false)
@@ -316,6 +325,8 @@ export function TokenDetailPane({ token, onClose, onAskHum }: TokenDetailPanePro
 
   // Ref to abort stale in-flight fetches when the token changes mid-load
   const abortRef = useRef<AbortController | null>(null)
+  // Ref used to cancel the sentiment poll loop on unmount or token switch
+  const sentimentPollRef = useRef<{ cancelled: boolean }>({ cancelled: false })
 
   // Reads /api/live-feed and merges into paneData, preserving price fields
   async function fetchLiveFeed(
@@ -405,6 +416,42 @@ export function TokenDetailPane({ token, onClose, onAskHum }: TokenDetailPanePro
     return null
   }
 
+  // After a successful ingest, poll live-feed until sentiment has propagated.
+  // Sentiment is written back by a DynamoDB Stream lambda — it lags the tweet write
+  // by a few seconds. Poll for up to SENTIMENT_POLL_MAX_ATTEMPTS * SENTIMENT_POLL_INTERVAL_MS.
+  const startSentimentPoll = useCallback(
+    (query: string, priceOverride: { price: number; d24: number }, guard: { cancelled: boolean }) => {
+      let attempts = 0
+      const tick = async () => {
+        if (guard.cancelled) return
+        attempts++
+        const fresh = await fetchLiveFeed(query, priceOverride)
+        if (guard.cancelled) return
+
+        if (fresh) {
+          setPaneData(fresh)
+          // Check if enough tweets now carry sentiment
+          const withSentiment = fresh.tweets.filter((t) => t.sentiment != null).length
+          const total = fresh.tweets.length
+          const ready = total > 0 && withSentiment / total >= SENTIMENT_READY_THRESHOLD
+          if (ready || attempts >= SENTIMENT_POLL_MAX_ATTEMPTS) {
+            setRefreshing(false)
+            return
+          }
+        } else if (attempts >= SENTIMENT_POLL_MAX_ATTEMPTS) {
+          setRefreshing(false)
+          return
+        }
+
+        setTimeout(tick, SENTIMENT_POLL_INTERVAL_MS)
+      }
+      // Start the first poll after the first interval
+      setTimeout(tick, SENTIMENT_POLL_INTERVAL_MS)
+    },
+    // fetchLiveFeed is a plain function in component scope; all data flows through params
+    [],
+  )
+
   // Core ingestion + re-fetch flow. forceRefresh=true bypasses the 5-min cooldown.
   async function runIngest(
     query: string,
@@ -421,6 +468,7 @@ export function TokenDetailPane({ token, onClose, onAskHum }: TokenDetailPanePro
 
       let httpStatus: number | undefined
       let result: QueryResponse | null = null
+      let ingestOk = false
       try {
         // We need the HTTP status to map error codes correctly, so re-fetch directly
         const res = await fetch('/api/query', {
@@ -434,6 +482,7 @@ export function TokenDetailPane({ token, onClose, onAskHum }: TokenDetailPanePro
 
         if (res.ok) {
           setLastIngestTime(query)
+          ingestOk = true
         }
       } catch {
         // Network error — silent fallback
@@ -444,13 +493,24 @@ export function TokenDetailPane({ token, onClose, onAskHum }: TokenDetailPanePro
       // Map the API response to a user-facing error node
       const errNode = resolveIngestError(result, httpStatus)
       setIngestError(errNode)
-      setRefreshing(false)
 
       // Re-fetch live-feed with fresh data from the just-completed ingest
       const fresh = await fetchLiveFeed(query, priceOverride, signal)
       if (signal?.aborted) return
       if (fresh) {
         setPaneData(fresh)
+      }
+
+      if (ingestOk) {
+        // Ingest succeeded — start polling until the sentiment lambda catches up.
+        // Cancel guard: reuses the sentimentPollRef so switching tokens stops the old poll.
+        sentimentPollRef.current.cancelled = true
+        const guard = { cancelled: false }
+        sentimentPollRef.current = guard
+        startSentimentPoll(query, priceOverride, guard)
+        // setRefreshing(false) is called inside startSentimentPoll when polling ends
+      } else {
+        setRefreshing(false)
       }
     }
   }
@@ -530,6 +590,8 @@ export function TokenDetailPane({ token, onClose, onAskHum }: TokenDetailPanePro
 
     return () => {
       ac.abort()
+      // Cancel any in-progress sentiment poll from a previous token
+      sentimentPollRef.current.cancelled = true
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token.sym, token.query])
@@ -586,6 +648,16 @@ export function TokenDetailPane({ token, onClose, onAskHum }: TokenDetailPanePro
           window.dispatchEvent(new CustomEvent('hum:add-context', { detail: ctx }))
           onAskHum?.(`What's driving $${token.sym} buzz?`)
         }}>{isMobile ? null : 'Ask Hum'}</Button>
+        {/* Expand/collapse toggle — desktop only; mobile pane is already full-screen */}
+        {!isMobile && onToggleExpand != null && (
+          <Button
+            variant="quiet"
+            size="sm"
+            icon={expanded ? 'compress' : 'expand'}
+            onClick={onToggleExpand}
+            aria-label={expanded ? 'Collapse pane' : 'Expand pane'}
+          />
+        )}
         <Button variant="quiet" size="sm" icon="close" onClick={onClose} />
       </div>
 
