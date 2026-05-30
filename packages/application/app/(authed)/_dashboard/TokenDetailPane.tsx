@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { Icon, Button, Eyebrow, Ticker, Pill, BuzzDot, Avatar, Delta, fmtCount, fmtPrice } from './primitives'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import type { Token, OHLCVBar, LiveFeedTweet } from './types'
@@ -245,6 +246,46 @@ function fmtFollowers(n: number): string {
   return String(n)
 }
 
+// ── /api/query response types ──────────────────────────────────────────────
+
+interface QuerySuccess {
+  ingested: number
+  query: string
+  bySource: Record<string, number>
+}
+
+interface QueryError {
+  error: string
+  reason?: string
+  detail?: string
+}
+
+type QueryResponse = QuerySuccess | QueryError
+
+function isQueryError(r: QueryResponse): r is QueryError {
+  return 'error' in r
+}
+
+// Guard: skip POST /api/query if this exact query was triggered within 5 minutes
+const INGEST_COOLDOWN_MS = 5 * 60 * 1000
+
+function getLastIngestTime(query: string): number | null {
+  try {
+    const raw = sessionStorage.getItem(`watchlist:lastIngest:${query}`)
+    return raw ? parseInt(raw, 10) : null
+  } catch {
+    return null
+  }
+}
+
+function setLastIngestTime(query: string): void {
+  try {
+    sessionStorage.setItem(`watchlist:lastIngest:${query}`, String(Date.now()))
+  } catch {
+    // sessionStorage unavailable (e.g. incognito with blocked storage) — degrade gracefully
+  }
+}
+
 // ── Pane-level data ────────────────────────────────────────────────────────
 
 interface PaneData {
@@ -269,11 +310,158 @@ export function TokenDetailPane({ token, onClose, onAskHum }: TokenDetailPanePro
   const [paneData, setPaneData] = useState<PaneData | null>(null)
   const [paneLoading, setPaneLoading] = useState(true)
   const [showAlertModal, setShowAlertModal] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [ingestError, setIngestError] = useState<React.ReactNode | null>(null)
   const isMobile = useIsMobile()
+
+  // Ref to abort stale in-flight fetches when the token changes mid-load
+  const abortRef = useRef<AbortController | null>(null)
+
+  // Reads /api/live-feed and merges into paneData, preserving price fields
+  async function fetchLiveFeed(
+    query: string,
+    priceOverride: { price: number; d24: number },
+    signal?: AbortSignal,
+  ): Promise<PaneData | null> {
+    try {
+      const res = await fetch(
+        `/api/live-feed?token=${encodeURIComponent(query)}&limit=200`,
+        signal ? { signal } : {},
+      )
+      if (!res.ok) return null
+      const data = await res.json() as { tweets?: LiveFeedTweet[] }
+      const tweets = data.tweets ?? []
+      const handles = new Set(tweets.map((t) => t.authorUsername)).size
+      const bullCount = tweets.filter((t) => t.sentiment === 'bull').length
+      const bearCount = tweets.filter((t) => t.sentiment === 'bear').length
+      const total = tweets.length
+      const rawScore = total > 0 ? ((bullCount - bearCount) / total) * 100 : 0
+      const sentimentScore = Math.max(-100, Math.min(100, Math.round(rawScore)))
+      const half = Math.floor(total / 2)
+      const recent = total - half
+      const delta = half > 0 ? Math.round(((recent - half) / half) * 100) : 0
+      return {
+        price: priceOverride.price,
+        d24: priceOverride.d24,
+        mentions: total,
+        uniqueHandles: handles,
+        sentimentScore,
+        mentions24hDelta: delta,
+        tweets,
+      }
+    } catch {
+      return null
+    }
+  }
+
+  // Fires POST /api/query and returns the parsed response (or null on network error)
+  async function triggerIngest(query: string, signal?: AbortSignal): Promise<QueryResponse | null> {
+    try {
+      const res = await fetch('/api/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, sources: ['twitter'], maxPages: 2 }),
+        ...(signal ? { signal } : {}),
+      })
+      const json = await res.json().catch(() => ({ error: `status ${res.status}` })) as QueryResponse
+      if (!res.ok) {
+        // Return a typed error so callers can inspect status + body together
+        const err: QueryError = isQueryError(json)
+          ? json
+          : { error: `status ${res.status}` }
+        return err
+      }
+      return json as QuerySuccess
+    } catch {
+      // Network error — fall back silently
+      return null
+    }
+  }
+
+  // Resolves an error response to a user-facing message node (null = silent)
+  function resolveIngestError(status: QueryResponse | null, httpStatus?: number): React.ReactNode | null {
+    if (status === null) return null // network error — silent
+    if (!isQueryError(status)) return null // success
+    const { error, reason } = status
+    if (error === 'quota_exhausted' || httpStatus === 402) {
+      return 'Daily query quota exhausted. Showing cached data.'
+    }
+    if (error === 'byok_required' || httpStatus === 403) {
+      return (
+        <>
+          Connect a Twitter API key in <Link href="/account" style={{ color: 'var(--accent)', textDecoration: 'underline' }}>Account</Link> to load live mentions.
+        </>
+      )
+    }
+    if (httpStatus === 429) {
+      return 'Rate limited upstream — try again shortly.'
+    }
+    if (httpStatus === 502) {
+      return 'Couldn\'t reach the social provider. Showing cached data.'
+    }
+    if (httpStatus === 401) {
+      return null // shouldn't happen on authed pages
+    }
+    return null
+  }
+
+  // Core ingestion + re-fetch flow. forceRefresh=true bypasses the 5-min cooldown.
+  async function runIngest(
+    query: string,
+    priceOverride: { price: number; d24: number },
+    forceRefresh: boolean,
+    signal?: AbortSignal,
+  ) {
+    const last = getLastIngestTime(query)
+    const withinCooldown = last !== null && Date.now() - last < INGEST_COOLDOWN_MS
+
+    if (!withinCooldown || forceRefresh) {
+      setRefreshing(true)
+      setIngestError(null)
+
+      let httpStatus: number | undefined
+      let result: QueryResponse | null = null
+      try {
+        // We need the HTTP status to map error codes correctly, so re-fetch directly
+        const res = await fetch('/api/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, sources: ['twitter'], maxPages: 2 }),
+          ...(signal ? { signal } : {}),
+        })
+        httpStatus = res.status
+        result = await res.json().catch(() => ({ error: `status ${res.status}` })) as QueryResponse
+
+        if (res.ok) {
+          setLastIngestTime(query)
+        }
+      } catch {
+        // Network error — silent fallback
+      }
+
+      if (signal?.aborted) return
+
+      // Map the API response to a user-facing error node
+      const errNode = resolveIngestError(result, httpStatus)
+      setIngestError(errNode)
+      setRefreshing(false)
+
+      // Re-fetch live-feed with fresh data from the just-completed ingest
+      const fresh = await fetchLiveFeed(query, priceOverride, signal)
+      if (signal?.aborted) return
+      if (fresh) {
+        setPaneData(fresh)
+      }
+    }
+  }
 
   // Re-fetch whenever the token changes
   useEffect(() => {
-    // All setState calls deferred via async/await to comply with react-hooks/set-state-in-effect
+    // Cancel any in-flight requests for the previous token
+    abortRef.current?.abort()
+    const ac = new AbortController()
+    abortRef.current = ac
+
     async function load() {
       if (!token.query) {
         setPaneLoading(false)
@@ -281,15 +469,19 @@ export function TokenDetailPane({ token, onClose, onAskHum }: TokenDetailPanePro
       }
       setPaneLoading(true)
       setPaneData(null)
+      setIngestError(null)
 
       const query = token.query
       let price = token.price
       let d24 = token.d24
 
+      // Fetch price + cached live-feed in parallel; kick off ingest concurrently
       const [priceRes, feedRes] = await Promise.allSettled([
-        fetch(`/api/price/${encodeURIComponent(token.sym)}?interval=1d`),
-        fetch(`/api/live-feed?token=${encodeURIComponent(query)}&limit=200`),
+        fetch(`/api/price/${encodeURIComponent(token.sym)}?interval=1d`, { signal: ac.signal }),
+        fetch(`/api/live-feed?token=${encodeURIComponent(query)}&limit=200`, { signal: ac.signal }),
       ])
+
+      if (ac.signal.aborted) return
 
       if (priceRes.status === 'fulfilled' && priceRes.value.ok) {
         const data = await priceRes.value.json() as { bars?: OHLCVBar[] }
@@ -311,8 +503,6 @@ export function TokenDetailPane({ token, onClose, onAskHum }: TokenDetailPanePro
         const total = tweets.length
         const rawScore = total > 0 ? ((bullCount - bearCount) / total) * 100 : 0
         const sentimentScore = Math.max(-100, Math.min(100, Math.round(rawScore)))
-
-        // Rough 24h delta: compare recent half vs older half of returned batch
         const half = Math.floor(total / 2)
         const recent = total - half
         const delta = half > 0 ? Math.round(((recent - half) / half) * 100) : 0
@@ -329,9 +519,18 @@ export function TokenDetailPane({ token, onClose, onAskHum }: TokenDetailPanePro
       }
 
       setPaneLoading(false)
+
+      // Kick off on-demand ingestion in the background (doesn't block pane header)
+      void runIngest(query, { price, d24 }, false, ac.signal)
     }
 
-    load().catch(() => setPaneLoading(false))
+    load().catch(() => {
+      if (!ac.signal.aborted) setPaneLoading(false)
+    })
+
+    return () => {
+      ac.abort()
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token.sym, token.query])
   // NOTE: token.price/d24/mentions/dbuzz/sent are intentionally excluded — they are only used
@@ -355,6 +554,13 @@ export function TokenDetailPane({ token, onClose, onAskHum }: TokenDetailPanePro
     sent: (tw.sentiment === 'bull' || tw.sentiment === 'bear') ? tw.sentiment : 'neu',
     text: tw.text,
   }))
+
+  // Manual refresh: bypass cooldown and re-trigger ingest
+  function handleManualRefresh() {
+    if (!token.query || refreshing) return
+    const priceNow = { price: paneData?.price ?? token.price, d24: paneData?.d24 ?? token.d24 }
+    void runIngest(token.query, priceNow, true)
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg)', minWidth: 0 }}>
@@ -469,12 +675,46 @@ export function TokenDetailPane({ token, onClose, onAskHum }: TokenDetailPanePro
       {/* Mentions */}
       <div style={{ padding: '0 20px 20px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0 14px' }}>
-          <Eyebrow>Live mentions · sorted by reach</Eyebrow>
-          {paneLoading && <span style={{ font: '500 11px var(--font-mono)', color: 'var(--fg-3)' }}>loading…</span>}
-          {!paneLoading && mentionCards.length === 0 && (
-            <span style={{ font: '500 11px var(--font-mono)', color: 'var(--fg-3)' }}>no recent mentions</span>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Eyebrow>Live mentions · sorted by reach</Eyebrow>
+            {/* Refreshing pill shown while on-demand ingest is in flight */}
+            {refreshing && (
+              <Pill tone="neu">Refreshing...</Pill>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {/* Manual refresh button — bypasses 5-min cooldown */}
+            {!paneLoading && (
+              <button
+                onClick={handleManualRefresh}
+                disabled={refreshing}
+                style={{
+                  background: 'none', border: 'none', padding: 0, cursor: refreshing ? 'default' : 'pointer',
+                  font: '500 11px var(--font-mono)', color: refreshing ? 'var(--fg-4)' : 'var(--accent)',
+                  textDecoration: 'underline',
+                }}
+              >
+                Refresh
+              </button>
+            )}
+            {paneLoading && <span style={{ font: '500 11px var(--font-mono)', color: 'var(--fg-3)' }}>loading…</span>}
+            {!paneLoading && !refreshing && mentionCards.length === 0 && !ingestError && (
+              <span style={{ font: '500 11px var(--font-mono)', color: 'var(--fg-3)' }}>no recent mentions</span>
+            )}
+          </div>
         </div>
+
+        {/* Inline ingest error — shown once, non-blocking */}
+        {ingestError && (
+          <div style={{
+            font: '500 12px var(--font-sans)', color: 'var(--fg-2)',
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: 6, padding: '8px 12px', marginBottom: 10,
+          }}>
+            {ingestError}
+          </div>
+        )}
+
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {mentionCards.map((m, i) => <MentionCard key={i} m={m} />)}
         </div>
