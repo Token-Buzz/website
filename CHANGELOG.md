@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.40.0](https://github.com/Token-Buzz/website/compare/v0.39.0...v0.40.0) (2026-05-30)
+
+
+### 🚀 Features
+
+* **application,core:** M9 Phase 6 — source filter chips, monitor management UI, usage panel ([#286](https://github.com/Token-Buzz/website/issues/286)) ([57e488b](https://github.com/Token-Buzz/website/commit/57e488bd01983796a01de8f67e7fcfe47a64ffd3))
+
 ## [0.39.0](https://github.com/Token-Buzz/website/compare/v0.38.0...v0.39.0) (2026-05-29)
 
 
