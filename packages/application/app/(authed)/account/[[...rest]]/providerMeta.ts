@@ -137,3 +137,18 @@ export function getEnabledProviderMeta(): ProviderMeta[] {
     .map((p) => META[p.id])
     .filter((m): m is ProviderMeta => m !== undefined)
 }
+
+/**
+ * Returns provider metadata for all per-source BYOK providers (excludes 'apify').
+ * Use this for the per-source tab bar so Apify never appears as a per-source tab.
+ */
+export function getPerSourceProviderMeta(): ProviderMeta[] {
+  return getEnabledProviderMeta().filter((m) => m.id !== 'apify')
+}
+
+/**
+ * Returns the Apify provider metadata, or undefined if apify is not enabled.
+ */
+export function getApifyProviderMeta(): ProviderMeta | undefined {
+  return getEnabledProviderMeta().find((m) => m.id === 'apify')
+}
