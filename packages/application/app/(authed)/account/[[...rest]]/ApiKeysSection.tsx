@@ -3,7 +3,14 @@
 import { useEffect, useState } from 'react'
 import { TextField } from '@/app/_auth/TextField'
 import { ContinueButton } from '@/app/_auth/ContinueButton'
-import { getEnabledProviderMeta, type ProviderMeta } from './providerMeta'
+import {
+  getPerSourceProviderMeta,
+  getApifyProviderMeta,
+  type ProviderMeta,
+} from './providerMeta'
+import type { IngestionMode, IngestionSettings } from '@monorepo-template/core/sources/ingestion-mode'
+import { ALL_SOURCES } from '@monorepo-template/core/sources/types'
+import type { SocialSource } from '@monorepo-template/core/sources/types'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -597,18 +604,320 @@ function ProviderPanel({ meta }: ProviderPanelProps) {
   )
 }
 
+// ── Source label map ──────────────────────────────────────────────────────────
+
+const SOURCE_LABELS: Record<SocialSource, string> = {
+  twitter: 'X (Twitter)',
+  farcaster: 'Farcaster',
+  reddit: 'Reddit',
+  telegram: 'Telegram',
+  discord: 'Discord',
+}
+
+// ── Segmented control ─────────────────────────────────────────────────────────
+
+type IngestionModeView = 'per-source' | 'apify'
+
+interface SegmentedControlProps {
+  value: IngestionModeView
+  onChange: (v: IngestionModeView) => void
+  disabled?: boolean
+}
+
+function SegmentedControl({ value, onChange, disabled }: SegmentedControlProps) {
+  const options: { id: IngestionModeView; label: string }[] = [
+    { id: 'per-source', label: 'Per-source keys' },
+    { id: 'apify', label: 'Apify' },
+  ]
+  return (
+    <div
+      role="group"
+      aria-label="Ingestion mode"
+      style={{
+        display: 'inline-flex',
+        borderRadius: 'var(--r-2)',
+        border: '1px solid var(--border)',
+        overflow: 'hidden',
+        marginBottom: 'var(--sp-5)',
+        opacity: disabled ? 0.6 : 1,
+      }}
+    >
+      {options.map((opt) => (
+        <button
+          key={opt.id}
+          type="button"
+          role="radio"
+          aria-checked={value === opt.id}
+          disabled={disabled}
+          onClick={() => onChange(opt.id)}
+          style={{
+            appearance: 'none',
+            border: 0,
+            borderRight: opt.id === 'per-source' ? '1px solid var(--border)' : undefined,
+            padding: 'var(--sp-2) var(--sp-4)',
+            fontFamily: 'var(--font-sans)',
+            fontSize: 'var(--fs-small)',
+            fontWeight: value === opt.id ? 600 : 400,
+            color: value === opt.id ? 'var(--fg-1)' : 'var(--fg-3)',
+            background: value === opt.id ? 'var(--surface)' : 'var(--bg-sunken)',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            transition: 'background 0.15s, color 0.15s',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ── Per-source override toggle ────────────────────────────────────────────────
+
+interface SourceOverrideToggleProps {
+  source: SocialSource
+  override: IngestionMode | undefined
+  effectiveMode: IngestionMode
+  onSet: (mode: IngestionMode | 'default') => void
+  disabled?: boolean
+}
+
+function SourceOverrideToggle({
+  source,
+  override,
+  effectiveMode,
+  onSet,
+  disabled,
+}: SourceOverrideToggleProps) {
+  const options: { id: IngestionMode | 'default'; label: string }[] = [
+    { id: 'default', label: 'Default' },
+    { id: 'per-source', label: 'Per-source' },
+    { id: 'apify', label: 'Apify' },
+  ]
+  const currentSelection: IngestionMode | 'default' = override ?? 'default'
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 'var(--sp-3)',
+        padding: 'var(--sp-3) 0',
+        borderBottom: '1px solid var(--border)',
+      }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        <span
+          style={{
+            font: '500 var(--fs-small) / 1 var(--font-sans)',
+            color: 'var(--fg-1)',
+          }}
+        >
+          {SOURCE_LABELS[source]}
+        </span>
+        <span
+          style={{
+            font: '400 var(--fs-micro) / 1 var(--font-sans)',
+            color: 'var(--fg-3)',
+          }}
+        >
+          effective: {effectiveMode}
+        </span>
+      </div>
+      <div
+        role="group"
+        aria-label={`${SOURCE_LABELS[source]} override`}
+        style={{
+          display: 'inline-flex',
+          borderRadius: 'var(--r-2)',
+          border: '1px solid var(--border)',
+          overflow: 'hidden',
+          opacity: disabled ? 0.6 : 1,
+        }}
+      >
+        {options.map((opt, idx) => (
+          <button
+            key={opt.id}
+            type="button"
+            role="radio"
+            aria-checked={currentSelection === opt.id}
+            disabled={disabled}
+            onClick={() => onSet(opt.id)}
+            style={{
+              appearance: 'none',
+              border: 0,
+              borderRight: idx < options.length - 1 ? '1px solid var(--border)' : undefined,
+              padding: '5px 10px',
+              fontFamily: 'var(--font-sans)',
+              fontSize: 'var(--fs-micro)',
+              fontWeight: currentSelection === opt.id ? 600 : 400,
+              color: currentSelection === opt.id ? 'var(--fg-1)' : 'var(--fg-3)',
+              background: currentSelection === opt.id ? 'var(--surface)' : 'var(--bg-sunken)',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              transition: 'background 0.15s, color 0.15s',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Apify panel ───────────────────────────────────────────────────────────────
+
+interface ApifyPanelProps {
+  settings: IngestionSettings
+  onSettingsChange: (s: IngestionSettings) => void
+}
+
+function ApifyPanel({ settings, onSettingsChange }: ApifyPanelProps) {
+  const apifyMeta = getApifyProviderMeta()
+  const [savingSource, setSavingSource] = useState<SocialSource | null>(null)
+
+  async function handleOverride(source: SocialSource, mode: IngestionMode | 'default') {
+    const newOverrides = { ...settings.overrides }
+    if (mode === 'default') {
+      delete newOverrides[source]
+    } else {
+      newOverrides[source] = mode
+    }
+    const updated: IngestionSettings = { ...settings, overrides: newOverrides }
+    setSavingSource(source)
+    try {
+      const res = await fetch('/api/account/ingestion-mode', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      })
+      if (res.ok) {
+        const saved = await res.json() as IngestionSettings
+        onSettingsChange(saved)
+      }
+    } finally {
+      setSavingSource(null)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)' }}>
+      {apifyMeta ? (
+        <ProviderPanel meta={apifyMeta} />
+      ) : (
+        <div style={{ color: 'var(--fg-3)', fontSize: 'var(--fs-small)' }}>
+          Apify provider is not available.
+        </div>
+      )}
+
+      <div>
+        <h3
+          style={{
+            margin: '0 0 var(--sp-2)',
+            font: '600 var(--fs-small) / 1 var(--font-sans)',
+            color: 'var(--fg-1)',
+            letterSpacing: '-0.005em',
+          }}
+        >
+          Per-source overrides
+        </h3>
+        <p
+          style={{
+            margin: '0 0 var(--sp-3)',
+            font: '400 var(--fs-micro) / var(--lh-body) var(--font-sans)',
+            color: 'var(--fg-3)',
+          }}
+        >
+          Pin individual sources to a different mode. &ldquo;Default&rdquo; follows the global setting above.
+        </p>
+        <div>
+          {ALL_SOURCES.map((source) => (
+            <SourceOverrideToggle
+              key={source}
+              source={source}
+              override={settings.overrides[source]}
+              effectiveMode={settings.overrides[source] ?? settings.default}
+              onSet={(mode) => handleOverride(source, mode)}
+              disabled={savingSource === source}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div
+        style={{
+          padding: 'var(--sp-3) var(--sp-4)',
+          background: 'var(--bg-sunken)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--r-2)',
+          font: '400 var(--fs-micro) / var(--lh-body) var(--font-sans)',
+          color: 'var(--fg-3)',
+        }}
+      >
+        Apify runs bill to your own Apify account (per compute unit / per result).{' '}
+        <a
+          href="https://apify.com/pricing"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: 'var(--accent)', textDecoration: 'none' }}
+        >
+          See Apify pricing
+        </a>
+        . No project metering.
+      </div>
+    </div>
+  )
+}
+
 // ── Top-level section ──────────────────────────────────────────────────────────
 
 export function ApiKeysSection() {
-  const providers = getEnabledProviderMeta()
-  const [activeIndex, setActiveIndex] = useState(0)
+  const perSourceProviders = getPerSourceProviderMeta()
 
-  if (providers.length === 0) {
-    return (
-      <div style={{ color: 'var(--fg-3)', fontSize: 'var(--fs-small)' }}>
-        No API key providers are currently enabled.
-      </div>
-    )
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [modeView, setModeView] = useState<IngestionModeView>('per-source')
+  const [ingestionSettings, setIngestionSettings] = useState<IngestionSettings | null>(null)
+  const [modeLoading, setModeLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/account/ingestion-mode')
+      .then((r) => r.json())
+      .then((data: IngestionSettings) => {
+        if (!cancelled) {
+          setIngestionSettings(data)
+          setModeView(data.default === 'apify' ? 'apify' : 'per-source')
+          setModeLoading(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setModeLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  async function handleModeViewChange(view: IngestionModeView) {
+    setModeView(view)
+    const newDefault: IngestionMode = view === 'apify' ? 'apify' : 'per-source'
+    const updated: IngestionSettings = {
+      default: newDefault,
+      overrides: ingestionSettings?.overrides ?? {},
+    }
+    try {
+      const res = await fetch('/api/account/ingestion-mode', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      })
+      if (res.ok) {
+        const saved = await res.json() as IngestionSettings
+        setIngestionSettings(saved)
+      }
+    } catch {
+      // non-fatal: UI view already switched optimistically
+    }
   }
 
   return (
@@ -635,19 +944,53 @@ export function ApiKeysSection() {
         </p>
       </div>
 
-      <TabBar providers={providers} activeIndex={activeIndex} onSelect={setActiveIndex} />
+      <SegmentedControl
+        value={modeView}
+        onChange={handleModeViewChange}
+        disabled={modeLoading}
+      />
 
-      {providers.map((p, i) => (
-        <div
-          key={p.id}
-          id={`tab-panel-${p.id}`}
-          role="tabpanel"
-          aria-labelledby={`tab-${p.id}`}
-          hidden={i !== activeIndex}
-        >
-          {i === activeIndex && <ProviderPanel meta={p} />}
-        </div>
-      ))}
+      {modeView === 'per-source' ? (
+        <>
+          {perSourceProviders.length === 0 ? (
+            <div style={{ color: 'var(--fg-3)', fontSize: 'var(--fs-small)' }}>
+              No per-source API key providers are currently enabled.
+            </div>
+          ) : (
+            <>
+              <TabBar
+                providers={perSourceProviders}
+                activeIndex={activeIndex}
+                onSelect={setActiveIndex}
+              />
+              {perSourceProviders.map((p, i) => (
+                <div
+                  key={p.id}
+                  id={`tab-panel-${p.id}`}
+                  role="tabpanel"
+                  aria-labelledby={`tab-${p.id}`}
+                  hidden={i !== activeIndex}
+                >
+                  {i === activeIndex && <ProviderPanel meta={p} />}
+                </div>
+              ))}
+            </>
+          )}
+        </>
+      ) : (
+        ingestionSettings !== null ? (
+          <ApifyPanel
+            settings={ingestionSettings}
+            onSettingsChange={setIngestionSettings}
+          />
+        ) : modeLoading ? (
+          <div style={{ color: 'var(--fg-3)', fontSize: 'var(--fs-small)' }}>Loading…</div>
+        ) : (
+          <div style={{ color: 'var(--fg-3)', fontSize: 'var(--fs-small)' }}>
+            Couldn&apos;t load settings. Refresh the page to try again.
+          </div>
+        )
+      )}
     </div>
   )
 }

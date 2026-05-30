@@ -109,6 +109,21 @@ const META: Record<ProviderId, ProviderMeta> = {
     docUrl2: 'https://discord.com/developers/docs/topics/oauth2#bot-authorization-flow',
     docLabel2: 'Discord bot setup',
   },
+  apify: {
+    id: 'apify',
+    label: 'Apify',
+    fields: [
+      { name: 'apiToken', label: 'API token', placeholder: 'Your Apify API token', secret: true },
+    ],
+    instructions: [
+      'Sign up or log in at https://apify.com',
+      'Go to Settings → Integrations and copy your personal API token',
+      'Paste it below and click "Validate & save"',
+      'Your token is stored encrypted and never shared',
+    ],
+    docUrl: 'https://docs.apify.com/platform/integrations/api',
+    docLabel: 'Apify API docs',
+  },
 }
 
 /**
@@ -121,4 +136,19 @@ export function getEnabledProviderMeta(): ProviderMeta[] {
     .filter((p) => p.enabled)
     .map((p) => META[p.id])
     .filter((m): m is ProviderMeta => m !== undefined)
+}
+
+/**
+ * Returns provider metadata for all per-source BYOK providers (excludes 'apify').
+ * Use this for the per-source tab bar so Apify never appears as a per-source tab.
+ */
+export function getPerSourceProviderMeta(): ProviderMeta[] {
+  return getEnabledProviderMeta().filter((m) => m.id !== 'apify')
+}
+
+/**
+ * Returns the Apify provider metadata, or undefined if apify is not enabled.
+ */
+export function getApifyProviderMeta(): ProviderMeta | undefined {
+  return getEnabledProviderMeta().find((m) => m.id === 'apify')
 }

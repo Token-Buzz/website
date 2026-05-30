@@ -12,6 +12,7 @@ import {
 } from "@monorepo-template/core/lib/reddit";
 import { validateKey as validateTelegramCredential } from "@monorepo-template/core/lib/telegram";
 import { validateToken as validateDiscordToken } from "@monorepo-template/core/lib/discord";
+import { validateApifyToken } from "@monorepo-template/core/lib/apify";
 import { isEnabledProvider, getProvider } from "@monorepo-template/core/providers";
 
 // ── Shared response shape ──────────────────────────────────────────────────────
@@ -146,6 +147,23 @@ async function validateAndEncodeKey(
         return {
           ok: false,
           error: "That Discord bot token was rejected. Double-check it and try again.",
+        };
+      }
+      return { ok: true, apiKey: trimmed, last4 };
+    }
+
+    case "apify": {
+      const apiToken = body.apiToken;
+      if (typeof apiToken !== "string" || apiToken.trim().length === 0) {
+        return { ok: false, error: "apiToken (string) is required" };
+      }
+      const trimmed = apiToken.trim();
+      const { ok, last4 } = await validateApifyToken(trimmed);
+      if (!ok) {
+        return {
+          ok: false,
+          error:
+            "That Apify API token was rejected. Double-check it and try again.",
         };
       }
       return { ok: true, apiKey: trimmed, last4 };
