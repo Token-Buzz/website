@@ -19,9 +19,10 @@ import { DunningBanner } from './DunningBanner'
 
 // ── Sidebar nav items ──────────────────────────────────────────────────────
 
-const NAV_ITEMS = [
+// count for watchlist is fetched on mount; omit the badge entirely when 0
+const NAV_ITEMS_BASE = [
   { id: 'dashboard',  label: 'Today',      icon: 'home'       as const, href: '/dashboard' },
-  { id: 'watchlist',  label: 'Watchlist',  icon: 'table'      as const, href: '/watchlist', count: '6' },
+  { id: 'watchlist',  label: 'Watchlist',  icon: 'table'      as const, href: '/watchlist' },
   { id: 'dashboards', label: 'Dashboards', icon: 'grid'       as const, href: '/dashboards' },
   { id: 'movers',     label: 'Movers',     icon: 'movers'     as const, href: '/movers' },
   { id: 'feed',       label: 'Live feed',  icon: 'activity'   as const, href: '/live-feed' },
@@ -189,16 +190,18 @@ function SidebarContent({
   setActiveWatchlist,
   onNavClick,
   onSearch,
+  watchlistCount,
 }: {
   activeWatchlist: string
   setActiveWatchlist: (id: string) => void
   onNavClick?: () => void
   onSearch?: () => void
+  watchlistCount: number | null
 }) {
   const pathname = usePathname()
   const router = useRouter()
 
-  const activeNav = NAV_ITEMS.find((n) => pathname.startsWith(n.href))?.id ?? 'dashboard'
+  const activeNav = NAV_ITEMS_BASE.find((n) => pathname.startsWith(n.href))?.id ?? 'dashboard'
 
   return (
     <>
@@ -231,19 +234,28 @@ function SidebarContent({
 
       {/* Nav */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {NAV_ITEMS.map((item) => (
-          <NavItem
-            key={item.id}
-            icon={item.icon}
-            label={item.label}
-            active={activeNav === item.id}
-            count={item.count}
-            onClick={() => {
-              router.push(item.href)
-              onNavClick?.()
-            }}
-          />
-        ))}
+        {NAV_ITEMS_BASE.map((item) => {
+          // Resolve the live watchlist count for the badge; omit badge when count is 0
+          const count =
+            item.id === 'watchlist'
+              ? watchlistCount !== null && watchlistCount > 0
+                ? String(watchlistCount)
+                : undefined
+              : item.count
+          return (
+            <NavItem
+              key={item.id}
+              icon={item.icon}
+              label={item.label}
+              active={activeNav === item.id}
+              count={count}
+              onClick={() => {
+                router.push(item.href)
+                onNavClick?.()
+              }}
+            />
+          )
+        })}
       </div>
 
       {/* Watchlists */}
@@ -281,10 +293,12 @@ function Sidebar({
   activeWatchlist,
   setActiveWatchlist,
   onSearch,
+  watchlistCount,
 }: {
   activeWatchlist: string
   setActiveWatchlist: (id: string) => void
   onSearch?: () => void
+  watchlistCount: number | null
 }) {
   return (
     <aside style={{
@@ -296,6 +310,7 @@ function Sidebar({
         activeWatchlist={activeWatchlist}
         setActiveWatchlist={setActiveWatchlist}
         onSearch={onSearch}
+        watchlistCount={watchlistCount}
       />
     </aside>
   )
@@ -311,12 +326,14 @@ function MobileDrawer({
   activeWatchlist,
   setActiveWatchlist,
   onSearch,
+  watchlistCount,
 }: {
   open: boolean
   onClose: () => void
   activeWatchlist: string
   setActiveWatchlist: (id: string) => void
   onSearch?: () => void
+  watchlistCount: number | null
 }) {
   const drawerRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
@@ -456,6 +473,7 @@ function MobileDrawer({
           setActiveWatchlist={setActiveWatchlist}
           onNavClick={onClose}
           onSearch={onSearch}
+          watchlistCount={watchlistCount}
         />
       </div>
     </>
@@ -677,6 +695,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [dashboards, setDashboards] = useState<Dashboard[]>([])
+  // null = not yet fetched; fetched once on mount from GET /api/watchlist
+  const [watchlistCount, setWatchlistCount] = useState<number | null>(null)
 
   const isMobile = useIsMobile()
   const router = useRouter()
@@ -690,6 +710,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const askHum = useCallback((preset?: string) => {
     setHumPreset(preset ?? '')
     setHumOpen(true)
+  }, [])
+
+  // Fetch real watchlist entry count once on mount for the sidebar badge
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/watchlist')
+        if (!res.ok) return
+        const data = (await res.json()) as { entries?: unknown[] }
+        if (!cancelled) setWatchlistCount(data.entries?.length ?? 0)
+      } catch { /* best-effort; badge stays hidden on error */ }
+    })()
+    return () => { cancelled = true }
   }, [])
 
   // Ensure drawer closes if screen widens past breakpoint.
@@ -803,7 +837,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     {
       id: 'navigate',
       heading: 'Navigate',
-      items: NAV_ITEMS.map((item) => ({
+      items: NAV_ITEMS_BASE.map((item) => ({
         id: item.id,
         label: item.label,
         icon: item.icon,
@@ -837,6 +871,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           activeWatchlist={activeWatchlist}
           setActiveWatchlist={setActiveWatchlist}
           onSearch={openPalette}
+          watchlistCount={watchlistCount}
         />
       )}
 
@@ -848,6 +883,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           activeWatchlist={activeWatchlist}
           setActiveWatchlist={setActiveWatchlist}
           onSearch={openPalette}
+          watchlistCount={watchlistCount}
         />
       )}
 

@@ -6,9 +6,15 @@ import { TokenDetailPane } from '../_dashboard/TokenDetailPane'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import type { Token } from '../_dashboard/types'
 
+// Desktop pane widths. Expanded leaves at least the sidebar + list visible.
+const PANE_WIDTH_NARROW = 680
+const PANE_WIDTH_EXPANDED = 'min(1200px, calc(100vw - 320px))'
+
 export default function WatchlistPage() {
   const [selectedToken, setSelectedToken] = useState<Token | null>(null)
   const [focus, setFocus] = useState<string | null>(null)
+  // Expanded state resets to false whenever a new token is opened
+  const [paneExpanded, setPaneExpanded] = useState(false)
   const isMobile = useIsMobile()
 
   useEffect(() => {
@@ -26,14 +32,25 @@ export default function WatchlistPage() {
     return () => { document.body.style.overflow = '' }
   }, [isMobile, selectedToken])
 
-  const handleClose = () => setSelectedToken(null)
+  const handleSelectToken = (token: Token | null) => {
+    setSelectedToken(token)
+    // Reset to narrow when opening a new token
+    setPaneExpanded(false)
+  }
+
+  const handleClose = () => {
+    setSelectedToken(null)
+    setPaneExpanded(false)
+  }
+
+  const handleToggleExpand = () => setPaneExpanded((v) => !v)
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden', position: 'relative' }}>
       {/* Main list — always rendered */}
       <div style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
         <WatchlistView
-          onSelectToken={setSelectedToken}
+          onSelectToken={handleSelectToken}
           selectedToken={selectedToken}
           initialFocus={focus}
         />
@@ -58,11 +75,19 @@ export default function WatchlistPage() {
             />
           </div>
         ) : (
-          // Desktop: fixed-width side panel beside the list
-          <div style={{ width: 680, borderLeft: '1px solid var(--border)', overflowY: 'auto', flexShrink: 0 }}>
+          // Desktop: side panel with animated width transition
+          <div style={{
+            width: paneExpanded ? PANE_WIDTH_EXPANDED : PANE_WIDTH_NARROW,
+            borderLeft: '1px solid var(--border)',
+            overflowY: 'auto',
+            flexShrink: 0,
+            transition: 'width 180ms ease',
+          }}>
             <TokenDetailPane
               token={selectedToken}
               onClose={handleClose}
+              expanded={paneExpanded}
+              onToggleExpand={handleToggleExpand}
             />
           </div>
         )

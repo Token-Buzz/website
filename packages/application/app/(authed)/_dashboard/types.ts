@@ -10,6 +10,10 @@ export interface Token {
   sent: Sentiment
   spark: number[]
   live?: boolean
+  /** Watchlist entry id — present when this Token came from the real watchlist API */
+  entryId?: string
+  /** Search query string tied to this token — present when entryId is set */
+  query?: string
 }
 
 export interface LegacySpikeData {
@@ -135,3 +139,41 @@ export type KPIs = {
   tokenCount: number;
   netSentiment: number;
 };
+
+// ── Watchlist API types ────────────────────────────────────────────────────
+
+export interface WatchlistEntry {
+  pk: string
+  sk: string
+  userId: string
+  entryId: string
+  symbol: string
+  query: string
+  order: number
+  addedAt: string
+  updatedAt: string
+}
+
+export interface OHLCVBar {
+  time: number
+  open: number
+  high: number
+  low: number
+  close: number
+  volume: number
+}
+
+export interface LiveFeedTweet {
+  tweetId: string
+  authorName: string
+  authorUsername: string
+  authorAvatar: string | undefined
+  text: string
+  createdAt: string
+  likeCount: number
+  retweetCount: number
+  replyCount: number
+  viewCount: number
+  tokenTags: string[]
+  sentiment: string | undefined
+}

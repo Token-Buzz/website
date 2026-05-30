@@ -145,6 +145,11 @@ export const watchlistItemKey = (userId: string, symbol: string) => ({
   sk: `WATCHLIST#${symbol.toUpperCase()}`,
 })
 
+export const watchlistEntryKey = (userId: string, entryId: string) => ({
+  pk: `USER#${userId}`,
+  sk: `WATCH#${entryId}`,
+})
+
 export const watchlistGroupKey = (userId: string, groupId: string) => ({
   pk: `USER#${userId}`,
   sk: `GROUP#${groupId}`,
