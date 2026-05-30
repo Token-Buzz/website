@@ -4,7 +4,7 @@
 // here, add a client module under src/lib, and wire validation/search dispatch
 // — see docs/milestones/M10-byok.md).
 
-export type ProviderId = 'twitter' | 'reddit' | 'telegram' | 'discord'
+export type ProviderId = 'twitter' | 'reddit' | 'telegram' | 'discord' | 'apify'
 
 export interface ByokProvider {
   /** Canonical id persisted on every BYOK record (the `provider` field / `BYOK#<id>` sort key). */
@@ -20,6 +20,7 @@ export const PROVIDERS: Record<ProviderId, ByokProvider> = {
   reddit: { id: 'reddit', name: 'Reddit', enabled: true },
   telegram: { id: 'telegram', name: 'Telegram', enabled: true },
   discord: { id: 'discord', name: 'Discord', enabled: true },
+  apify: { id: 'apify', name: 'Apify', enabled: true },
 }
 
 /** Canonical id for the twitterapi.io BYOK provider. */
@@ -33,6 +34,9 @@ export const TELEGRAM_PROVIDER: ProviderId = 'telegram'
 
 /** Canonical id for the Discord bot-token BYOK provider. */
 export const DISCORD_PROVIDER: ProviderId = 'discord'
+
+/** Canonical id for the Apify all-in-one BYOK provider. */
+export const APIFY_PROVIDER: ProviderId = 'apify'
 
 /** Look up a provider's metadata by id; returns undefined for unknown ids. */
 export function getProvider(id: string): ByokProvider | undefined {

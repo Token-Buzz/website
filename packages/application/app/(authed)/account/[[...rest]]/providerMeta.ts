@@ -109,6 +109,21 @@ const META: Record<ProviderId, ProviderMeta> = {
     docUrl2: 'https://discord.com/developers/docs/topics/oauth2#bot-authorization-flow',
     docLabel2: 'Discord bot setup',
   },
+  apify: {
+    id: 'apify',
+    label: 'Apify',
+    fields: [
+      { name: 'apiToken', label: 'API token', placeholder: 'Your Apify API token', secret: true },
+    ],
+    instructions: [
+      'Sign up or log in at https://apify.com',
+      'Go to Settings → Integrations and copy your personal API token',
+      'Paste it below and click "Validate & save"',
+      'Your token is stored encrypted and never shared',
+    ],
+    docUrl: 'https://docs.apify.com/platform/integrations/api',
+    docLabel: 'Apify API docs',
+  },
 }
 
 /**

@@ -216,6 +216,11 @@ export const notificationPrefsKey = (userId: string) => ({
   sk: 'NOTIFPREFS',
 })
 
+export const ingestionSettingsKey = (userId: string) => ({
+  pk: `USER#${userId}`,
+  sk: 'SETTINGS#ingestion',
+})
+
 /**
  * Hum AI conversation key builders.
  *
