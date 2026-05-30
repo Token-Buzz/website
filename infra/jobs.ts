@@ -1,9 +1,9 @@
-import { tweetsTable, aggregatesTable, tokensTable, userDataTable } from "./db";
+import { tweetsTable, aggregatesTable, tokensTable, userDataTable, feedsTable } from "./db";
 import { clerkSecretKey, resendApiKey, contactFromAddress, webDomain, neynarApiKey } from "./secrets";
 import { byokKmsKey } from "./byok";
 
 
-const allTables = [tweetsTable, aggregatesTable, tokensTable, userDataTable];
+const allTables = [tweetsTable, aggregatesTable, tokensTable, userDataTable, feedsTable];
 
 const BEDROCK_HAIKU_ARN = [
   "arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
@@ -87,8 +87,8 @@ if (isProd) {
 }
 
 // 2. DDB Streams aggregator — INSERT fan-out to Aggregates table.
-// All four tables are linked because the shared db client (packages/core/src/db/client.ts)
-// eagerly reads Resource.<Table>.name at module load; missing any link crashes init.
+// All five tables are linked so the shared db client (packages/core/src/db/client.ts)
+// can read Resource.<Table>.name at module load; missing any link crashes init.
 tweetsTable.subscribe(
   "Aggregator",
   {
@@ -100,8 +100,8 @@ tweetsTable.subscribe(
 );
 
 // 3. Sentiment dispatcher — separate stream consumer; Bedrock IAM scoped only here.
-// All four tables are linked because core/db/client.ts eagerly reads Resource.<Table>.name
-// for all four tables at module load; missing any one crashes init with "X is not linked".
+// All five tables are linked because core/db/client.ts eagerly reads Resource.<Table>.name
+// at module load; missing any one crashes init with "X is not linked".
 tweetsTable.subscribe(
   "SentimentDispatcher",
   {

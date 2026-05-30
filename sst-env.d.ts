@@ -18,6 +18,10 @@ declare module "sst" {
       "name": string
       "type": "sst.aws.Dynamo"
     }
+    "Feeds": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
     "CLERK_PUBLISHABLE_KEY": {
       "type": "sst.sst.Secret"
       "value": string

@@ -12,4 +12,5 @@ export const TableNames = {
   aggregates: Resource.Aggregates.name,
   tokens:    Resource.Tokens.name,
   userData:  Resource.UserData.name,
+  feeds:     Resource.Feeds.name,
 } as const

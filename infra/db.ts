@@ -79,3 +79,20 @@ export const authorLocationsTable = new sst.aws.Dynamo("AuthorLocations", {
   },
   primaryIndex: { hashKey: "pk", rangeKey: "sk" },
 });
+
+export const feedsTable = new sst.aws.Dynamo("Feeds", {
+  fields: {
+    pk:     "string",
+    sk:     "string",
+    gsi1pk: "string",
+    gsi1sk: "string",
+    gsi2pk: "string",
+    gsi2sk: "string",
+  },
+  primaryIndex: { hashKey: "pk", rangeKey: "sk" },
+  globalIndexes: {
+    FeedByTokenKindTime: { hashKey: "gsi1pk", rangeKey: "gsi1sk" },
+    FeedByGuid:          { hashKey: "gsi2pk", rangeKey: "gsi2sk" },
+  },
+  stream: "new-and-old-images",
+});
