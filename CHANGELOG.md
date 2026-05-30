@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.41.0](https://github.com/Token-Buzz/website/compare/v0.40.0...v0.41.0) (2026-05-30)
+
+
+### 🚀 Features
+
+* M9 Phase 8 — Apify "all-in-one" BYOK ingestion mode ([#288](https://github.com/Token-Buzz/website/issues/288)) ([5196bc8](https://github.com/Token-Buzz/website/commit/5196bc83327209ca38fa1c20c05ad993a804870f))
+
 ## [0.40.0](https://github.com/Token-Buzz/website/compare/v0.39.0...v0.40.0) (2026-05-30)
 
 
