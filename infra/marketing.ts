@@ -12,6 +12,19 @@ import {
 const isProd = $app.stage === "production";
 const isPR = $app.stage.startsWith("pr-");
 
+// X-Ray active tracing helper — injects tracingConfig into the underlying
+// Pulumi Lambda FunctionArgs via the SST transform chain.
+const activeTracingTransform = {
+    server: (args: { transform?: { function?: unknown } } & Record<string, unknown>) => {
+        args.transform = {
+            ...args.transform,
+            function: (fnArgs: { tracingConfig?: { mode: string } }) => {
+                fnArgs.tracingConfig = { mode: "Active" };
+            },
+        };
+    },
+} as const;
+
 export const web = new sst.aws.Nextjs("Marketing", {
     path: "packages/marketing",
     domain: isPR
@@ -40,4 +53,5 @@ export const web = new sst.aws.Nextjs("Marketing", {
         CONTACT_FROM_ADDRESS: contactFromAddress.value,
         CHANGELOG_GITHUB_TOKEN: changelogGithubToken.value,
     },
+    transform: activeTracingTransform,
 });
