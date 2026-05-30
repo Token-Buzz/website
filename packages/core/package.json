@@ -43,6 +43,8 @@
     "./db/feeds": "./src/db/feeds.ts",
     "./db/token-profile": "./src/db/token-profile.ts",
     "./db/feed-seed": "./src/db/feed-seed.ts",
+    "./db/watchlist-entries": "./src/db/watchlist-entries.ts",
+    "./lib/watchlist-query": "./src/lib/watchlist-query.ts",
     "./sources/types": "./src/sources/types.ts",
     "./sources/ingestion-mode": "./src/sources/ingestion-mode.ts",
     "./sources/apify-adapter": "./src/sources/apify-adapter.ts",

@@ -1,6 +1,7 @@
 import { PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { Resource } from "sst";
 import { ddb } from "./client";
+import { listWatchlistEntries } from "./watchlist-entries";
 
 export type Watchlist = {
   id: string;
@@ -47,11 +48,18 @@ export async function getWatchlists(userId: string): Promise<Watchlist[]> {
 }
 
 export async function getAllTrackedQueries(userId: string): Promise<string[]> {
-  const watchlists = await getWatchlists(userId);
+  const [watchlists, entries] = await Promise.all([
+    getWatchlists(userId),
+    listWatchlistEntries(userId),
+  ]);
   const queries = new Set<string>();
 
   watchlists.forEach((wl) => {
     (wl.queries || []).forEach((q) => queries.add(q));
+  });
+
+  entries.forEach((entry) => {
+    if (entry.query) queries.add(entry.query);
   });
 
   return Array.from(queries);
