@@ -1,0 +1,9 @@
+# GitBook Git Sync configuration.
+# Docs content lives under ./docs-site/ (kept separate from the internal
+# engineering docs under ./docs/). See docs-site/README.md for the landing
+# page and docs-site/SUMMARY.md for the table of contents.
+root: ./docs-site/
+
+structure:
+  readme: README.md
+  summary: SUMMARY.md
