@@ -26,6 +26,11 @@ if (isProd) {
       ],
       timeout: "60 seconds",
       memory: "256 MB",
+      transform: {
+        function: (fnArgs: { tracingConfig?: { mode: string } }) => {
+          fnArgs.tracingConfig = { mode: "Active" };
+        },
+      },
     },
   });
 }

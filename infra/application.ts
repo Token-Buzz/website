@@ -13,6 +13,19 @@ const isPR = $app.stage.startsWith("pr-");
 
 // ── Next.js application ────────────────────────────────────────────────────
 
+// X-Ray active tracing — injects tracingConfig into the underlying Pulumi
+// Lambda FunctionArgs via the SST transform chain.
+const activeTracingTransform = {
+    server: (args: { transform?: { function?: unknown } } & Record<string, unknown>) => {
+        args.transform = {
+            ...args.transform,
+            function: (fnArgs: { tracingConfig?: { mode: string } }) => {
+                fnArgs.tracingConfig = { mode: "Active" };
+            },
+        };
+    },
+} as const;
+
 export const app = new sst.aws.Nextjs("Application", {
     path: "packages/application",
     server: {
@@ -64,4 +77,5 @@ export const app = new sst.aws.Nextjs("Application", {
         },
     ],
     link: [tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable, feedsTable],
+    transform: activeTracingTransform,
 });

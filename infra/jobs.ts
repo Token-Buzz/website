@@ -2,6 +2,12 @@ import { tweetsTable, aggregatesTable, tokensTable, userDataTable, feedsTable } 
 import { clerkSecretKey, resendApiKey, contactFromAddress, webDomain, neynarApiKey } from "./secrets";
 import { byokKmsKey } from "./byok";
 
+// X-Ray active tracing transform — mutates the underlying Pulumi Lambda
+// FunctionArgs to enable X-Ray active tracing on every job Lambda.
+const withTracing = (fnArgs: { tracingConfig?: { mode: string } }) => {
+  fnArgs.tracingConfig = { mode: "Active" };
+};
+
 
 const allTables = [tweetsTable, aggregatesTable, tokensTable, userDataTable, feedsTable];
 
@@ -33,6 +39,7 @@ if (isProd) {
       timeout: "90 seconds",
       memory: "256 MB",
       permissions: [{ actions: ["kms:Decrypt"], resources: [byokKmsKey.arn] }],
+      transform: { function: withTracing },
     },
   });
 
@@ -52,6 +59,7 @@ if (isProd) {
       timeout: "300 seconds",
       memory: "256 MB",
       permissions: [{ actions: ["kms:Decrypt"], resources: [byokKmsKey.arn] }],
+      transform: { function: withTracing },
     },
   });
 
@@ -71,6 +79,7 @@ if (isProd) {
       timeout: "300 seconds",
       memory: "256 MB",
       permissions: [{ actions: ["kms:Decrypt"], resources: [byokKmsKey.arn] }],
+      transform: { function: withTracing },
     },
   });
 
@@ -82,6 +91,7 @@ if (isProd) {
       link: allTables,
       timeout: "120 seconds",
       memory: "256 MB",
+      transform: { function: withTracing },
     },
   });
 }
@@ -95,6 +105,7 @@ tweetsTable.subscribe(
     handler: "packages/jobs/src/aggregator.handler",
     link: allTables,
     timeout: "60 seconds",
+    transform: { function: withTracing },
   },
   { filters: [{ eventName: ["INSERT"] }] },
 );
@@ -115,6 +126,7 @@ tweetsTable.subscribe(
         resources: BEDROCK_HAIKU_ARN,
       },
     ],
+    transform: { function: withTracing },
   },
   { filters: [{ eventName: ["INSERT"] }] },
 );
@@ -127,6 +139,7 @@ new sst.aws.Cron("SpikeMaterializer", {
     link: allTables,
     timeout: "60 seconds",
     memory: "256 MB",
+    transform: { function: withTracing },
   },
 });
 
@@ -140,6 +153,7 @@ new sst.aws.Cron("SocialEventsMaterializer", {
     link: allTables,
     timeout: "120 seconds",
     memory: "256 MB",
+    transform: { function: withTracing },
   },
 });
 
@@ -159,6 +173,7 @@ tokensTable.subscribe(
       CONTACT_FROM_ADDRESS: contactFromAddress.value,
       WEB_DOMAIN: webDomain.value,
     },
+    transform: { function: withTracing },
   },
   { filters: [{ eventName: ["INSERT", "MODIFY"] }] },
 );
@@ -171,6 +186,7 @@ new sst.aws.Cron("DailyRollup", {
     link: allTables,
     timeout: "300 seconds",
     memory: "256 MB",
+    transform: { function: withTracing },
   },
 });
 
@@ -184,5 +200,6 @@ new sst.aws.Cron("SavedQueryRetention", {
     link: allTables,
     timeout: "300 seconds",
     memory: "256 MB",
+    transform: { function: withTracing },
   },
 });
