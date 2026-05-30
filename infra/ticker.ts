@@ -1,5 +1,5 @@
 import { router } from "./router";
-import { tweetsTable, aggregatesTable, tokensTable, userDataTable } from "./db";
+import { tweetsTable, aggregatesTable, tokensTable, userDataTable, feedsTable } from "./db";
 
 const isProd = $app.stage === "production";
 
@@ -19,7 +19,7 @@ if (isProd) {
     schedule: "rate(1 minute)",
     function: {
       handler: "packages/jobs/src/ticker-snapshot.handler",
-      link: [tweetsTable, aggregatesTable, tokensTable, userDataTable],
+      link: [tweetsTable, aggregatesTable, tokensTable, userDataTable, feedsTable],
       environment: { TICKER_BUCKET: tickerBucket.name },
       permissions: [
         { actions: ["s3:PutObject"], resources: [$interpolate`${tickerBucket.arn}/*`] },
