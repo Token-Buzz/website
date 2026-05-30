@@ -424,3 +424,62 @@ export function bucketRange(
   const now = Date.now()
   return Array.from({ length: n }, (_, i) => fn(now - (n - 1 - i) * ms[unit]))
 }
+
+// ── M13: Feeds + token profile keys ─────────────────────────────────────────
+
+/** Token profile row on the Tokens table: pk=TOKEN#<SYM>, sk=PROFILE. */
+export const tokenProfileKey = (symbol: string) => ({
+  pk: `TOKEN#${symbol.toUpperCase()}`,
+  sk: 'PROFILE',
+})
+
+/** Base key for a feed entry row on the Feeds table. */
+export const feedItemKey = (
+  symbol: string,
+  kind: string,
+  isoTs: string,
+  entryId: string,
+) => ({
+  pk: `FEED#${symbol.toUpperCase()}#${kind}`,
+  sk: `${isoTs}#${entryId}`,
+})
+
+/** GSI1 key for querying feed entries by token across kinds (FeedByTokenKindTime). */
+export const feedTokenGsi = (
+  symbol: string,
+  kind: string,
+  isoTs: string,
+  entryId: string,
+) => ({
+  gsi1pk: `FEED#${symbol.toUpperCase()}`,
+  gsi1sk: `${kind}#${isoTs}#${entryId}`,
+})
+
+/** GSI2 key for dedup lookups by feed URL hash + guid hash (FeedByGuid). */
+export const feedGuidGsi = (feedUrlHash: string, guidHash: string) => ({
+  gsi2pk: `FEEDGUID#${feedUrlHash}`,
+  gsi2sk: guidHash,
+})
+
+/** Base key for a poll cursor row on the Feeds table. */
+export const feedSourceKey = (symbol: string, kind: string, feedUrlHash: string) => ({
+  pk: `FEEDSRC#${symbol.toUpperCase()}#${kind}`,
+  sk: `SRC#${feedUrlHash}`,
+})
+
+/**
+ * GSI keys for the WatchersBySymbol query family on the ByokHolders index
+ * (UserData table, gsi1pk/gsi1sk).
+ *
+ * Reuses the existing ByokHolders GSI under a disjoint key space:
+ *   BYOK#<provider>   — BYOK credential rows
+ *   ALERTTOKEN#<SYM>  — alert rule rows
+ *   MONITORS          — monitor rows
+ *   WATCHSYM#<SYM>    — watchlist-by-symbol rows  ← this partition family
+ * The distinct prefixes guarantee no GSI partition collisions.
+ * No new GSI on UserData is required.
+ */
+export const watchlistBySymbolGsi = (symbol: string, userId: string) => ({
+  gsi1pk: `WATCHSYM#${symbol.toUpperCase()}`,
+  gsi1sk: `USER#${userId}`,
+})

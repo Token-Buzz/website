@@ -1,6 +1,6 @@
 import { router } from "./router";
 import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey, neynarApiKey, stripeSecretKey, stripeWebhookSecret, stripePublishableKey, stripePriceProMonth, stripePriceProYear, stripePriceAlphaMonth, stripePriceAlphaYear, resendApiKey, contactFromAddress } from "./secrets";
-import { tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable } from "./db";
+import { tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable, feedsTable } from "./db";
 import { byokKmsKey } from "./byok";
 
 const BEDROCK_HUM_ARN = [
@@ -63,5 +63,5 @@ export const app = new sst.aws.Nextjs("Application", {
             resources: BEDROCK_HUM_ARN,
         },
     ],
-    link: [tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable],
+    link: [tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable, feedsTable],
 });

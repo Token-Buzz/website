@@ -21,5 +21,6 @@ process.env.SST_RESOURCE_Tweets = JSON.stringify({ name: 'Tweets', type: 'sst.aw
 process.env.SST_RESOURCE_Aggregates = JSON.stringify({ name: 'Aggregates', type: 'sst.aws.Dynamo' })
 process.env.SST_RESOURCE_Tokens = JSON.stringify({ name: 'Tokens', type: 'sst.aws.Dynamo' })
 process.env.SST_RESOURCE_UserData = JSON.stringify({ name: 'UserData', type: 'sst.aws.Dynamo' })
+process.env.SST_RESOURCE_Feeds = JSON.stringify({ name: 'Feeds', type: 'sst.aws.Dynamo' })
 // Defensive: some SST versions read the App resource on first access.
 process.env.SST_RESOURCE_App = JSON.stringify({ name: 'website', stage: 'test' })

@@ -163,6 +163,40 @@ const TABLES: CreateTableCommandInput[] = [
       },
     ],
   },
+  {
+    TableName: 'Feeds',
+    BillingMode: 'PAY_PER_REQUEST',
+    AttributeDefinitions: [
+      { AttributeName: 'pk', AttributeType: 'S' },
+      { AttributeName: 'sk', AttributeType: 'S' },
+      { AttributeName: 'gsi1pk', AttributeType: 'S' },
+      { AttributeName: 'gsi1sk', AttributeType: 'S' },
+      { AttributeName: 'gsi2pk', AttributeType: 'S' },
+      { AttributeName: 'gsi2sk', AttributeType: 'S' },
+    ],
+    KeySchema: [
+      { AttributeName: 'pk', KeyType: 'HASH' },
+      { AttributeName: 'sk', KeyType: 'RANGE' },
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: 'FeedByTokenKindTime',
+        KeySchema: [
+          { AttributeName: 'gsi1pk', KeyType: 'HASH' },
+          { AttributeName: 'gsi1sk', KeyType: 'RANGE' },
+        ],
+        Projection: { ProjectionType: 'ALL' },
+      },
+      {
+        IndexName: 'FeedByGuid',
+        KeySchema: [
+          { AttributeName: 'gsi2pk', KeyType: 'HASH' },
+          { AttributeName: 'gsi2sk', KeyType: 'RANGE' },
+        ],
+        Projection: { ProjectionType: 'ALL' },
+      },
+    ],
+  },
 ]
 
 let server: Server | undefined
