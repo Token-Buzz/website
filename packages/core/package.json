@@ -42,6 +42,7 @@
     "./db/source-counts": "./src/db/source-counts.ts",
     "./sources/types": "./src/sources/types.ts",
     "./sources/ingestion-mode": "./src/sources/ingestion-mode.ts",
+    "./sources/apify-adapter": "./src/sources/apify-adapter.ts",
     "./sources/registry": "./src/sources/registry.ts",
     "./sources/twitter-adapter": "./src/sources/twitter-adapter.ts",
     "./sources/telegram-adapter": "./src/sources/telegram-adapter.ts",

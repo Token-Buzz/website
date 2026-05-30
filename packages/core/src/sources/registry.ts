@@ -5,6 +5,8 @@ import { redditAdapter } from './reddit-adapter'
 import { telegramAdapter } from './telegram-adapter'
 import { discordAdapter } from './discord-adapter'
 import { type Plan, planMeets } from '../billing/tiers'
+import { type IngestionMode } from './ingestion-mode'
+import { APIFY_ADAPTERS } from './apify-adapter'
 
 // Phase 1: twitter. Phase 2: farcaster. Phase 3: reddit. Phase 4: telegram. Phase 5: discord.
 export const SOURCE_ADAPTERS: Partial<Record<SocialSource, SourceAdapter>> = {
@@ -15,7 +17,10 @@ export const SOURCE_ADAPTERS: Partial<Record<SocialSource, SourceAdapter>> = {
   discord: discordAdapter,
 }
 
-export function getAdapter(id: string): SourceAdapter | undefined {
+export function getAdapter(id: string, mode: IngestionMode = 'per-source'): SourceAdapter | undefined {
+  if (mode === 'apify') {
+    return APIFY_ADAPTERS[id as SocialSource] ?? SOURCE_ADAPTERS[id as SocialSource]
+  }
   return SOURCE_ADAPTERS[id as SocialSource]
 }
 
