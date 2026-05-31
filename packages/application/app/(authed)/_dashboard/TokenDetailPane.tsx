@@ -720,7 +720,7 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
       <div style={{
         padding: 20,
         display: 'grid',
-        gridTemplateColumns: (isMobile || (paneWidth !== undefined && paneWidth < 580)) ? '1fr' : '1fr 240px',
+        gridTemplateColumns: (isMobile || (paneWidth !== undefined && paneWidth < 580)) ? '1fr' : 'minmax(0, 1fr) 240px',
         gap: 16,
         flexShrink: 0,
       }}>
