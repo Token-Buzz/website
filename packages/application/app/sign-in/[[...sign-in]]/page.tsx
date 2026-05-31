@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSignIn, useAuth } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -12,10 +12,10 @@ import { OrDivider } from '../../_auth/OrDivider'
 import { TextField } from '../../_auth/TextField'
 import { ContinueButton } from '../../_auth/ContinueButton'
 import { clerkErrorMessage } from '../../_auth/clerkErrors'
+import { safeRedirectPath } from '../../_auth/redirectDest'
 import { AuthLoading } from '../../_auth/AuthLoading'
 
 const SSO_CALLBACK_URL = '/sso-callback'
-const POST_AUTH_URL = '/dashboard'
 
 type OAuthStrategy = 'oauth_google' | 'oauth_github' | 'oauth_microsoft'
 type Step = 'form' | 'mfa'
@@ -25,9 +25,24 @@ export default function SignInPage() {
   const { isLoaded, isSignedIn } = useAuth()
   const router = useRouter()
 
+  // Honor Clerk's `redirect_url` (appended by middleware when it gates a
+  // protected route like /account/billing) so a deep link lands the user where
+  // they intended after sign-in, instead of always going to /dashboard.
+  const postAuthUrl = useMemo(() => {
+    if (typeof window === 'undefined') return '/dashboard'
+    const rp = safeRedirectPath(new URLSearchParams(window.location.search).get('redirect_url'))
+    return rp ?? '/dashboard'
+  }, [])
+
+  // Preserve the current query string (e.g. redirect_url) when switching to
+  // sign-up. Computed after mount to avoid a hydration mismatch.
+  const [authQuery, setAuthQuery] = useState('')
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setAuthQuery(window.location.search) }, [])
+
   useEffect(() => {
-    if (isLoaded && isSignedIn) router.replace(POST_AUTH_URL)
-  }, [isLoaded, isSignedIn, router])
+    if (isLoaded && isSignedIn) router.replace(postAuthUrl)
+  }, [isLoaded, isSignedIn, router, postAuthUrl])
 
   const [step, setStep] = useState<Step>('form')
   const [email, setEmail] = useState('')
@@ -52,7 +67,7 @@ export default function SignInPage() {
     const { error: finalizeError } = await signIn.finalize({
       navigate: ({ session, decorateUrl }) => {
         if (session?.currentTask) return
-        const url = decorateUrl(POST_AUTH_URL)
+        const url = decorateUrl(postAuthUrl)
         if (url.startsWith('http')) {
           window.location.href = url
         } else {
@@ -155,10 +170,14 @@ export default function SignInPage() {
       return
     }
     setError(null)
+    const callback =
+      postAuthUrl !== '/dashboard'
+        ? `${SSO_CALLBACK_URL}?redirect_url=${encodeURIComponent(postAuthUrl)}`
+        : SSO_CALLBACK_URL
     const { error: ssoError } = await signIn.sso({
       strategy,
-      redirectUrl: POST_AUTH_URL,
-      redirectCallbackUrl: SSO_CALLBACK_URL,
+      redirectUrl: callback,
+      redirectCallbackUrl: callback,
     })
     if (ssoError) setError(clerkErrorMessage(ssoError))
   }
@@ -241,7 +260,7 @@ export default function SignInPage() {
 
               <p className="tb-footer-link">
                 Don&apos;t have an account?{' '}
-                <Link href="/sign-up">Sign up</Link>
+                <Link href={`/sign-up${authQuery}`}>Sign up</Link>
               </p>
             </form>
           ) : (
