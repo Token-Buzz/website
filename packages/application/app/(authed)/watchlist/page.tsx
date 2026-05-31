@@ -1,22 +1,29 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { WatchlistView } from '../_dashboard/WatchlistView'
 import { TokenDetailPane } from '../_dashboard/TokenDetailPane'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import type { Token } from '../_dashboard/types'
 
-// Desktop pane widths. Expanded leaves at least the sidebar + list visible.
-const PANE_WIDTH_NARROW = 680
-const PANE_WIDTH_EXPANDED = 'min(1200px, calc(100vw - 320px))'
+// Desktop pane widths.
+const PANE_DEFAULT_WIDTH = 680
+const PANE_MIN_WIDTH = 400
+// Maximum width the user can drag the pane to: 75% of the viewport.
+const PANE_MAX_WIDTH_FRACTION = 0.75
 
 export default function WatchlistPage() {
   const [selectedToken, setSelectedToken] = useState<Token | null>(null)
   const [focus, setFocus] = useState<string | null>(null)
   const [autoAdd, setAutoAdd] = useState(false)
-  // Expanded state resets to false whenever a new token is opened
-  const [paneExpanded, setPaneExpanded] = useState(false)
+  // Pixel width of the detail pane (desktop only). Resets on token change.
+  const [paneWidth, setPaneWidth] = useState(PANE_DEFAULT_WIDTH)
   const isMobile = useIsMobile()
+
+  // Drag-to-resize refs — kept outside state to avoid re-renders during drag.
+  const isDragging = useRef(false)
+  const dragStartX = useRef(0)
+  const dragStartWidth = useRef(0)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -40,16 +47,55 @@ export default function WatchlistPage() {
 
   const handleSelectToken = (token: Token | null) => {
     setSelectedToken(token)
-    // Reset to narrow when opening a new token
-    setPaneExpanded(false)
+    // Reset to default width when opening a new token
+    setPaneWidth(PANE_DEFAULT_WIDTH)
   }
 
   const handleClose = () => {
     setSelectedToken(null)
-    setPaneExpanded(false)
+    setPaneWidth(PANE_DEFAULT_WIDTH)
   }
 
-  const handleToggleExpand = () => setPaneExpanded((v) => !v)
+  // Snap to max (75 vw) when collapsed, or back to default when expanded.
+  const handleToggleExpand = useCallback(() => {
+    const maxWidth = Math.floor(window.innerWidth * PANE_MAX_WIDTH_FRACTION)
+    setPaneWidth((w) => (w >= maxWidth - 10 ? PANE_DEFAULT_WIDTH : maxWidth))
+  }, [])
+
+  // Begin a drag-resize interaction on the left edge handle.
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    isDragging.current = true
+    dragStartX.current = e.clientX
+    dragStartWidth.current = paneWidth
+
+    // Apply a global cursor override so it doesn't flicker while dragging fast.
+    document.documentElement.style.cursor = 'col-resize'
+    document.documentElement.style.userSelect = 'none'
+
+    function onMouseMove(ev: MouseEvent) {
+      if (!isDragging.current) return
+      // Moving left (negative delta) increases pane width.
+      const delta = dragStartX.current - ev.clientX
+      const maxWidth = Math.floor(window.innerWidth * PANE_MAX_WIDTH_FRACTION)
+      const newWidth = Math.max(PANE_MIN_WIDTH, Math.min(maxWidth, dragStartWidth.current + delta))
+      setPaneWidth(newWidth)
+    }
+
+    function onMouseUp() {
+      isDragging.current = false
+      document.documentElement.style.cursor = ''
+      document.documentElement.style.userSelect = ''
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+    }
+
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  }, [paneWidth])
+
+  // `expanded` reflects whether the pane is wider than the default.
+  const paneExpanded = paneWidth > PANE_DEFAULT_WIDTH + 20
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden', position: 'relative' }}>
@@ -82,14 +128,28 @@ export default function WatchlistPage() {
             />
           </div>
         ) : (
-          // Desktop: side panel with animated width transition
+          // Desktop: side panel with drag-to-resize left edge handle
           <div style={{
-            width: paneExpanded ? PANE_WIDTH_EXPANDED : PANE_WIDTH_NARROW,
+            width: paneWidth,
             borderLeft: '1px solid var(--border)',
             overflowY: 'auto',
             flexShrink: 0,
-            transition: 'width 180ms ease',
+            position: 'relative',
           }}>
+            {/* Drag-resize handle — sits on the left border */}
+            <div
+              onMouseDown={handleResizeStart}
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                left: -3,
+                top: 0,
+                bottom: 0,
+                width: 6,
+                cursor: 'col-resize',
+                zIndex: 10,
+              }}
+            />
             <TokenDetailPane
               token={selectedToken}
               onClose={handleClose}
