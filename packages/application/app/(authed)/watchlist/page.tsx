@@ -9,7 +9,10 @@ import type { Token } from '../_dashboard/types'
 // Desktop pane widths.
 const PANE_DEFAULT_WIDTH = 680
 const PANE_MIN_WIDTH = 400
-// Maximum width the user can drag the pane to: 75% of the viewport.
+// Minimum width kept visible for the list when the pane is expanded, so the
+// pane can never grow wide enough to push its own content off-screen.
+const PANE_MIN_LIST_WIDTH = 320
+// Maximum width the user can drag the pane to: 75% of the available area.
 const PANE_MAX_WIDTH_FRACTION = 0.75
 
 export default function WatchlistPage() {
@@ -24,6 +27,22 @@ export default function WatchlistPage() {
   const isDragging = useRef(false)
   const dragStartX = useRef(0)
   const dragStartWidth = useRef(0)
+
+  // The flex container that bounds how wide the pane may grow.
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Largest width the pane may take: capped to the container so it never pushes
+  // content off-screen, always leaving PANE_MIN_LIST_WIDTH for the list.
+  const getMaxPaneWidth = useCallback(() => {
+    const containerW = containerRef.current?.clientWidth ?? window.innerWidth
+    return Math.max(
+      PANE_MIN_WIDTH,
+      Math.min(
+        Math.floor(containerW * PANE_MAX_WIDTH_FRACTION),
+        containerW - PANE_MIN_LIST_WIDTH,
+      ),
+    )
+  }, [])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -56,11 +75,11 @@ export default function WatchlistPage() {
     setPaneWidth(PANE_DEFAULT_WIDTH)
   }
 
-  // Snap to max (75 vw) when collapsed, or back to default when expanded.
+  // Snap to max when collapsed, or back to default when expanded.
   const handleToggleExpand = useCallback(() => {
-    const maxWidth = Math.floor(window.innerWidth * PANE_MAX_WIDTH_FRACTION)
+    const maxWidth = getMaxPaneWidth()
     setPaneWidth((w) => (w >= maxWidth - 10 ? PANE_DEFAULT_WIDTH : maxWidth))
-  }, [])
+  }, [getMaxPaneWidth])
 
   // Begin a drag-resize interaction on the left edge handle.
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -77,7 +96,7 @@ export default function WatchlistPage() {
       if (!isDragging.current) return
       // Moving left (positive delta) increases pane width.
       const delta = dragStartX.current - ev.clientX
-      const maxWidth = Math.floor(window.innerWidth * PANE_MAX_WIDTH_FRACTION)
+      const maxWidth = getMaxPaneWidth()
       const newWidth = Math.max(PANE_MIN_WIDTH, Math.min(maxWidth, dragStartWidth.current + delta))
       setPaneWidth(newWidth)
     }
@@ -92,13 +111,24 @@ export default function WatchlistPage() {
 
     document.addEventListener('mousemove', onMouseMove)
     document.addEventListener('mouseup', onMouseUp)
-  }, [paneWidth])
+  }, [paneWidth, getMaxPaneWidth])
+
+  // Keep the pane within bounds on mount and whenever the viewport resizes,
+  // so a smaller screen can't leave the pane wider than the available area.
+  useEffect(() => {
+    function clampToBounds() {
+      setPaneWidth((w) => Math.min(w, getMaxPaneWidth()))
+    }
+    clampToBounds()
+    window.addEventListener('resize', clampToBounds)
+    return () => window.removeEventListener('resize', clampToBounds)
+  }, [getMaxPaneWidth])
 
   // `expanded` reflects whether the pane is wider than the default.
   const paneExpanded = paneWidth > PANE_DEFAULT_WIDTH + 20
 
   return (
-    <div style={{ display: 'flex', height: '100%', overflow: 'hidden', position: 'relative' }}>
+    <div ref={containerRef} style={{ display: 'flex', height: '100%', overflow: 'hidden', position: 'relative' }}>
       {/* Main list — always rendered */}
       <div style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
         <WatchlistView
@@ -143,7 +173,7 @@ export default function WatchlistPage() {
               aria-hidden="true"
               style={{
                 position: 'absolute',
-                left: -28,
+                left: -16,
                 top: 0,
                 bottom: 0,
                 width: 32,
