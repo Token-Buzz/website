@@ -8,83 +8,92 @@ const client = new BedrockRuntimeClient({ region: "us-east-1" });
 const SYSTEM_PROMPT = `You are Hum, TokenBuzz's crypto social intelligence assistant. You analyze on-chain data, social sentiment, and market narratives to help traders understand what's happening in the crypto market. You're concise, data-driven, and always cite your reasoning. You focus on social signals — who's talking, what they're saying, and what it means for token momentum. Never give financial advice. Always remind users to verify before trading.`;
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
-  if (!userId) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const quota = await canUseHum(userId);
+    if (!quota.allowed) {
+      return new Response(
+        JSON.stringify({ error: "quota_exhausted", plan: quota.plan, used: quota.used, limit: quota.limit }),
+        { status: 402, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const body = await req.json() as {
+      message: string;
+      history?: Array<{ from: string; text: string }>;
+      model?: string;
+      contextItems?: Array<{ label?: string; summary?: string }>;
+    };
+
+    const model = resolveModel(body.model);
+    const contextBlock = formatContextItems(body.contextItems);
+    const userText = contextBlock ? `${contextBlock}\n${body.message}` : body.message;
+    const messages = toConverseMessages(body.history, userText);
+
+    const encoder = new TextEncoder();
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          const response = await client.send(new ConverseStreamCommand({
+            modelId: model,
+            // cachePoint is Bedrock-native prompt caching. The system prompt is below the
+            // model's min cacheable size today so it's a no-op, but Phase 3 context items
+            // grow the prefix past the threshold, at which point it caches automatically.
+            system: [{ text: SYSTEM_PROMPT }, { cachePoint: { type: "default" } }],
+            messages,
+            inferenceConfig: { maxTokens: 1024 },
+          }));
+          let usage: { inputTokens?: number; outputTokens?: number; cacheReadInputTokens?: number; cacheWriteInputTokens?: number } | undefined;
+          for await (const item of response.stream ?? []) {
+            const text = item.contentBlockDelta?.delta?.text;
+            if (text) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
+            } else if (item.metadata?.usage) {
+              usage = item.metadata.usage;
+            }
+          }
+          const meta = {
+            model,
+            tokensIn: usage ? totalInputTokens(usage) : 0,
+            tokensOut: usage?.outputTokens ?? 0,
+          };
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ meta })}\n\n`));
+          // Best-effort: record usage after a successful reply; a failure must not crash the stream.
+          try { await recordHumUsage(userId); } catch { /* swallow */ }
+        } catch (err) {
+          console.error("[hum/chat] Bedrock stream error", err);
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ text: "\n\nSorry, I'm having trouble connecting. Try again in a moment." })}\n\n`
+            )
+          );
+        } finally {
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+      },
+    });
+  } catch (err) {
+    console.error("[hum/chat] request failed before stream", err);
+    return new Response(JSON.stringify({ error: "internal_error" }), {
+      status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
-
-  const quota = await canUseHum(userId);
-  if (!quota.allowed) {
-    return new Response(
-      JSON.stringify({ error: "quota_exhausted", plan: quota.plan, used: quota.used, limit: quota.limit }),
-      { status: 402, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  const body = await req.json() as {
-    message: string;
-    history?: Array<{ from: string; text: string }>;
-    model?: string;
-    contextItems?: Array<{ label?: string; summary?: string }>;
-  };
-
-  const model = resolveModel(body.model);
-  const contextBlock = formatContextItems(body.contextItems);
-  const userText = contextBlock ? `${contextBlock}\n${body.message}` : body.message;
-  const messages = toConverseMessages(body.history, userText);
-
-  const encoder = new TextEncoder();
-  const readable = new ReadableStream({
-    async start(controller) {
-      try {
-        const response = await client.send(new ConverseStreamCommand({
-          modelId: model,
-          // cachePoint is Bedrock-native prompt caching. The system prompt is below the
-          // model's min cacheable size today so it's a no-op, but Phase 3 context items
-          // grow the prefix past the threshold, at which point it caches automatically.
-          system: [{ text: SYSTEM_PROMPT }, { cachePoint: { type: "default" } }],
-          messages,
-          inferenceConfig: { maxTokens: 1024 },
-        }));
-        let usage: { inputTokens?: number; outputTokens?: number; cacheReadInputTokens?: number; cacheWriteInputTokens?: number } | undefined;
-        for await (const item of response.stream ?? []) {
-          const text = item.contentBlockDelta?.delta?.text;
-          if (text) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
-          } else if (item.metadata?.usage) {
-            usage = item.metadata.usage;
-          }
-        }
-        const meta = {
-          model,
-          tokensIn: usage ? totalInputTokens(usage) : 0,
-          tokensOut: usage?.outputTokens ?? 0,
-        };
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ meta })}\n\n`));
-        // Best-effort: record usage after a successful reply; a failure must not crash the stream.
-        try { await recordHumUsage(userId); } catch { /* swallow */ }
-      } catch {
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({ text: "\n\nSorry, I'm having trouble connecting. Try again in a moment." })}\n\n`
-          )
-        );
-      } finally {
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-        controller.close();
-      }
-    },
-  });
-
-  return new Response(readable, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      "Connection": "keep-alive",
-      "X-Accel-Buffering": "no",
-    },
-  });
 }
