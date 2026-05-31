@@ -246,6 +246,22 @@ export function HumPanel({ onClose, open, presetQuestion, onPresetConsumed }: Hu
     return () => window.removeEventListener('hum:add-context', handler)
   }, [])
 
+  // ── Listen for hum:ask events (quick-ask buttons from the Brief card) ────
+  useEffect(() => {
+    function handler(e: Event) {
+      const question = (e as CustomEvent<{ question: string }>).detail?.question
+      if (typeof question !== 'string' || !question.trim()) return
+      queueMicrotask(() => {
+        setActiveTab('current')
+        setInput(question.trim())
+      })
+      const t = setTimeout(() => composerRef.current?.focus(), 60)
+      return () => clearTimeout(t)
+    }
+    window.addEventListener('hum:ask', handler)
+    return () => window.removeEventListener('hum:ask', handler)
+  }, [])
+
   function addStaged(item: HumStagedContext) {
     setStagedContext((prev) => {
       if (prev.some((s) => s.id === item.id)) return prev
