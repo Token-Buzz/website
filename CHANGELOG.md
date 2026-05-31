@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.49.0](https://github.com/Token-Buzz/website/compare/v0.48.0...v0.49.0) (2026-05-31)
+
+
+### 🚀 Features
+
+* **marketing:** route pricing tiers to Account subscriptions page ([#331](https://github.com/Token-Buzz/website/issues/331)) ([df88d2b](https://github.com/Token-Buzz/website/commit/df88d2bb5a35c83bff1baac1ff679c3d0f51553c)), closes [#304](https://github.com/Token-Buzz/website/issues/304)
+
 ## [0.48.0](https://github.com/Token-Buzz/website/compare/v0.47.0...v0.48.0) (2026-05-31)
 
 
