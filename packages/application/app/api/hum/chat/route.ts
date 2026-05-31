@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { BedrockRuntimeClient, ConverseStreamCommand } from "@aws-sdk/client-bedrock-runtime";
-import { resolveModel, totalInputTokens, toConverseMessages, formatContextItems } from "./models";
+import { resolveModel, totalInputTokens, toConverseMessages, formatContextItems } from "./_models";
 import { canUseHum, recordHumUsage } from "@monorepo-template/core/db/usage";
 
 const client = new BedrockRuntimeClient({ region: "us-east-1" });
