@@ -14,6 +14,7 @@ import { ContinueButton } from '../../_auth/ContinueButton'
 import { usePasswordStrength } from '../../_auth/usePasswordStrength'
 import { clerkErrorMessage } from '../../_auth/clerkErrors'
 import { postAuthDest } from '../../_auth/postAuthDest'
+import { safeRedirectPath } from '../../_auth/redirectDest'
 import { AuthLoading } from '../../_auth/AuthLoading'
 
 type Step = 'form' | 'code'
@@ -21,14 +22,24 @@ type Step = 'form' | 'code'
 const SSO_CALLBACK_URL = '/sso-callback'
 
 function destFromUrl() {
-  const token = new URLSearchParams(window.location.search).get('token')
-  return postAuthDest(token)
+  const params = new URLSearchParams(window.location.search)
+  // A `redirect_url` (from a Clerk-gated deep link, e.g. the pricing cards)
+  // takes precedence over the token-based watchlist focus destination.
+  const redirect = safeRedirectPath(params.get('redirect_url'))
+  if (redirect) return redirect
+  return postAuthDest(params.get('token'))
 }
 
 export default function SignUpPage() {
   const { signUp } = useSignUp()
   const router = useRouter()
   const { isLoaded, isSignedIn } = useAuth()
+
+  // Preserve the current query string (e.g. redirect_url) when switching to
+  // sign-in. Computed after mount to avoid a hydration mismatch.
+  const [authQuery, setAuthQuery] = useState('')
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setAuthQuery(window.location.search) }, [])
 
   useEffect(() => {
     if (isLoaded && isSignedIn) router.replace(destFromUrl())
@@ -99,8 +110,14 @@ export default function SignUpPage() {
   async function handleOAuth(strategy: 'oauth_google' | 'oauth_github' | 'oauth_microsoft') {
     if (!signUp) return
     setError(null)
-    const token = new URLSearchParams(window.location.search).get('token')
-    const callback = token ? `${SSO_CALLBACK_URL}?token=${encodeURIComponent(token)}` : SSO_CALLBACK_URL
+    const params = new URLSearchParams(window.location.search)
+    const passthrough = new URLSearchParams()
+    const token = params.get('token')
+    if (token) passthrough.set('token', token)
+    const redirect = params.get('redirect_url')
+    if (redirect) passthrough.set('redirect_url', redirect)
+    const qs = passthrough.toString()
+    const callback = qs ? `${SSO_CALLBACK_URL}?${qs}` : SSO_CALLBACK_URL
     const { error: ssoError } = await signUp.sso({
       strategy,
       redirectUrl: callback,
@@ -179,7 +196,7 @@ export default function SignUpPage() {
 
               <p className="tb-footer-link">
                 Already have an account?{' '}
-                <Link href="/sign-in">Sign in</Link>
+                <Link href={`/sign-in${authQuery}`}>Sign in</Link>
               </p>
             </form>
           ) : (

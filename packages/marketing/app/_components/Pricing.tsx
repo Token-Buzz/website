@@ -98,13 +98,14 @@ function PriceCard({ plan, interval }: PriceCardProps) {
     savingsBadge = `Save $${savings}/yr`
   }
 
+  // Send every tier to the subscriptions page inside the app's Account section.
+  // /account is Clerk-protected, so a signed-out visitor is bounced to sign-in
+  // and returned here afterwards (see app/_auth/redirectDest.ts). The plan /
+  // interval params let the billing page auto-open the upgrade modal.
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
-  let href: string
-  if (slug === 'free') {
-    href = `${appUrl}/sign-up?plan=free`
-  } else {
-    href = `${appUrl}/sign-up?plan=${slug}&interval=${interval}`
-  }
+  const params = new URLSearchParams({ plan: slug })
+  if (slug !== 'free') params.set('interval', interval)
+  const href = `${appUrl}/account/billing?${params.toString()}`
 
   return (
     <div

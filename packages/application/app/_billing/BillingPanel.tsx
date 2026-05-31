@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Elements } from '@stripe/react-stripe-js'
 import type { Plan, BillingInterval } from '@monorepo-template/core/billing/tiers'
 import { TIERS } from '@monorepo-template/core/billing/tiers'
@@ -232,6 +232,34 @@ export function BillingPanel() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchUsage()
   }, [fetchUsage])
+
+  // Deep-link from the marketing pricing cards: /account/billing?plan=pro&interval=month
+  // → open the upgrade modal once, preselected to the chosen interval. Only for
+  // paid tiers (a "free" click just lands on this page). We strip the params so
+  // a refresh doesn't reopen the modal.
+  const autoOpenedRef = useRef(false)
+  useEffect(() => {
+    if (autoOpenedRef.current || !planData) return
+    const params = new URLSearchParams(window.location.search)
+    const plan = params.get('plan')
+    if (plan !== 'pro' && plan !== 'alpha') return
+    autoOpenedRef.current = true
+
+    const intervalParam = params.get('interval')
+    const initialInterval =
+      intervalParam === 'month' || intervalParam === 'year' ? intervalParam : undefined
+
+    const url = new URL(window.location.href)
+    url.searchParams.delete('plan')
+    url.searchParams.delete('interval')
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash)
+
+    openUpgrade({
+      currentPlan: planData.plan,
+      initialInterval: initialInterval ?? planData.interval ?? undefined,
+      onClose: () => { void fetchPlan() },
+    })
+  }, [planData, openUpgrade, fetchPlan])
 
   // Once we know the user is on a paid plan, load card + invoices
   useEffect(() => {
