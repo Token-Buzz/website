@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.0](https://github.com/Token-Buzz/website/compare/v0.45.0...v0.46.0) (2026-05-31)
+
+
+### 🚀 Features
+
+* **application:** wire sidebar watchlist section to real data ([#273](https://github.com/Token-Buzz/website/issues/273)) ([#310](https://github.com/Token-Buzz/website/issues/310)) ([0152894](https://github.com/Token-Buzz/website/commit/01528946642dfb693b124295ddfb70627c4630a8))
+
 ## [0.45.0](https://github.com/Token-Buzz/website/compare/v0.44.2...v0.45.0) (2026-05-31)
 
 
