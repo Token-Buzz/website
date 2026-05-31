@@ -70,13 +70,14 @@ export async function POST(req: Request) {
       items: [{ price }],
       payment_behavior: "default_incomplete",
       payment_settings: { save_default_payment_method: "on_subscription" },
-      // Basil API (2025-03-31.basil): PaymentIntent is surfaced via
-      // latest_invoice.confirmation_secret, not latest_invoice.payment_intent.
+      // Basil API (pinned in _stripe.ts): the PaymentIntent client secret is surfaced
+      // via latest_invoice.confirmation_secret. The Invoice object has no top-level
+      // payment_intent under Basil, so expanding that path would 400 — don't.
       expand: ["latest_invoice.confirmation_secret"],
       metadata: { userId },
     });
 
-    // Extract client secret from the Basil confirmation_secret field.
+    // Extract the client secret from the Basil confirmation_secret field.
     // latest_invoice is string | Invoice | null after expansion; cast narrowly.
     const invoice = sub.latest_invoice as
       | { confirmation_secret?: { client_secret?: string | null } | null }
@@ -97,6 +98,13 @@ export async function POST(req: Request) {
     return Response.json({ subscriptionId: sub.id, clientSecret });
   } catch (err) {
     console.error("[POST /api/billing/create-subscription] Stripe error:", err);
-    return Response.json({ error: "Failed to create subscription" }, { status: 500 });
+    const code =
+      err && typeof err === "object" && "code" in err && typeof (err as { code?: unknown }).code === "string"
+        ? (err as { code: string }).code
+        : undefined;
+    return Response.json(
+      { error: "Failed to create subscription", ...(code ? { code } : {}) },
+      { status: 500 },
+    );
   }
 }
