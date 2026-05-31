@@ -70,18 +70,22 @@ export async function POST(req: Request) {
       items: [{ price }],
       payment_behavior: "default_incomplete",
       payment_settings: { save_default_payment_method: "on_subscription" },
-      // Basil API (2025-03-31.basil): PaymentIntent is surfaced via
-      // latest_invoice.confirmation_secret, not latest_invoice.payment_intent.
-      expand: ["latest_invoice.confirmation_secret"],
+      // Expand both the Basil confirmation_secret and the legacy payment_intent so the
+      // route works regardless of which field Stripe populates on the account's version.
+      expand: ["latest_invoice.confirmation_secret", "latest_invoice.payment_intent"],
       metadata: { userId },
     });
 
-    // Extract client secret from the Basil confirmation_secret field.
-    // latest_invoice is string | Invoice | null after expansion; cast narrowly.
+    // Extract client secret — try Basil confirmation_secret first, fall back to legacy payment_intent.
+    // latest_invoice is string | Invoice | null after expansion; cast narrowly to include both fields.
     const invoice = sub.latest_invoice as
-      | { confirmation_secret?: { client_secret?: string | null } | null }
+      | {
+          confirmation_secret?: { client_secret?: string | null } | null;
+          payment_intent?: { client_secret?: string | null } | null;
+        }
       | null;
-    const clientSecret = invoice?.confirmation_secret?.client_secret;
+    const clientSecret =
+      invoice?.confirmation_secret?.client_secret ?? invoice?.payment_intent?.client_secret;
 
     if (!clientSecret) {
       console.error(
@@ -97,6 +101,13 @@ export async function POST(req: Request) {
     return Response.json({ subscriptionId: sub.id, clientSecret });
   } catch (err) {
     console.error("[POST /api/billing/create-subscription] Stripe error:", err);
-    return Response.json({ error: "Failed to create subscription" }, { status: 500 });
+    const code =
+      err && typeof err === "object" && "code" in err && typeof (err as { code?: unknown }).code === "string"
+        ? (err as { code: string }).code
+        : undefined;
+    return Response.json(
+      { error: "Failed to create subscription", ...(code ? { code } : {}) },
+      { status: 500 },
+    );
   }
 }
