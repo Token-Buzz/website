@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.0](https://github.com/Token-Buzz/website/compare/v0.47.0...v0.48.0) (2026-05-31)
+
+
+### 🚀 Features
+
+* **application:** wire the Today dashboard to real data, narratives & AI brief ([#290](https://github.com/Token-Buzz/website/issues/290)) ([2377f11](https://github.com/Token-Buzz/website/commit/2377f11965aa45c7b0229bf7c922402dee8bbeb8))
+
 ## [0.47.0](https://github.com/Token-Buzz/website/compare/v0.46.2...v0.47.0) (2026-05-31)
 
 
