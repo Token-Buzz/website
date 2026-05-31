@@ -9,6 +9,8 @@ import { CARD_META } from './registry'
 import { cardsToLayout, layoutToCards, GRID_COLS, ROW_HEIGHT_PX } from './grid'
 import type { DashboardCard } from '@monorepo-template/core/db/dashboards'
 import { fromCard } from '../../_dashboard/humContext'
+import { SummaryProvider } from '../../_analytics/SummaryProvider'
+import { resolveCardQuery, resolveCardSymbol } from './cardActions'
 
 // Create the width-aware grid ONCE at module scope
 const GridLayoutWithWidth = WidthProvider(GridLayout)
@@ -40,6 +42,9 @@ export function DashboardGrid({
   onAddToContext,
   onAddToDashboard,
 }: DashboardGridProps) {
+  // The dashboard-level scope is the fallback when a card has no own options.
+  const dashboardScope = { ticker, query }
+
   // ── Mobile: simple stacked CSS grid ────────────────────────────────────────
   if (isMobile) {
     return (
@@ -53,23 +58,36 @@ export function DashboardGrid({
       >
         {cards.map((card) => {
           const { label, meta } = CARD_META[card.type] ?? { label: card.type, meta: '' }
-          const dragItem = editing ? undefined : fromCard({ cardType: card.type, label, query, ticker })
+          const cardQuery = resolveCardQuery(card, dashboardScope)
+          const cardSymbol = resolveCardSymbol(card, dashboardScope)
+          const dragItem = editing
+            ? undefined
+            : fromCard({ cardType: card.type, label, query: cardQuery, ticker: cardSymbol })
+
+          const frame = (
+            <DashboardCardFrame
+              label={label}
+              meta={meta}
+              type={card.type}
+              query={cardQuery}
+              ticker={cardSymbol}
+              onRemove={() => onRemoveCard(card.id)}
+              onAddToContext={() => onAddToContext(card)}
+              onAddToDashboard={() => onAddToDashboard(card)}
+              dragItem={dragItem}
+            />
+          )
+
           return (
             <div
               key={card.id}
               style={{ gridColumn: '1 / -1', gridRow: `span ${card.position.h}` }}
             >
-              <DashboardCardFrame
-                label={label}
-                meta={meta}
-                type={card.type}
-                query={query}
-                ticker={ticker}
-                onRemove={() => onRemoveCard(card.id)}
-                onAddToContext={() => onAddToContext(card)}
-                onAddToDashboard={() => onAddToDashboard(card)}
-                dragItem={dragItem}
-              />
+              {card.type !== 'candlestick' ? (
+                <SummaryProvider query={cardQuery}>{frame}</SummaryProvider>
+              ) : (
+                frame
+              )}
             </div>
           )
         })}
@@ -105,7 +123,26 @@ export function DashboardGrid({
     >
       {cards.map((card) => {
         const { label, meta } = CARD_META[card.type] ?? { label: card.type, meta: '' }
-        const dragItem = editing ? undefined : fromCard({ cardType: card.type, label, query, ticker })
+        const cardQuery = resolveCardQuery(card, dashboardScope)
+        const cardSymbol = resolveCardSymbol(card, dashboardScope)
+        const dragItem = editing
+          ? undefined
+          : fromCard({ cardType: card.type, label, query: cardQuery, ticker: cardSymbol })
+
+        const frame = (
+          <DashboardCardFrame
+            label={label}
+            meta={meta}
+            type={card.type}
+            query={cardQuery}
+            ticker={cardSymbol}
+            onRemove={() => onRemoveCard(card.id)}
+            onAddToContext={() => onAddToContext(card)}
+            onAddToDashboard={() => onAddToDashboard(card)}
+            dragItem={dragItem}
+          />
+        )
+
         return (
           <div key={card.id}>
             {/* inner wrapper fills the RGL-sized item; flex column so the drag handle sits above the card */}
@@ -136,17 +173,11 @@ export function DashboardGrid({
                 </div>
               )}
               <div style={{ flex: 1, minHeight: 0 }}>
-                <DashboardCardFrame
-                  label={label}
-                  meta={meta}
-                  type={card.type}
-                  query={query}
-                  ticker={ticker}
-                  onRemove={() => onRemoveCard(card.id)}
-                  onAddToContext={() => onAddToContext(card)}
-                  onAddToDashboard={() => onAddToDashboard(card)}
-                  dragItem={dragItem}
-                />
+                {card.type !== 'candlestick' ? (
+                  <SummaryProvider query={cardQuery}>{frame}</SummaryProvider>
+                ) : (
+                  frame
+                )}
               </div>
             </div>
           </div>

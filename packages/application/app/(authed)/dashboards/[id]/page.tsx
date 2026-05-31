@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import type { Dashboard, DashboardCard, DashboardCardType } from '@monorepo-template/core/db/dashboards'
 import { Button, Eyebrow, Card, Icon, Ticker } from '../../_dashboard/primitives'
-import { SummaryProvider } from '../../_analytics/SummaryProvider'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import { CARD_META, ALL_CARD_TYPES } from '../_components/registry'
 import { DashboardPickerModal } from '../_components/DashboardPickerModal'
@@ -13,7 +12,6 @@ import { addHumContext, buildHumContextItem } from '../_components/cardActions'
 import { nextCardPosition } from '../_components/grid'
 import { dashboardScopeQuery } from '../_components/scope'
 import { DashboardGrid } from '../_components/DashboardGrid'
-
 // ── AddCardMenu ───────────────────────────────────────────────────────────────
 
 interface AddCardMenuProps {
@@ -542,20 +540,19 @@ export default function DashboardDetailPage() {
           <AddCardMenu onAdd={handleAddCard} isMobile={isMobile} />
         </Card>
       ) : (
-        // Card grid wrapped in SummaryProvider
-        <SummaryProvider query={scopeQuery}>
-          <DashboardGrid
-            cards={cards}
-            query={scopeQuery}
-            editing={editing}
-            isMobile={isMobile}
-            ticker={dashboard.ticker}
-            onLayoutChange={persistCards}
-            onRemoveCard={handleRemoveCard}
-            onAddToContext={handleAddToContext}
-            onAddToDashboard={handleAddToDashboard}
-          />
-        </SummaryProvider>
+        // Per-card SummaryProviders are created inside DashboardGrid;
+        // the query/ticker props here serve as dashboard-level fallback values.
+        <DashboardGrid
+          cards={cards}
+          query={scopeQuery}
+          editing={editing}
+          isMobile={isMobile}
+          ticker={dashboard.ticker}
+          onLayoutChange={persistCards}
+          onRemoveCard={handleRemoveCard}
+          onAddToContext={handleAddToContext}
+          onAddToDashboard={handleAddToDashboard}
+        />
       )}
 
       {/* Picker modal — "Add to dashboard" */}

@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { buildHumContextItem, copyCardForDashboard, buildQueryDashboardCards, buildInitialDashboardCards, ANALYTICS_CARD_TYPES } from './cardActions'
+import { buildHumContextItem, copyCardForDashboard, buildQueryDashboardCards, buildInitialDashboardCards, ANALYTICS_CARD_TYPES, resolveCardQuery, resolveCardSymbol } from './cardActions'
 import type { DashboardCard } from '@monorepo-template/core/db/dashboards'
 
 describe('buildHumContextItem', () => {
@@ -258,5 +258,111 @@ describe('buildInitialDashboardCards', () => {
     expect(cards.map((c) => c.id)).toEqual(
       Array.from({ length: 19 }, (_, i) => `id-${i}`)
     )
+  })
+})
+
+// ── resolveCardQuery ────────────────────────────────────────────────────────
+
+describe('resolveCardQuery', () => {
+  function makeCard(overrides: Partial<DashboardCard['options']> = {}): DashboardCard {
+    return {
+      id: 'card-1',
+      type: 'mentions',
+      position: { x: 0, y: 0, w: 6, h: 9 },
+      options: { ...overrides },
+    }
+  }
+
+  test('returns card options.query when it is a non-empty string', () => {
+    const card = makeCard({ query: 'bitcoin' })
+    expect(resolveCardQuery(card, { query: 'ethereum', ticker: 'ETH' })).toBe('bitcoin')
+  })
+
+  test('falls back to dashboardScopeQuery when card options.query is absent', () => {
+    const card = makeCard()
+    expect(resolveCardQuery(card, { query: 'ethereum', ticker: 'ETH' })).toBe('ETH ethereum')
+  })
+
+  test('falls back to dashboardScopeQuery when card options.query is an empty string', () => {
+    const card = makeCard({ query: '' })
+    expect(resolveCardQuery(card, { query: 'solana' })).toBe('solana')
+  })
+
+  test('falls back to dashboardScopeQuery when card options.query is whitespace-only', () => {
+    const card = makeCard({ query: '   ' })
+    expect(resolveCardQuery(card, { query: 'dogecoin' })).toBe('dogecoin')
+  })
+
+  test('returns trimmed card options.query (leading/trailing spaces stripped)', () => {
+    const card = makeCard({ query: '  xrp news  ' })
+    expect(resolveCardQuery(card, { query: 'fallback' })).toBe('xrp news')
+  })
+
+  test('falls back to dashboardScopeQuery when both ticker and query are on the dashboard', () => {
+    const card = makeCard()
+    expect(resolveCardQuery(card, { ticker: 'BTC', query: 'bitcoin' })).toBe('BTC bitcoin')
+  })
+
+  test('returns empty string when card has no options.query and dashboard has neither ticker nor query', () => {
+    const card = makeCard()
+    expect(resolveCardQuery(card, {})).toBe('')
+  })
+})
+
+// ── resolveCardSymbol ───────────────────────────────────────────────────────
+
+describe('resolveCardSymbol', () => {
+  function makeCard(overrides: Partial<DashboardCard['options']> = {}): DashboardCard {
+    return {
+      id: 'card-1',
+      type: 'candlestick',
+      position: { x: 0, y: 0, w: 12, h: 12 },
+      options: { ...overrides },
+    }
+  }
+
+  test('returns card options.ticker when it is a non-empty string (highest precedence)', () => {
+    const card = makeCard({ ticker: 'ETH' })
+    expect(resolveCardSymbol(card, { ticker: 'BTC', query: 'bitcoin' })).toBe('ETH')
+  })
+
+  test('falls back to dashboard.ticker when card options.ticker is absent', () => {
+    const card = makeCard()
+    expect(resolveCardSymbol(card, { ticker: 'BTC', query: 'bitcoin' })).toBe('BTC')
+  })
+
+  test('falls back to dashboard.ticker when card options.ticker is empty string', () => {
+    const card = makeCard({ ticker: '' })
+    expect(resolveCardSymbol(card, { ticker: 'SOL', query: 'solana' })).toBe('SOL')
+  })
+
+  test('falls back to dashboard.ticker when card options.ticker is whitespace-only', () => {
+    const card = makeCard({ ticker: '   ' })
+    expect(resolveCardSymbol(card, { ticker: 'DOGE' })).toBe('DOGE')
+  })
+
+  test('falls back to dashboardScopeQuery when neither card nor dashboard has a ticker', () => {
+    const card = makeCard()
+    expect(resolveCardSymbol(card, { query: 'dogecoin' })).toBe('dogecoin')
+  })
+
+  test('falls back to dashboardScopeQuery combining ticker+query when card has no ticker and dashboard.ticker is absent', () => {
+    const card = makeCard()
+    expect(resolveCardSymbol(card, { ticker: undefined, query: 'ethereum news' })).toBe('ethereum news')
+  })
+
+  test('returns empty string when card, dashboard.ticker, and dashboard.query are all absent/empty', () => {
+    const card = makeCard()
+    expect(resolveCardSymbol(card, {})).toBe('')
+  })
+
+  test('returns trimmed card options.ticker (leading/trailing spaces stripped)', () => {
+    const card = makeCard({ ticker: '  BNB  ' })
+    expect(resolveCardSymbol(card, { ticker: 'ETH' })).toBe('BNB')
+  })
+
+  test('card options.ticker beats dashboard.ticker even when dashboard.ticker is non-empty', () => {
+    const card = makeCard({ ticker: 'LINK' })
+    expect(resolveCardSymbol(card, { ticker: 'BTC', query: 'bitcoin' })).toBe('LINK')
   })
 })

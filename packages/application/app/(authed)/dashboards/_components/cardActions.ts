@@ -1,5 +1,6 @@
 import type { DashboardCard, DashboardCardType } from '@monorepo-template/core/db/dashboards'
 import { nextCardPosition, GRID_COLS, DEFAULT_CARD } from './grid'
+import { dashboardScopeQuery } from './scope'
 
 export const HUM_ADD_CONTEXT_EVENT = 'hum:add-context'
 
@@ -94,6 +95,47 @@ export function buildQueryDashboardCards(
     cards.push(card)
   }
   return cards
+}
+
+/**
+ * Returns the effective query for an analytics card:
+ * - If card.options.query is a non-empty string (after trim), returns that.
+ * - Otherwise falls back to dashboardScopeQuery({ ticker, query }).
+ *
+ * Pure — no React, no side-effects.
+ */
+export function resolveCardQuery(
+  card: DashboardCard,
+  dashboard: { ticker?: string; query?: string },
+): string {
+  const cardQuery =
+    typeof card.options.query === 'string' ? card.options.query.trim() : ''
+  return cardQuery || dashboardScopeQuery(dashboard)
+}
+
+/**
+ * Returns the effective symbol for a candlestick card:
+ * - If card.options.ticker is a non-empty string (after trim), returns that.
+ * - Else if dashboard.ticker is a non-empty string (after trim), returns that.
+ * - Else falls back to dashboardScopeQuery({ ticker, query }).
+ *
+ * Mirrors the `ticker?.trim() || query` resolution that CardBody uses,
+ * with the per-card options.ticker taking precedence over the dashboard ticker.
+ *
+ * Pure — no React, no side-effects.
+ */
+export function resolveCardSymbol(
+  card: DashboardCard,
+  dashboard: { ticker?: string; query?: string },
+): string {
+  const cardTicker =
+    typeof card.options.ticker === 'string' ? card.options.ticker.trim() : ''
+  if (cardTicker) return cardTicker
+
+  const dashTicker = dashboard.ticker?.trim()
+  if (dashTicker) return dashTicker
+
+  return dashboardScopeQuery(dashboard)
 }
 
 /**
