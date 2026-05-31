@@ -19,7 +19,9 @@
     "set-sst-vars": "tsx scripts/set-sst-vars.ts"
   },
   "devDependencies": {
+    "@clerk/testing": "^2.0.34",
     "@tsconfig/node22": "^22",
+    "playwright": "^1.60.0",
     "typescript": "^5"
   },
   "dependencies": {

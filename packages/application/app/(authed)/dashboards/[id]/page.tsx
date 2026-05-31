@@ -637,6 +637,11 @@ export default function DashboardDetailPage() {
     clearSelection()
   }
 
+  function handleCardScopeApply(cardId: string, field: 'query' | 'ticker', value: string) {
+    if (!dashboard) return
+    void persistCards(applyScopeToSelectedCards(dashboard.cards, [cardId], field, value))
+  }
+
   // ── Render helpers ────────────────────────────────────────────────────────
 
   const wrapperStyle: React.CSSProperties = {
@@ -973,6 +978,7 @@ export default function DashboardDetailPage() {
           onRemoveCard={handleRemoveCard}
           onAddToContext={handleAddToContext}
           onAddToDashboard={handleAddToDashboard}
+          onChangeCardScope={handleCardScopeApply}
         />
       )}
 

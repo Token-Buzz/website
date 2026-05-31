@@ -29,6 +29,7 @@ interface DashboardGridProps {
   onRemoveCard: (cardId: string) => void
   onAddToContext: (card: DashboardCard) => void
   onAddToDashboard: (card: DashboardCard) => void
+  onChangeCardScope: (cardId: string, field: 'query' | 'ticker', value: string) => void
 }
 
 // ── DashboardGrid ──────────────────────────────────────────────────────────────
@@ -45,6 +46,7 @@ export function DashboardGrid({
   onRemoveCard,
   onAddToContext,
   onAddToDashboard,
+  onChangeCardScope,
 }: DashboardGridProps) {
   // The dashboard-level scope is the fallback when a card has no own options.
   const dashboardScope = { ticker, query }
@@ -67,6 +69,8 @@ export function DashboardGrid({
           const dragItem = editing
             ? undefined
             : fromCard({ cardType: card.type, label, query: cardQuery, ticker: cardSymbol })
+          const scopeField = card.type === 'candlestick' ? 'ticker' : 'query'
+          const scopeValue = scopeField === 'ticker' ? cardSymbol : cardQuery
 
           const frame = (
             <DashboardCardFrame
@@ -82,6 +86,9 @@ export function DashboardGrid({
               selected={selectedIds.has(card.id)}
               onToggleSelect={() => onToggleSelect(card.id)}
               editing={editing}
+              scopeField={scopeField}
+              scopeValue={scopeValue}
+              onApplyScope={(v) => onChangeCardScope(card.id, scopeField, v)}
             />
           )
 
@@ -135,6 +142,8 @@ export function DashboardGrid({
         const dragItem = editing
           ? undefined
           : fromCard({ cardType: card.type, label, query: cardQuery, ticker: cardSymbol })
+        const scopeField = card.type === 'candlestick' ? 'ticker' : 'query'
+        const scopeValue = scopeField === 'ticker' ? cardSymbol : cardQuery
 
         const frame = (
           <DashboardCardFrame
@@ -150,6 +159,9 @@ export function DashboardGrid({
             selected={selectedIds.has(card.id)}
             onToggleSelect={() => onToggleSelect(card.id)}
             editing={editing}
+            scopeField={scopeField}
+            scopeValue={scopeValue}
+            onApplyScope={(v) => onChangeCardScope(card.id, scopeField, v)}
           />
         )
 
