@@ -137,16 +137,16 @@ export default function WatchlistPage() {
             flexShrink: 0,
             position: 'relative',
           }}>
-            {/* Drag-resize handle — straddles the left border for an easy grab target */}
+            {/* Drag-resize handle — extends left of the border for an easy grab target */}
             <div
               onMouseDown={handleResizeStart}
               aria-hidden="true"
               style={{
                 position: 'absolute',
-                left: -8,
+                left: -28,
                 top: 0,
                 bottom: 0,
-                width: 16,
+                width: 32,
                 cursor: 'col-resize',
                 zIndex: 10,
               }}
@@ -156,6 +156,7 @@ export default function WatchlistPage() {
               onClose={handleClose}
               expanded={paneExpanded}
               onToggleExpand={handleToggleExpand}
+              paneWidth={paneWidth}
             />
           </div>
         )
