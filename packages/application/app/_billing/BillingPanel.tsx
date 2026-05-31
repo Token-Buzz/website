@@ -28,7 +28,9 @@ interface SourceStatus {
 interface UsageData {
   ingestion: { used: number; limit: number | null }
   hum: { used: number; limit: number | null }
+  refresh: { used: number; limit: number | null }
   plan: string
+  period: 'week' | 'month'
   sources: SourceStatus[]
 }
 
@@ -343,6 +345,7 @@ export function BillingPanel() {
 
   const tier = planData ? TIERS[planData.plan] : null
   const isPaid = planData?.plan !== 'free'
+  const usagePeriodLabel = usageData?.period === 'week' ? 'week' : 'month'
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -429,8 +432,8 @@ export function BillingPanel() {
         </Section>
       ) : null}
 
-      {/* ── Usage this month ──────────────────────────────────────────────── */}
-      <Section label="Usage this month">
+      {/* ── Usage this week/month ─────────────────────────────────────────── */}
+      <Section label={`Usage this ${usagePeriodLabel}`}>
         {usageLoading ? (
           <div
             style={{
@@ -509,6 +512,56 @@ export function BillingPanel() {
                       borderRadius: 999,
                       background: 'var(--buzz-500)',
                       width: `${Math.min(100, (usageData.ingestion.used / usageData.ingestion.limit) * 100)}%`,
+                      transition: 'width 0.3s ease',
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Ingestion refreshes row */}
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: 6,
+                }}
+              >
+                <span
+                  style={{
+                    font: '500 13px/1.3 var(--font-sans)',
+                    color: 'var(--fg-2)',
+                  }}
+                >
+                  Ingestion refreshes
+                </span>
+                <span
+                  style={{
+                    font: '400 12px/1.3 var(--font-sans)',
+                    color: 'var(--fg-3)',
+                  }}
+                >
+                  {usageData.refresh.limit === null
+                    ? `${usageData.refresh.used.toLocaleString()} · Unlimited`
+                    : `${usageData.refresh.used.toLocaleString()} / ${usageData.refresh.limit.toLocaleString()}`}
+                </span>
+              </div>
+              {usageData.refresh.limit !== null && (
+                <div
+                  style={{
+                    height: 4,
+                    borderRadius: 999,
+                    background: 'var(--bg-elevated, var(--border))',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      height: '100%',
+                      borderRadius: 999,
+                      background: 'var(--buzz-500)',
+                      width: `${Math.min(100, (usageData.refresh.used / usageData.refresh.limit) * 100)}%`,
                       transition: 'width 0.3s ease',
                     }}
                   />

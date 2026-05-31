@@ -8,7 +8,13 @@ import {
   getByokKeyStatus,
   markByokKeyInvalid,
 } from "@monorepo-template/core/db/byok";
-import { canIngestQuery, recordIngestionUsage, getUserPlan } from "@monorepo-template/core/db/usage";
+import {
+  canIngestQuery,
+  recordIngestionUsage,
+  canRefreshQuery,
+  recordRefreshUsage,
+} from "@monorepo-template/core/db/usage";
+import { userHasQuery } from "@monorepo-template/core/db/saved-queries";
 import { getAdapter, allowedSources } from "@monorepo-template/core/sources/registry";
 import { isSocialSource, type SocialSource } from "@monorepo-template/core/sources/types";
 import { getIngestionSettings } from "@monorepo-template/core/db/ingestion-mode";
@@ -26,15 +32,6 @@ export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // ── Ingestion quota gate ─────────────────────────────────────────────────────
-  const quota = await canIngestQuery(userId);
-  if (!quota.allowed) {
-    return Response.json(
-      { error: "quota_exhausted", plan: quota.plan, used: quota.used, limit: quota.limit },
-      { status: 402 },
-    );
   }
 
   // ── Parse body ─────────────────────────────────────────────────────────────
@@ -60,6 +57,22 @@ export async function POST(req: Request) {
     return Response.json({ error: "query required" }, { status: 400 });
   }
 
+  // ── Classify as refresh or new ingestion, then gate the correct quota ──────
+  const isRefresh = await userHasQuery(userId, query);
+  const quota = isRefresh ? await canRefreshQuery(userId) : await canIngestQuery(userId);
+  if (!quota.allowed) {
+    return Response.json(
+      {
+        error: "quota_exhausted",
+        plan: quota.plan,
+        used: quota.used,
+        limit: quota.limit,
+        kind: isRefresh ? "refresh" : "ingestion",
+      },
+      { status: 402 },
+    );
+  }
+
   const rawMaxPages =
     "maxPages" in (body as Record<string, unknown>)
       ? (body as Record<string, unknown>).maxPages
@@ -83,11 +96,9 @@ export async function POST(req: Request) {
 
   const isSingleSource = requestedSources.length === 1;
 
-  // ── Resolve plan + ingestion settings + allowed sources ───────────────────
-  const [{ plan }, settings] = await Promise.all([
-    getUserPlan(userId),
-    getIngestionSettings(userId),
-  ]);
+  // ── Resolve ingestion settings + allowed sources ──────────────────────────
+  const plan = quota.plan;
+  const settings = await getIngestionSettings(userId);
   const modeFor = (s: SocialSource) => resolveIngestionMode(settings, s);
   const allowed = allowedSources(plan);
 
@@ -188,10 +199,14 @@ export async function POST(req: Request) {
   // based on whether we had any sourceKeys to attempt.
   anyAttempted = sourceKeys.length > 0;
 
-  // ── Record ingestion usage (best-effort) ────────────────────────────────────
+  // ── Record usage (best-effort) ─────────────────────────────────────────────
   if (anyAttempted) {
     try {
-      await recordIngestionUsage(userId);
+      if (isRefresh) {
+        await recordRefreshUsage(userId);
+      } else {
+        await recordIngestionUsage(userId);
+      }
     } catch {
       /* best-effort */
     }
