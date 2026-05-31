@@ -6,7 +6,7 @@ import {
   Icon, Button, Eyebrow, Ticker, BuzzDot,
   Card, SectionHead, fmtCount, Avatar, Delta,
 } from './primitives'
-import type { StreamPost, AlertItem } from './types'
+import type { StreamPost, AlertItem, Narrative } from './types'
 import {
   relativeTime,
   derivePulseMpm,
@@ -450,10 +450,63 @@ function SentimentGrid({ tokens }: { tokens: SentimentToken[] }) {
   )
 }
 
-// ── Phase 3–4 components (defined, not yet mounted) ────────────────────────
+// ── Narratives ─────────────────────────────────────────────────────────────
 
-// Phase 3: Narratives — emerging narrative clusters
-// function Narratives(...) { ... }
+function NarrativeRow({ n, isLast }: { n: Narrative; isLast: boolean }) {
+  return (
+    <div style={{
+      padding: '12px 0',
+      borderBottom: isLast ? 'none' : '1px solid var(--border-hairline)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8,
+    }}>
+      {/* Title row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ font: '600 13px var(--font-sans)', color: 'var(--fg-1)', flex: 1, letterSpacing: '-0.01em' }}>
+          {n.title}
+        </span>
+        <Delta value={n.growth} format="pct" style={{ fontSize: 11 }} />
+      </div>
+
+      {/* Summary */}
+      <div style={{ font: '400 12px/1.5 var(--font-sans)', color: 'var(--fg-2)' }}>
+        {n.summary}
+      </div>
+
+      {/* Token pills + handle count */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        {n.tokens.slice(0, 6).map((sym) => (
+          <Ticker key={sym} symbol={sym} size="sm" />
+        ))}
+        <div style={{ flex: 1 }} />
+        <span style={{ font: '500 10px var(--font-mono)', color: 'var(--fg-3)', whiteSpace: 'nowrap' }}>
+          {fmtCount(n.mentions)} mentions
+          {n.handles > 0 ? ` · ${n.handles} handle${n.handles === 1 ? '' : 's'}` : ''}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function Narratives({ narratives }: { narratives: Narrative[] }) {
+  if (narratives.length === 0) return null
+  return (
+    <section>
+      <Card padding={18} style={{ display: 'flex', flexDirection: 'column' }}>
+        <SectionHead
+          eyebrow="Emerging narratives"
+          meta="co-mentioned across your watchlist · 24h"
+        />
+        <div>
+          {narratives.map((n, i) => (
+            <NarrativeRow key={n.title} n={n} isLast={i === narratives.length - 1} />
+          ))}
+        </div>
+      </Card>
+    </section>
+  )
+}
 
 // Phase 4: Brief (HUM) — AI morning brief
 // function Brief(...) { ... }
@@ -469,6 +522,9 @@ export function TodayView({ firstName }: TodayViewProps) {
   const [snapshot, setSnapshot] = useState<TodayApiResponse | null>(null)
   const [snapLoading, setSnapLoading] = useState(true)
   const [snapError, setSnapError] = useState<string | null>(null)
+
+  // ── Narratives state ──────────────────────────────────────────────────
+  const [narratives, setNarratives] = useState<Narrative[]>([])
 
   // ── Live feed state ───────────────────────────────────────────────────
   const [stream, setStream] = useState<StreamPost[]>([])
@@ -505,6 +561,32 @@ export function TodayView({ firstName }: TodayViewProps) {
       clearInterval(interval)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ── Narratives load (one-time on mount, poll every 60s) ───────────────
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchNarratives() {
+      try {
+        const res = await fetch('/api/dashboard/narratives')
+        if (!res.ok) return
+        const data = await res.json() as { narratives: Narrative[] }
+        if (!cancelled) {
+          setNarratives(data.narratives ?? [])
+        }
+      } catch {
+        // silently swallow — narratives are best-effort
+      }
+    }
+
+    void fetchNarratives()
+    const interval = setInterval(() => void fetchNarratives(), 60_000)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
   }, [])
 
   // ── Initial live-feed load ─────────────────────────────────────────────
@@ -586,7 +668,7 @@ export function TodayView({ firstName }: TodayViewProps) {
       <Pulse series={pulseSeries} topSpikes={spikes} sentimentSplit={sentimentSplit} />
       {spikes.length > 0 && <Spikes spikes={spikes} />}
       {sentimentGrid.length > 0 && <SentimentGrid tokens={sentimentGrid} />}
-      {/* Phase 3: Narratives */}
+      {narratives.length > 0 && <Narratives narratives={narratives} />}
       {/* Phase 4: Brief (HUM) */}
       <div style={{ display: 'grid', gridTemplateColumns: alerts.length > 0 ? '1.4fr 1fr' : '1fr', gap: 16 }}>
         <Stream stream={stream} loading={streamLoading} />
