@@ -75,7 +75,7 @@ export default function WatchlistPage() {
 
     function onMouseMove(ev: MouseEvent) {
       if (!isDragging.current) return
-      // Moving left (negative delta) increases pane width.
+      // Moving left (positive delta) increases pane width.
       const delta = dragStartX.current - ev.clientX
       const maxWidth = Math.floor(window.innerWidth * PANE_MAX_WIDTH_FRACTION)
       const newWidth = Math.max(PANE_MIN_WIDTH, Math.min(maxWidth, dragStartWidth.current + delta))
