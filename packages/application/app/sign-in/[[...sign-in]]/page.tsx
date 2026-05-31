@@ -12,6 +12,7 @@ import { OrDivider } from '../../_auth/OrDivider'
 import { TextField } from '../../_auth/TextField'
 import { ContinueButton } from '../../_auth/ContinueButton'
 import { clerkErrorMessage } from '../../_auth/clerkErrors'
+import { AuthLoading } from '../../_auth/AuthLoading'
 
 const SSO_CALLBACK_URL = '/sso-callback'
 const POST_AUTH_URL = '/dashboard'
@@ -183,6 +184,9 @@ export default function SignInPage() {
       </AuthShell>
     )
   }
+
+  if (!isLoaded) return <AuthLoading message="Loading…" />
+  if (isSignedIn) return <AuthLoading message="Taking you to your dashboard…" />
 
   return (
     <AuthShell>
