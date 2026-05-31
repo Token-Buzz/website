@@ -15,6 +15,7 @@ import {
   resolveCardSymbol,
   selectionScopeAvailability,
   applyScopeToSelectedCards,
+  describeIngestResult,
 } from '../_components/cardActions'
 import { nextCardPosition } from '../_components/grid'
 import { dashboardScopeQuery } from '../_components/scope'
@@ -629,17 +630,59 @@ export default function DashboardDetailPage() {
     setPickerCards(cards)
   }
 
+  // ── Ingestion helper ──────────────────────────────────────────────────────
+
+  async function ingestQuery(query: string) {
+    const trimmed = query.trim()
+    if (!trimmed) return
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 55_000)
+
+    try {
+      const res = await fetch('/api/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: trimmed, maxPages: 5 }),
+        signal: controller.signal,
+      })
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null) as { error?: string } | null
+        const { message } = describeIngestResult(res.status, body)
+        setNotice(message)
+        return
+      }
+
+      setNotice(`Fetching data for "${trimmed}" — charts will update shortly.`)
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setNotice(`Could not fetch data for "${trimmed}": request timed out.`)
+      } else {
+        setNotice(`Could not fetch data for "${trimmed}": network error.`)
+      }
+    } finally {
+      clearTimeout(timeoutId)
+    }
+  }
+
   function handleBulkScopeApply(field: 'query' | 'ticker', value: string) {
     if (!dashboard) return
     const updated = applyScopeToSelectedCards(dashboard.cards, selectedIds, field, value)
     void persistCards(updated)
     setScopeEdit(null)
     clearSelection()
+    if (field === 'query' && value.trim()) {
+      void ingestQuery(value)
+    }
   }
 
   function handleCardScopeApply(cardId: string, field: 'query' | 'ticker', value: string) {
     if (!dashboard) return
     void persistCards(applyScopeToSelectedCards(dashboard.cards, [cardId], field, value))
+    if (field === 'query' && value.trim()) {
+      void ingestQuery(value)
+    }
   }
 
   // ── Render helpers ────────────────────────────────────────────────────────

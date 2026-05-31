@@ -269,6 +269,53 @@ export function DashboardCardFrame({
           : {}),
       }}
     >
+      {/* Scope trigger row — centered pill button at the very top */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          marginBottom: 8,
+          flexShrink: 0,
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onDragStart={(e) => e.stopPropagation()}
+      >
+        <button
+          ref={triggerRef}
+          onClick={handleTriggerClick}
+          aria-label={`Edit ${scopeField === 'ticker' ? 'ticker' : 'query'}: ${triggerLabel}`}
+          aria-haspopup="dialog"
+          aria-expanded={popoverOpen}
+          style={{
+            background: 'var(--bg-sunken)',
+            border: `1px solid ${popoverOpen ? 'var(--buzz-500)' : 'var(--border)'}`,
+            borderRadius: 20,
+            padding: '3px 10px',
+            font: '500 11px/1.4 var(--font-mono)',
+            color: isEmpty ? 'var(--fg-3)' : 'var(--fg-1)',
+            cursor: 'pointer',
+            maxWidth: '80%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            letterSpacing: '-0.01em',
+            transition: 'border-color 0.1s, color 0.1s',
+          }}
+          onMouseEnter={(e) => {
+            if (!popoverOpen) {
+              ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--buzz-500)'
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!popoverOpen) {
+              ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'
+            }
+          }}
+        >
+          {triggerLabel}
+        </button>
+      </div>
+
       {/* Header row */}
       <div
         style={{
@@ -418,53 +465,6 @@ export function DashboardCardFrame({
             </button>
           </div>
         )}
-      </div>
-
-      {/* Scope trigger row — centered pill button under the header */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          marginBottom: 8,
-          flexShrink: 0,
-        }}
-        onPointerDown={(e) => e.stopPropagation()}
-        onDragStart={(e) => e.stopPropagation()}
-      >
-        <button
-          ref={triggerRef}
-          onClick={handleTriggerClick}
-          aria-label={`Edit ${scopeField === 'ticker' ? 'ticker' : 'query'}: ${triggerLabel}`}
-          aria-haspopup="dialog"
-          aria-expanded={popoverOpen}
-          style={{
-            background: 'var(--bg-sunken)',
-            border: `1px solid ${popoverOpen ? 'var(--buzz-500)' : 'var(--border)'}`,
-            borderRadius: 20,
-            padding: '3px 10px',
-            font: '500 11px/1.4 var(--font-mono)',
-            color: isEmpty ? 'var(--fg-3)' : 'var(--fg-1)',
-            cursor: 'pointer',
-            maxWidth: '80%',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            letterSpacing: '-0.01em',
-            transition: 'border-color 0.1s, color 0.1s',
-          }}
-          onMouseEnter={(e) => {
-            if (!popoverOpen) {
-              ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--buzz-500)'
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!popoverOpen) {
-              ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'
-            }
-          }}
-        >
-          {triggerLabel}
-        </button>
       </div>
 
       {/* Chart body */}

@@ -198,6 +198,32 @@ export function applyScopeToSelectedCards(
   })
 }
 
+// ── Ingestion result helper ─────────────────────────────────────────────────
+
+/**
+ * Maps an HTTP status (and optional response body) from POST /api/query to a
+ * user-facing message. Pure — no fetch, no side-effects.
+ *
+ * Returns `{ ok: true, message }` on success (2xx), `{ ok: false, message }`
+ * on every error path. The caller is responsible for building abort/network
+ * error messages itself (those have no HTTP status to dispatch on).
+ */
+export function describeIngestResult(
+  status: number,
+  body: { error?: string } | null,
+): { ok: boolean; message: string } {
+  if (status === 200 || status === 201) {
+    return { ok: true, message: 'Data fetch started — charts will update shortly.' }
+  }
+  if (status === 402) {
+    return { ok: false, message: 'Monthly query limit reached — upgrade to fetch data for new queries.' }
+  }
+  if (status === 403 && body?.error === 'byok_required') {
+    return { ok: false, message: 'Add your twitterapi.io API key in Account → API keys to fetch data for new queries.' }
+  }
+  return { ok: false, message: `Could not fetch data (${status}).` }
+}
+
 /**
  * Builds the initial set of cards for a newly-created dashboard based on
  * its ticker and/or query scope. If a ticker is given, a full-width

@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { buildHumContextItem, copyCardForDashboard, buildQueryDashboardCards, buildInitialDashboardCards, ANALYTICS_CARD_TYPES, resolveCardQuery, resolveCardSymbol, selectionScopeAvailability, applyScopeToSelectedCards } from './cardActions'
+import { buildHumContextItem, copyCardForDashboard, buildQueryDashboardCards, buildInitialDashboardCards, ANALYTICS_CARD_TYPES, resolveCardQuery, resolveCardSymbol, selectionScopeAvailability, applyScopeToSelectedCards, describeIngestResult } from './cardActions'
 import type { DashboardCard } from '@monorepo-template/core/db/dashboards'
 
 describe('buildHumContextItem', () => {
@@ -405,6 +405,47 @@ describe('selectionScopeAvailability', () => {
   test('single candlestick card → canChangeQuery false, canChangeTicker true', () => {
     const result = selectionScopeAvailability([makeCandlestick('c')])
     expect(result).toEqual({ canChangeQuery: false, canChangeTicker: true })
+  })
+})
+
+// ── describeIngestResult ────────────────────────────────────────────────────
+
+describe('describeIngestResult', () => {
+  test('200 → ok:true with success message', () => {
+    const result = describeIngestResult(200, null)
+    expect(result.ok).toBe(true)
+    expect(result.message).toContain('charts will update shortly')
+  })
+
+  test('201 → ok:true with success message', () => {
+    const result = describeIngestResult(201, null)
+    expect(result.ok).toBe(true)
+    expect(result.message).toContain('charts will update shortly')
+  })
+
+  test('402 → ok:false with quota exceeded message', () => {
+    const result = describeIngestResult(402, null)
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain('Monthly query limit reached')
+  })
+
+  test('403 + body.error=byok_required → ok:false with byok message', () => {
+    const result = describeIngestResult(403, { error: 'byok_required' })
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain('API key')
+    expect(result.message).toContain('Account')
+  })
+
+  test('403 without byok_required → ok:false with generic message', () => {
+    const result = describeIngestResult(403, { error: 'forbidden' })
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain('403')
+  })
+
+  test('500 → ok:false with generic message containing the status', () => {
+    const result = describeIngestResult(500, null)
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain('500')
   })
 })
 
