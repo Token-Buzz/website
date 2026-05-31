@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { buildHumContextItem, copyCardForDashboard, buildQueryDashboardCards, buildInitialDashboardCards, ANALYTICS_CARD_TYPES } from './cardActions'
+import { buildHumContextItem, copyCardForDashboard, buildQueryDashboardCards, buildInitialDashboardCards, ANALYTICS_CARD_TYPES, resolveCardQuery, resolveCardSymbol, selectionScopeAvailability, applyScopeToSelectedCards, describeIngestResult } from './cardActions'
 import type { DashboardCard } from '@monorepo-template/core/db/dashboards'
 
 describe('buildHumContextItem', () => {
@@ -258,5 +258,280 @@ describe('buildInitialDashboardCards', () => {
     expect(cards.map((c) => c.id)).toEqual(
       Array.from({ length: 19 }, (_, i) => `id-${i}`)
     )
+  })
+})
+
+// ── resolveCardQuery ────────────────────────────────────────────────────────
+
+describe('resolveCardQuery', () => {
+  function makeCard(overrides: Partial<DashboardCard['options']> = {}): DashboardCard {
+    return {
+      id: 'card-1',
+      type: 'mentions',
+      position: { x: 0, y: 0, w: 6, h: 9 },
+      options: { ...overrides },
+    }
+  }
+
+  test('returns card options.query when it is a non-empty string', () => {
+    const card = makeCard({ query: 'bitcoin' })
+    expect(resolveCardQuery(card, { query: 'ethereum', ticker: 'ETH' })).toBe('bitcoin')
+  })
+
+  test('falls back to dashboardScopeQuery when card options.query is absent', () => {
+    const card = makeCard()
+    expect(resolveCardQuery(card, { query: 'ethereum', ticker: 'ETH' })).toBe('ETH ethereum')
+  })
+
+  test('falls back to dashboardScopeQuery when card options.query is an empty string', () => {
+    const card = makeCard({ query: '' })
+    expect(resolveCardQuery(card, { query: 'solana' })).toBe('solana')
+  })
+
+  test('falls back to dashboardScopeQuery when card options.query is whitespace-only', () => {
+    const card = makeCard({ query: '   ' })
+    expect(resolveCardQuery(card, { query: 'dogecoin' })).toBe('dogecoin')
+  })
+
+  test('returns trimmed card options.query (leading/trailing spaces stripped)', () => {
+    const card = makeCard({ query: '  xrp news  ' })
+    expect(resolveCardQuery(card, { query: 'fallback' })).toBe('xrp news')
+  })
+
+  test('falls back to dashboardScopeQuery when both ticker and query are on the dashboard', () => {
+    const card = makeCard()
+    expect(resolveCardQuery(card, { ticker: 'BTC', query: 'bitcoin' })).toBe('BTC bitcoin')
+  })
+
+  test('returns empty string when card has no options.query and dashboard has neither ticker nor query', () => {
+    const card = makeCard()
+    expect(resolveCardQuery(card, {})).toBe('')
+  })
+})
+
+// ── resolveCardSymbol ───────────────────────────────────────────────────────
+
+describe('resolveCardSymbol', () => {
+  function makeCard(overrides: Partial<DashboardCard['options']> = {}): DashboardCard {
+    return {
+      id: 'card-1',
+      type: 'candlestick',
+      position: { x: 0, y: 0, w: 12, h: 12 },
+      options: { ...overrides },
+    }
+  }
+
+  test('returns card options.ticker when it is a non-empty string (highest precedence)', () => {
+    const card = makeCard({ ticker: 'ETH' })
+    expect(resolveCardSymbol(card, { ticker: 'BTC', query: 'bitcoin' })).toBe('ETH')
+  })
+
+  test('falls back to dashboard.ticker when card options.ticker is absent', () => {
+    const card = makeCard()
+    expect(resolveCardSymbol(card, { ticker: 'BTC', query: 'bitcoin' })).toBe('BTC')
+  })
+
+  test('falls back to dashboard.ticker when card options.ticker is empty string', () => {
+    const card = makeCard({ ticker: '' })
+    expect(resolveCardSymbol(card, { ticker: 'SOL', query: 'solana' })).toBe('SOL')
+  })
+
+  test('falls back to dashboard.ticker when card options.ticker is whitespace-only', () => {
+    const card = makeCard({ ticker: '   ' })
+    expect(resolveCardSymbol(card, { ticker: 'DOGE' })).toBe('DOGE')
+  })
+
+  test('falls back to dashboardScopeQuery when neither card nor dashboard has a ticker', () => {
+    const card = makeCard()
+    expect(resolveCardSymbol(card, { query: 'dogecoin' })).toBe('dogecoin')
+  })
+
+  test('falls back to dashboardScopeQuery combining ticker+query when card has no ticker and dashboard.ticker is absent', () => {
+    const card = makeCard()
+    expect(resolveCardSymbol(card, { ticker: undefined, query: 'ethereum news' })).toBe('ethereum news')
+  })
+
+  test('returns empty string when card, dashboard.ticker, and dashboard.query are all absent/empty', () => {
+    const card = makeCard()
+    expect(resolveCardSymbol(card, {})).toBe('')
+  })
+
+  test('returns trimmed card options.ticker (leading/trailing spaces stripped)', () => {
+    const card = makeCard({ ticker: '  BNB  ' })
+    expect(resolveCardSymbol(card, { ticker: 'ETH' })).toBe('BNB')
+  })
+
+  test('card options.ticker beats dashboard.ticker even when dashboard.ticker is non-empty', () => {
+    const card = makeCard({ ticker: 'LINK' })
+    expect(resolveCardSymbol(card, { ticker: 'BTC', query: 'bitcoin' })).toBe('LINK')
+  })
+})
+
+// ── selectionScopeAvailability ──────────────────────────────────────────────
+
+describe('selectionScopeAvailability', () => {
+  function makeAnalytics(id: string): DashboardCard {
+    return { id, type: 'mentions', position: { x: 0, y: 0, w: 6, h: 9 }, options: {} }
+  }
+  function makeCandlestick(id: string): DashboardCard {
+    return { id, type: 'candlestick', position: { x: 0, y: 0, w: 12, h: 12 }, options: {} }
+  }
+
+  test('empty selection → both false', () => {
+    const result = selectionScopeAvailability([])
+    expect(result).toEqual({ canChangeQuery: false, canChangeTicker: false })
+  })
+
+  test('analytics-only selection → canChangeQuery true, canChangeTicker false', () => {
+    const result = selectionScopeAvailability([makeAnalytics('a'), makeAnalytics('b')])
+    expect(result).toEqual({ canChangeQuery: true, canChangeTicker: false })
+  })
+
+  test('candlestick-only selection → canChangeQuery false, canChangeTicker true', () => {
+    const result = selectionScopeAvailability([makeCandlestick('c1'), makeCandlestick('c2')])
+    expect(result).toEqual({ canChangeQuery: false, canChangeTicker: true })
+  })
+
+  test('mixed selection → both true', () => {
+    const result = selectionScopeAvailability([makeAnalytics('a'), makeCandlestick('c')])
+    expect(result).toEqual({ canChangeQuery: true, canChangeTicker: true })
+  })
+
+  test('single analytics card → canChangeQuery true, canChangeTicker false', () => {
+    const result = selectionScopeAvailability([makeAnalytics('a')])
+    expect(result).toEqual({ canChangeQuery: true, canChangeTicker: false })
+  })
+
+  test('single candlestick card → canChangeQuery false, canChangeTicker true', () => {
+    const result = selectionScopeAvailability([makeCandlestick('c')])
+    expect(result).toEqual({ canChangeQuery: false, canChangeTicker: true })
+  })
+})
+
+// ── describeIngestResult ────────────────────────────────────────────────────
+
+describe('describeIngestResult', () => {
+  test('200 → ok:true with success message', () => {
+    const result = describeIngestResult(200, null)
+    expect(result.ok).toBe(true)
+    expect(result.message).toContain('charts will update shortly')
+  })
+
+  test('201 → ok:true with success message', () => {
+    const result = describeIngestResult(201, null)
+    expect(result.ok).toBe(true)
+    expect(result.message).toContain('charts will update shortly')
+  })
+
+  test('402 → ok:false with quota exceeded message', () => {
+    const result = describeIngestResult(402, null)
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain('Monthly query limit reached')
+  })
+
+  test('403 + body.error=byok_required → ok:false with byok message', () => {
+    const result = describeIngestResult(403, { error: 'byok_required' })
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain('API key')
+    expect(result.message).toContain('Account')
+  })
+
+  test('403 without byok_required → ok:false with generic message', () => {
+    const result = describeIngestResult(403, { error: 'forbidden' })
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain('403')
+  })
+
+  test('500 → ok:false with generic message containing the status', () => {
+    const result = describeIngestResult(500, null)
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain('500')
+  })
+})
+
+// ── applyScopeToSelectedCards ───────────────────────────────────────────────
+
+describe('applyScopeToSelectedCards', () => {
+  const analytics: DashboardCard = {
+    id: 'a1',
+    type: 'mentions',
+    position: { x: 0, y: 0, w: 6, h: 9 },
+    options: { query: 'old-query' },
+  }
+  const candle: DashboardCard = {
+    id: 'c1',
+    type: 'candlestick',
+    position: { x: 0, y: 0, w: 12, h: 12 },
+    options: { ticker: 'OLD' },
+  }
+  const unselected: DashboardCard = {
+    id: 'u1',
+    type: 'hashtags',
+    position: { x: 6, y: 0, w: 6, h: 9 },
+    options: { query: 'untouched' },
+  }
+
+  test('applies query only to selected analytics cards, skips unselected', () => {
+    const result = applyScopeToSelectedCards([analytics, unselected], ['a1'], 'query', 'new-query')
+    expect(result[0].options.query).toBe('new-query')
+    expect(result[1].options.query).toBe('untouched')
+  })
+
+  test('does NOT apply query to candlestick cards (type-gating)', () => {
+    const result = applyScopeToSelectedCards([analytics, candle], new Set(['a1', 'c1']), 'query', 'bitcoin')
+    expect(result[0].options.query).toBe('bitcoin')
+    // candlestick card should be untouched
+    expect(result[1].options.query).toBeUndefined()
+    expect(result[1].options.ticker).toBe('OLD')
+  })
+
+  test('applies ticker only to candlestick cards, skips analytics (type-gating)', () => {
+    const result = applyScopeToSelectedCards([analytics, candle], new Set(['a1', 'c1']), 'ticker', 'ETH')
+    // analytics card unchanged
+    expect(result[0].options.ticker).toBeUndefined()
+    expect(result[0].options.query).toBe('old-query')
+    // candlestick updated
+    expect(result[1].options.ticker).toBe('ETH')
+  })
+
+  test('trims whitespace from the value', () => {
+    const result = applyScopeToSelectedCards([analytics], ['a1'], 'query', '  bitcoin  ')
+    expect(result[0].options.query).toBe('bitcoin')
+  })
+
+  test('does not mutate the original cards array', () => {
+    const original = [{ ...analytics, options: { ...analytics.options } }]
+    applyScopeToSelectedCards(original, ['a1'], 'query', 'new')
+    expect(original[0].options.query).toBe('old-query')
+  })
+
+  test('does not mutate the original options object of a matched card', () => {
+    const original = [{ ...analytics, options: { ...analytics.options } }]
+    const optRef = original[0].options
+    applyScopeToSelectedCards(original, ['a1'], 'query', 'new')
+    expect(optRef.query).toBe('old-query')
+  })
+
+  test('preserves other options fields when updating', () => {
+    const card: DashboardCard = { id: 'x', type: 'mentions', position: { x: 0, y: 0, w: 6, h: 9 }, options: { query: 'old', threshold: 5 } }
+    const result = applyScopeToSelectedCards([card], ['x'], 'query', 'new')
+    expect(result[0].options.threshold).toBe(5)
+    expect(result[0].options.query).toBe('new')
+  })
+
+  test('accepts Set<string> as selectedIds', () => {
+    const result = applyScopeToSelectedCards([analytics], new Set(['a1']), 'query', 'set-based')
+    expect(result[0].options.query).toBe('set-based')
+  })
+
+  test('accepts string[] as selectedIds', () => {
+    const result = applyScopeToSelectedCards([analytics], ['a1'], 'query', 'array-based')
+    expect(result[0].options.query).toBe('array-based')
+  })
+
+  test('returns a new array (not the same reference)', () => {
+    const cards = [analytics]
+    const result = applyScopeToSelectedCards(cards, [], 'query', 'val')
+    expect(result).not.toBe(cards)
   })
 })

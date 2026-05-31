@@ -9,6 +9,8 @@ import { CARD_META } from './registry'
 import { cardsToLayout, layoutToCards, GRID_COLS, ROW_HEIGHT_PX } from './grid'
 import type { DashboardCard } from '@monorepo-template/core/db/dashboards'
 import { fromCard } from '../../_dashboard/humContext'
+import { SummaryProvider } from '../../_analytics/SummaryProvider'
+import { resolveCardQuery, resolveCardSymbol } from './cardActions'
 
 // Create the width-aware grid ONCE at module scope
 const GridLayoutWithWidth = WidthProvider(GridLayout)
@@ -21,10 +23,13 @@ interface DashboardGridProps {
   editing: boolean
   isMobile: boolean
   ticker?: string
+  selectedIds: Set<string>
+  onToggleSelect: (cardId: string) => void
   onLayoutChange: (cards: DashboardCard[]) => void
   onRemoveCard: (cardId: string) => void
   onAddToContext: (card: DashboardCard) => void
   onAddToDashboard: (card: DashboardCard) => void
+  onChangeCardScope: (cardId: string, field: 'query' | 'ticker', value: string) => void
 }
 
 // ── DashboardGrid ──────────────────────────────────────────────────────────────
@@ -35,11 +40,17 @@ export function DashboardGrid({
   editing,
   isMobile,
   ticker,
+  selectedIds,
+  onToggleSelect,
   onLayoutChange,
   onRemoveCard,
   onAddToContext,
   onAddToDashboard,
+  onChangeCardScope,
 }: DashboardGridProps) {
+  // The dashboard-level scope is the fallback when a card has no own options.
+  const dashboardScope = { ticker, query }
+
   // ── Mobile: simple stacked CSS grid ────────────────────────────────────────
   if (isMobile) {
     return (
@@ -53,23 +64,44 @@ export function DashboardGrid({
       >
         {cards.map((card) => {
           const { label, meta } = CARD_META[card.type] ?? { label: card.type, meta: '' }
-          const dragItem = editing ? undefined : fromCard({ cardType: card.type, label, query, ticker })
+          const cardQuery = resolveCardQuery(card, dashboardScope)
+          const cardSymbol = resolveCardSymbol(card, dashboardScope)
+          const dragItem = editing
+            ? undefined
+            : fromCard({ cardType: card.type, label, query: cardQuery, ticker: cardSymbol })
+          const scopeField = card.type === 'candlestick' ? 'ticker' : 'query'
+          const scopeValue = scopeField === 'ticker' ? cardSymbol : cardQuery
+
+          const frame = (
+            <DashboardCardFrame
+              label={label}
+              meta={meta}
+              type={card.type}
+              query={cardQuery}
+              ticker={cardSymbol}
+              onRemove={() => onRemoveCard(card.id)}
+              onAddToContext={() => onAddToContext(card)}
+              onAddToDashboard={() => onAddToDashboard(card)}
+              dragItem={dragItem}
+              selected={selectedIds.has(card.id)}
+              onToggleSelect={() => onToggleSelect(card.id)}
+              editing={editing}
+              scopeField={scopeField}
+              scopeValue={scopeValue}
+              onApplyScope={(v) => onChangeCardScope(card.id, scopeField, v)}
+            />
+          )
+
           return (
             <div
               key={card.id}
               style={{ gridColumn: '1 / -1', gridRow: `span ${card.position.h}` }}
             >
-              <DashboardCardFrame
-                label={label}
-                meta={meta}
-                type={card.type}
-                query={query}
-                ticker={ticker}
-                onRemove={() => onRemoveCard(card.id)}
-                onAddToContext={() => onAddToContext(card)}
-                onAddToDashboard={() => onAddToDashboard(card)}
-                dragItem={dragItem}
-              />
+              {card.type !== 'candlestick' ? (
+                <SummaryProvider query={cardQuery}>{frame}</SummaryProvider>
+              ) : (
+                frame
+              )}
             </div>
           )
         })}
@@ -105,7 +137,34 @@ export function DashboardGrid({
     >
       {cards.map((card) => {
         const { label, meta } = CARD_META[card.type] ?? { label: card.type, meta: '' }
-        const dragItem = editing ? undefined : fromCard({ cardType: card.type, label, query, ticker })
+        const cardQuery = resolveCardQuery(card, dashboardScope)
+        const cardSymbol = resolveCardSymbol(card, dashboardScope)
+        const dragItem = editing
+          ? undefined
+          : fromCard({ cardType: card.type, label, query: cardQuery, ticker: cardSymbol })
+        const scopeField = card.type === 'candlestick' ? 'ticker' : 'query'
+        const scopeValue = scopeField === 'ticker' ? cardSymbol : cardQuery
+
+        const frame = (
+          <DashboardCardFrame
+            label={label}
+            meta={meta}
+            type={card.type}
+            query={cardQuery}
+            ticker={cardSymbol}
+            onRemove={() => onRemoveCard(card.id)}
+            onAddToContext={() => onAddToContext(card)}
+            onAddToDashboard={() => onAddToDashboard(card)}
+            dragItem={dragItem}
+            selected={selectedIds.has(card.id)}
+            onToggleSelect={() => onToggleSelect(card.id)}
+            editing={editing}
+            scopeField={scopeField}
+            scopeValue={scopeValue}
+            onApplyScope={(v) => onChangeCardScope(card.id, scopeField, v)}
+          />
+        )
+
         return (
           <div key={card.id}>
             {/* inner wrapper fills the RGL-sized item; flex column so the drag handle sits above the card */}
@@ -136,17 +195,11 @@ export function DashboardGrid({
                 </div>
               )}
               <div style={{ flex: 1, minHeight: 0 }}>
-                <DashboardCardFrame
-                  label={label}
-                  meta={meta}
-                  type={card.type}
-                  query={query}
-                  ticker={ticker}
-                  onRemove={() => onRemoveCard(card.id)}
-                  onAddToContext={() => onAddToContext(card)}
-                  onAddToDashboard={() => onAddToDashboard(card)}
-                  dragItem={dragItem}
-                />
+                {card.type !== 'candlestick' ? (
+                  <SummaryProvider query={cardQuery}>{frame}</SummaryProvider>
+                ) : (
+                  frame
+                )}
               </div>
             </div>
           </div>

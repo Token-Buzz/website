@@ -5,7 +5,6 @@ import {
   useContext,
   useState,
   useEffect,
-  useRef,
   type ReactNode,
 } from "react";
 
@@ -92,6 +91,133 @@ const SummaryContext = createContext<SummaryContextValue>({
 export const DEFAULT_TIMEOUT_MS = 30_000;
 export const DEFAULT_SCHEDULE_MS = [1_000, 2_000, 4_000, 8_000, 8_000, 8_000];
 
+// ── Module-level shared store (dedupe layer) ───────────────────────────────
+
+type StateListener = (state: SummaryState) => void;
+
+interface StoreEntry {
+  state: SummaryState;
+  subscribers: Set<StateListener>;
+  refCount: number;
+  cancel: () => void;
+}
+
+const store = new Map<string, StoreEntry>();
+
+const EMPTY_STATE: SummaryState = { data: null, loading: false, error: null };
+
+function notifySubscribers(entry: StoreEntry): void {
+  for (const listener of entry.subscribers) {
+    listener(entry.state);
+  }
+}
+
+function startPolling(query: string, entry: StoreEntry): void {
+  let cancelled = false;
+  entry.cancel = () => {
+    cancelled = true;
+  };
+
+  const deadline = Date.now() + DEFAULT_TIMEOUT_MS;
+  let attemptIndex = 0;
+  let lastData: SummaryData | null = null;
+
+  entry.state = { data: null, loading: true, error: null };
+  notifySubscribers(entry);
+
+  async function poll(): Promise<void> {
+    if (cancelled) return;
+
+    const url = `/api/analytics/summary?query=${encodeURIComponent(query)}`;
+
+    try {
+      const res = await fetch(url);
+
+      if (cancelled) return;
+
+      if (!res.ok) {
+        // 429 / 5xx — transient, retry
+        if (res.status !== 429 && res.status < 500) {
+          entry.state = { data: lastData, loading: false, error: String(res.status) };
+          notifySubscribers(entry);
+          return;
+        }
+      } else {
+        const json = (await res.json()) as SummaryData;
+
+        if (cancelled) return;
+
+        lastData = json;
+
+        const populated = isPopulated(json);
+
+        entry.state = { data: json, loading: !populated, error: null };
+        notifySubscribers(entry);
+
+        if (populated) return;
+      }
+    } catch {
+      // network error — retry
+    }
+
+    if (cancelled) return;
+
+    if (Date.now() >= deadline) {
+      entry.state = { data: lastData, loading: false, error: null };
+      notifySubscribers(entry);
+      return;
+    }
+
+    const delay = DEFAULT_SCHEDULE_MS[attemptIndex] ?? 8_000;
+    attemptIndex++;
+
+    await new Promise<void>((resolve) => setTimeout(resolve, delay));
+
+    if (cancelled) return;
+
+    if (Date.now() < deadline) {
+      void poll();
+    } else {
+      entry.state = { data: lastData, loading: false, error: null };
+      notifySubscribers(entry);
+    }
+  }
+
+  void poll();
+}
+
+function subscribe(query: string, listener: StateListener): () => void {
+  let entry = store.get(query);
+
+  if (!entry) {
+    entry = {
+      state: EMPTY_STATE,
+      subscribers: new Set(),
+      refCount: 0,
+      cancel: () => {},
+    };
+    store.set(query, entry);
+    startPolling(query, entry);
+  }
+
+  entry.refCount++;
+  entry.subscribers.add(listener);
+
+  // Deliver current cached state immediately
+  listener(entry.state);
+
+  return () => {
+    const e = store.get(query);
+    if (!e) return;
+    e.subscribers.delete(listener);
+    e.refCount--;
+    if (e.refCount <= 0) {
+      e.cancel();
+      store.delete(query);
+    }
+  };
+}
+
 // ── Provider ───────────────────────────────────────────────────────────────
 
 export function SummaryProvider({
@@ -101,93 +227,17 @@ export function SummaryProvider({
   query: string;
   children: ReactNode;
 }) {
-  const [state, setState] = useState<SummaryState>({
-    data: null,
-    loading: false,
-    error: null,
-  });
-
-  // Track whether we have any non-null populated key in the summary.
-  // The summary request completes once any sub-query returns real data.
-  const cancelledRef = useRef(false);
+  const [state, setState] = useState<SummaryState>(EMPTY_STATE);
 
   useEffect(() => {
     if (!query) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setState({ data: null, loading: false, error: null });
+      setState(EMPTY_STATE);
       return;
     }
 
-    cancelledRef.current = false;
-    const deadline = Date.now() + DEFAULT_TIMEOUT_MS;
-    let attemptIndex = 0;
-
-    setState({ data: null, loading: true, error: null });
-
-    let lastData: SummaryData | null = null;
-
-    async function poll(): Promise<void> {
-      if (cancelledRef.current) return;
-
-      const url = `/api/analytics/summary?query=${encodeURIComponent(query)}`;
-
-      try {
-        const res = await fetch(url);
-
-        if (cancelledRef.current) return;
-
-        if (!res.ok) {
-          // 429 / 5xx — transient, retry
-          if (res.status !== 429 && res.status < 500) {
-            setState({ data: lastData, loading: false, error: String(res.status) });
-            return;
-          }
-        } else {
-          const json = (await res.json()) as SummaryData;
-
-          if (cancelledRef.current) return;
-
-          lastData = json;
-
-          // Consider the payload "populated" once at least one array key is
-          // non-empty or at least one object key is non-null.
-          // This means the server reached DynamoDB and returned something real.
-          const populated = isPopulated(json);
-
-          setState({ data: json, loading: !populated, error: null });
-
-          if (populated) return;
-        }
-      } catch {
-        // network error — retry
-      }
-
-      if (cancelledRef.current) return;
-
-      if (Date.now() >= deadline) {
-        setState({ data: lastData, loading: false, error: null });
-        return;
-      }
-
-      const delay = DEFAULT_SCHEDULE_MS[attemptIndex] ?? 8_000;
-      attemptIndex++;
-
-      await new Promise<void>((resolve) => setTimeout(resolve, delay));
-
-      if (cancelledRef.current) return;
-
-      if (Date.now() < deadline) {
-        void poll();
-      } else {
-        setState({ data: lastData, loading: false, error: null });
-      }
-    }
-
-    void poll();
-
-    return () => {
-      cancelledRef.current = true;
-    };
+    const unsubscribe = subscribe(query, setState);
+    return unsubscribe;
   }, [query]);
 
   return (

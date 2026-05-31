@@ -133,8 +133,11 @@ export function DashboardPickerModal({
       const createData = (await createRes.json()) as { dashboard: Dashboard }
       const newDashboard = createData.dashboard
 
-      // Step 2: PATCH to append all cards
-      let acc = newDashboard.cards
+      // Step 2: PATCH to replace auto-created cards with the modal's cards.
+      // The POST above auto-populates the dashboard via buildInitialDashboardCards,
+      // so we start from an empty accumulator to replace (not append) those defaults
+      // and avoid ending up with double the cards.
+      let acc: DashboardCard[] = []
       for (const c of cards) {
         const copy = copyCardForDashboard(c, acc, crypto.randomUUID())
         acc = [...acc, copy]
