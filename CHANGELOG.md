@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.2](https://github.com/Token-Buzz/website/compare/v0.50.1...v0.50.2) (2026-05-31)
+
+
+### 🐛 Fixes
+
+* **application:** pin Stripe Basil API version so subscription creation works ([#330](https://github.com/Token-Buzz/website/issues/330)) ([675f650](https://github.com/Token-Buzz/website/commit/675f65048bff1c596c5b12f9aca459ea09f4c260))
+
 ## [0.50.1](https://github.com/Token-Buzz/website/compare/v0.50.0...v0.50.1) (2026-05-31)
 
 
