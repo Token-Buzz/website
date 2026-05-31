@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.0](https://github.com/Token-Buzz/website/compare/v0.43.0...v0.44.0) (2026-05-30)
+
+
+### 🚀 Features
+
+* **infra:** M16 Phase 1 — X-Ray tracing + perf CloudWatch dashboard ([#296](https://github.com/Token-Buzz/website/issues/296)) ([5532739](https://github.com/Token-Buzz/website/commit/55327391a3ca8c97481ad1e722e487faef23c56a))
+
 ## [0.43.0](https://github.com/Token-Buzz/website/compare/v0.42.0...v0.43.0) (2026-05-30)
 
 
