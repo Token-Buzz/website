@@ -133,19 +133,20 @@ export default function WatchlistPage() {
             width: paneWidth,
             borderLeft: '1px solid var(--border)',
             overflowY: 'auto',
+            overflowX: 'hidden',
             flexShrink: 0,
             position: 'relative',
           }}>
-            {/* Drag-resize handle — sits on the left border */}
+            {/* Drag-resize handle — straddles the left border for an easy grab target */}
             <div
               onMouseDown={handleResizeStart}
               aria-hidden="true"
               style={{
                 position: 'absolute',
-                left: -3,
+                left: -8,
                 top: 0,
                 bottom: 0,
-                width: 6,
+                width: 16,
                 cursor: 'col-resize',
                 zIndex: 10,
               }}
