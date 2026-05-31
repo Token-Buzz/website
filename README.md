@@ -12,6 +12,7 @@
 ![Status](https://img.shields.io/badge/status-production-brightgreen?style=flat-square)
 ![License](https://img.shields.io/badge/license-proprietary-red?style=flat-square)
 ![PRs](https://img.shields.io/badge/PRs-by%20invitation-blueviolet?style=flat-square)
+[![Docs](https://img.shields.io/badge/docs-GitBook-3884FF?style=flat-square&logo=gitbook&logoColor=white)](https://runtimedesigns.gitbook.io/token-buzz/)
 
 ![Next.js](https://img.shields.io/badge/Next.js-black?style=flat-square&logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)
@@ -44,6 +45,22 @@ The platform combines a public marketing presence with a fully authenticated app
 - **🔔 Real-Time Alerts** — Configurable alerts triggered by social spikes, sentiment shifts, and momentum events — delivered the moment they happen.
 - **🕑 Query History** — Persistent, searchable history of past signals and queries for research and backtesting.
 - **👤 Account & Billing** — Self-serve subscription management, plan upgrades, and account settings powered by a world-class payments infrastructure.
+
+---
+
+## 📚 Documentation
+
+Full product, security, and developer documentation lives on GitBook:
+
+**➡️ [runtimedesigns.gitbook.io/token-buzz](https://runtimedesigns.gitbook.io/token-buzz/)**
+
+| Section | What's inside |
+|---|---|
+| **Getting Started** | Product overview, quickstart, and account & billing. |
+| **Product Guide** | Every feature — Movers, Live Feed, Alerts, Watchlists & Dashboards, Analytics, Hum AI, Charts, Query History, and the command palette. |
+| **Connecting Data** | How to bring your own data sources. |
+| **Security & Compliance** | Security posture, data handling & encryption, and the shared-responsibility model. |
+| **Developers / API** | API surfaces and authentication. |
 
 ---
 
