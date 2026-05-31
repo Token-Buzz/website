@@ -5,6 +5,7 @@ import { Icon, Button, Eyebrow, Ticker, BuzzDot, Sparkline, Delta, fmtCount, fmt
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import { suggestQueryForTicker } from '@monorepo-template/core/lib/watchlist-query'
 import type { Token, WatchlistEntry, OHLCVBar, LiveFeedTweet } from './types'
+import { WATCHLIST_CHANGED_EVENT } from './watchlistEvents'
 
 // ── FilterBar ──────────────────────────────────────────────────────────────
 
@@ -574,9 +575,10 @@ interface WatchlistViewProps {
   onSelectToken?: (t: Token | null) => void
   selectedToken?: Token | null
   initialFocus?: string | null
+  autoOpenAdd?: boolean
 }
 
-export function WatchlistView({ onSelectToken, selectedToken, initialFocus }: WatchlistViewProps) {
+export function WatchlistView({ onSelectToken, selectedToken, initialFocus, autoOpenAdd }: WatchlistViewProps) {
   const [entries, setEntries] = useState<WatchlistEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -595,7 +597,16 @@ export function WatchlistView({ onSelectToken, selectedToken, initialFocus }: Wa
   const dragSrcId = useRef<string | null>(null)
 
   const focusedRef = useRef(false)
+  const autoAddFiredRef = useRef(false)
   const isMobile = useIsMobile()
+
+  // ── Auto-open add modal when navigated from sidebar "+" ────────────────
+
+  useEffect(() => {
+    if (!autoOpenAdd || autoAddFiredRef.current) return
+    autoAddFiredRef.current = true
+    Promise.resolve().then(() => setShowAddModal(true)).catch(() => {})
+  }, [autoOpenAdd])
 
   // ── Load entries on mount ──────────────────────────────────────────────
 
@@ -665,6 +676,7 @@ export function WatchlistView({ onSelectToken, selectedToken, initialFocus }: Wa
 
   const handleAdded = (entry: WatchlistEntry) => {
     setEntries((prev) => [...prev, entry])
+    window.dispatchEvent(new Event(WATCHLIST_CHANGED_EVENT))
   }
 
   const handleDelete = async (entry: WatchlistEntry) => {
@@ -674,7 +686,11 @@ export function WatchlistView({ onSelectToken, selectedToken, initialFocus }: Wa
     if (selectedToken?.entryId === entry.entryId) onSelectToken?.(null)
     try {
       const res = await fetch(`/api/watchlist/${entry.entryId}`, { method: 'DELETE' })
-      if (!res.ok) {
+      if (res.ok) {
+        // DB now reflects the removal — refresh the sidebar (a pre-DELETE
+        // dispatch would re-fetch stale data that still includes this entry).
+        window.dispatchEvent(new Event(WATCHLIST_CHANGED_EVENT))
+      } else {
         // Revert on failure
         setEntries((prev) => {
           const already = prev.find((e) => e.entryId === entry.entryId)
@@ -700,6 +716,8 @@ export function WatchlistView({ onSelectToken, selectedToken, initialFocus }: Wa
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: newEntries.map((e) => e.entryId) }),
       })
+      // Persisted — refresh the sidebar so its order matches the DB.
+      window.dispatchEvent(new Event(WATCHLIST_CHANGED_EVENT))
     } catch {
       // Non-fatal: the local order is still updated, reorder will resync on next load
     }

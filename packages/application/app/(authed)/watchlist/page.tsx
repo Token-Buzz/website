@@ -13,13 +13,19 @@ const PANE_WIDTH_EXPANDED = 'min(1200px, calc(100vw - 320px))'
 export default function WatchlistPage() {
   const [selectedToken, setSelectedToken] = useState<Token | null>(null)
   const [focus, setFocus] = useState<string | null>(null)
+  const [autoAdd, setAutoAdd] = useState(false)
   // Expanded state resets to false whenever a new token is opened
   const [paneExpanded, setPaneExpanded] = useState(false)
   const isMobile = useIsMobile()
 
   useEffect(() => {
-    const f = new URLSearchParams(window.location.search).get('focus')
-    Promise.resolve().then(() => { if (f) setFocus(f) }).catch(() => {})
+    const params = new URLSearchParams(window.location.search)
+    const f = params.get('focus')
+    const add = params.get('add')
+    Promise.resolve().then(() => {
+      if (f) setFocus(f)
+      if (add === '1') setAutoAdd(true)
+    }).catch(() => {})
   }, [])
 
   // Lock body scroll while mobile overlay is open
@@ -53,6 +59,7 @@ export default function WatchlistPage() {
           onSelectToken={handleSelectToken}
           selectedToken={selectedToken}
           initialFocus={focus}
+          autoOpenAdd={autoAdd}
         />
       </div>
 
