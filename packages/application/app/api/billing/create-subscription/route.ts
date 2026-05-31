@@ -70,22 +70,19 @@ export async function POST(req: Request) {
       items: [{ price }],
       payment_behavior: "default_incomplete",
       payment_settings: { save_default_payment_method: "on_subscription" },
-      // Expand both the Basil confirmation_secret and the legacy payment_intent so the
-      // route works regardless of which field Stripe populates on the account's version.
-      expand: ["latest_invoice.confirmation_secret", "latest_invoice.payment_intent"],
+      // Basil API (pinned in _stripe.ts): the PaymentIntent client secret is surfaced
+      // via latest_invoice.confirmation_secret. The Invoice object has no top-level
+      // payment_intent under Basil, so expanding that path would 400 — don't.
+      expand: ["latest_invoice.confirmation_secret"],
       metadata: { userId },
     });
 
-    // Extract client secret — try Basil confirmation_secret first, fall back to legacy payment_intent.
-    // latest_invoice is string | Invoice | null after expansion; cast narrowly to include both fields.
+    // Extract the client secret from the Basil confirmation_secret field.
+    // latest_invoice is string | Invoice | null after expansion; cast narrowly.
     const invoice = sub.latest_invoice as
-      | {
-          confirmation_secret?: { client_secret?: string | null } | null;
-          payment_intent?: { client_secret?: string | null } | null;
-        }
+      | { confirmation_secret?: { client_secret?: string | null } | null }
       | null;
-    const clientSecret =
-      invoice?.confirmation_secret?.client_secret ?? invoice?.payment_intent?.client_secret;
+    const clientSecret = invoice?.confirmation_secret?.client_secret;
 
     if (!clientSecret) {
       console.error(
