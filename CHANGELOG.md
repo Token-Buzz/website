@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.0](https://github.com/Token-Buzz/website/compare/v0.49.0...v0.50.0) (2026-05-31)
+
+
+### 🚀 Features
+
+* draggable resize handle for watchlist detail pane (up to 75 vw) ([#322](https://github.com/Token-Buzz/website/issues/322)) ([045667f](https://github.com/Token-Buzz/website/commit/045667f543f6bf23c765d92dc40bcce597dbefe3))
+
 ## [0.49.0](https://github.com/Token-Buzz/website/compare/v0.48.0...v0.49.0) (2026-05-31)
 
 
