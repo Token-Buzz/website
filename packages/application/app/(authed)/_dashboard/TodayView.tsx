@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   Icon, Button, Eyebrow, Ticker, BuzzDot,
-  Card, SectionHead, fmtCount, Avatar,
+  Card, SectionHead, fmtCount, Avatar, Delta,
 } from './primitives'
 import type { StreamPost, AlertItem } from './types'
 import {
@@ -15,9 +15,13 @@ import {
   mapTweetsToStream,
   mapApiAlertsToItems,
   mapApiSpikes,
+  deriveSentCellIntensity,
+  deriveSplitPcts,
   type TodayApiResponse,
   type LiveFeedTweet,
   type SpikeCardData,
+  type SentimentToken,
+  type SentimentSplit,
 } from './todayData'
 
 // ── API response shape for live-feed ──────────────────────────────────────
@@ -120,7 +124,42 @@ function PulseChart({ points, color = 'var(--data-pos)', height = 120 }: { point
   )
 }
 
-function Pulse({ series, topSpikes }: { series: number[]; topSpikes: SpikeCardData[] }) {
+// ── Sentiment Split bar ────────────────────────────────────────────────────
+
+function SentimentSplitBar({ split }: { split: SentimentSplit }) {
+  const pcts = deriveSplitPcts(split)
+  const total = split.bull + split.neu + split.bear
+  if (total === 0) return null
+  return (
+    <div>
+      <div style={{ font: '500 10px var(--font-sans)', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--data-dim)', marginBottom: 6 }}>Sentiment split</div>
+      <div style={{ display: 'flex', height: 22, borderRadius: 4, overflow: 'hidden', gap: 1 }}>
+        {pcts.bull > 0 && (
+          <div style={{ flex: pcts.bull, background: 'var(--data-pos)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ font: '600 10px var(--font-mono)', color: '#fff' }}>{pcts.bull}%</span>
+          </div>
+        )}
+        {pcts.neu > 0 && (
+          <div style={{ flex: pcts.neu, background: 'var(--data-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ font: '600 10px var(--font-mono)', color: '#fff' }}>{pcts.neu}%</span>
+          </div>
+        )}
+        {pcts.bear > 0 && (
+          <div style={{ flex: pcts.bear, background: 'var(--data-neg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ font: '600 10px var(--font-mono)', color: '#fff' }}>{pcts.bear}%</span>
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 10, marginTop: 5 }}>
+        <span style={{ font: '500 10px var(--font-mono)', color: 'var(--data-pos)' }}>▲ bull</span>
+        <span style={{ font: '500 10px var(--font-mono)', color: 'var(--data-dim)' }}>◆ mixed</span>
+        <span style={{ font: '500 10px var(--font-mono)', color: 'var(--data-neg)' }}>▼ bear</span>
+      </div>
+    </div>
+  )
+}
+
+function Pulse({ series, topSpikes, sentimentSplit }: { series: number[]; topSpikes: SpikeCardData[]; sentimentSplit: SentimentSplit }) {
   const mpm = derivePulseMpm(series)
   const avg = derivePulseAvg(series)
   const vsAvgPct = avg > 0 ? Math.round(((mpm - avg) / avg) * 100) : 0
@@ -161,7 +200,7 @@ function Pulse({ series, topSpikes }: { series: number[]; topSpikes: SpikeCardDa
               </div>
               <div style={{ font: '500 11px var(--font-mono)', color: 'var(--data-dim)', marginTop: 4 }}>vs 60min avg · {fmtCount(avg)}/min</div>
             </div>
-            {/* Phase 2: sentiment-split sub-block */}
+            <SentimentSplitBar split={sentimentSplit} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
             <PulseChart points={series} />
@@ -340,10 +379,78 @@ function NewUserState() {
   )
 }
 
-// ── Phase 2–4 components (defined, not yet mounted) ────────────────────────
+// ── Sentiment Grid ─────────────────────────────────────────────────────────
 
-// Phase 2: SentimentGrid — per-token sentiment heatmap
-// function SentimentGrid(...) { ... }
+function SentCell({ t }: { t: SentimentToken }) {
+  const intensity = deriveSentCellIntensity(t.score)
+  const colorVar = t.score > 0 ? 'var(--data-pos)' : t.score < 0 ? 'var(--data-neg)' : 'transparent'
+  const bg = t.score !== 0
+    ? `color-mix(in oklch, ${colorVar} ${Math.round(intensity * 60)}%, transparent)`
+    : 'transparent'
+  const scoreStr = t.score > 0 ? `+${t.score}` : `${t.score}`
+  const scoreColor = t.score > 0 ? 'var(--pos)' : t.score < 0 ? 'var(--neg)' : 'var(--neu)'
+  return (
+    <div style={{
+      background: bg,
+      border: '1px solid var(--border)',
+      borderRadius: 'var(--r-2)',
+      padding: '12px 14px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Ticker symbol={t.sym} />
+        <Delta value={t.d} format="raw" style={{ fontSize: 11 }} />
+      </div>
+      <div style={{ font: '600 28px/1 var(--font-mono)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.025em', color: scoreColor }}>
+        {scoreStr}
+      </div>
+      <div style={{ font: '500 10px var(--font-mono)', color: 'var(--fg-3)' }}>
+        {fmtCount(t.mentions)} mentions
+      </div>
+    </div>
+  )
+}
+
+function SentimentGridLegend() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '500 10px var(--font-mono)', color: 'var(--pos)' }}>
+        <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--pos)', opacity: 0.5, display: 'inline-block' }} />
+        bull
+      </span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '500 10px var(--font-mono)', color: 'var(--neu)' }}>
+        <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--border-strong)', display: 'inline-block' }} />
+        mixed
+      </span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, font: '500 10px var(--font-mono)', color: 'var(--neg)' }}>
+        <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--neg)', opacity: 0.5, display: 'inline-block' }} />
+        bear
+      </span>
+    </div>
+  )
+}
+
+function SentimentGrid({ tokens }: { tokens: SentimentToken[] }) {
+  if (tokens.length === 0) return null
+  return (
+    <section>
+      <Card padding={18} style={{ display: 'flex', flexDirection: 'column' }}>
+        <SectionHead
+          eyebrow="Sentiment grid"
+          meta="your watchlist · 24h · score −100…+100"
+          action={<SentimentGridLegend />}
+        />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+          {tokens.map((t) => <SentCell key={t.sym} t={t} />)}
+        </div>
+      </Card>
+    </section>
+  )
+}
+
+// ── Phase 3–4 components (defined, not yet mounted) ────────────────────────
 
 // Phase 3: Narratives — emerging narrative clusters
 // function Narratives(...) { ... }
@@ -435,6 +542,8 @@ export function TodayView({ firstName }: TodayViewProps) {
   const spikes = mapApiSpikes(snapshot?.spikes ?? [])
   const alerts = mapApiAlertsToItems(snapshot?.alerts ?? [])
   const watchlistSymbols = snapshot?.watchlistSymbols ?? []
+  const sentimentGrid = snapshot?.sentimentGrid ?? []
+  const sentimentSplit = snapshot?.sentimentSplit ?? { bull: 0, neu: 0, bear: 0 }
   const isNewUser = !snapLoading && watchlistSymbols.length === 0
 
   const headline = deriveHeadline(snapshot?.spikes ?? [], kpis.alertCount)
@@ -474,9 +583,9 @@ export function TodayView({ firstName }: TodayViewProps) {
     <div style={{ padding: '24px 24px 80px', display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1480, margin: '0 auto' }}>
       <Greeting firstName={firstName} headline={headline} alertCount={kpis.alertCount} />
       <KPIStrip kpis={kpis} />
-      <Pulse series={pulseSeries} topSpikes={spikes} />
+      <Pulse series={pulseSeries} topSpikes={spikes} sentimentSplit={sentimentSplit} />
       {spikes.length > 0 && <Spikes spikes={spikes} />}
-      {/* Phase 2: SentimentGrid */}
+      {sentimentGrid.length > 0 && <SentimentGrid tokens={sentimentGrid} />}
       {/* Phase 3: Narratives */}
       {/* Phase 4: Brief (HUM) */}
       <div style={{ display: 'grid', gridTemplateColumns: alerts.length > 0 ? '1.4fr 1fr' : '1fr', gap: 16 }}>

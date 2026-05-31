@@ -7,9 +7,12 @@ import {
   mapTweetsToStream,
   mapApiAlertsToItems,
   mapApiSpikes,
+  deriveSentCellIntensity,
+  deriveSplitPcts,
   type TodaySpike,
   type TodayAlert,
   type LiveFeedTweet,
+  type SentimentSplit,
 } from './todayData'
 
 // Fixed reference point: 2025-06-01T12:00:00.000Z
@@ -278,5 +281,74 @@ describe('mapApiSpikes', () => {
   test('maps sentiment', () => {
     const [item] = mapApiSpikes([spike])
     expect(item.sentiment).toBe('bull')
+  })
+})
+
+// ── deriveSentCellIntensity ─────────────────────────────────────────────────
+
+describe('deriveSentCellIntensity', () => {
+  test('returns 0 for score 0', () => {
+    expect(deriveSentCellIntensity(0)).toBe(0)
+  })
+
+  test('returns 0.5 for score 40 (|40|/80)', () => {
+    expect(deriveSentCellIntensity(40)).toBeCloseTo(0.5)
+  })
+
+  test('returns 0.5 for score -40 (absolute value)', () => {
+    expect(deriveSentCellIntensity(-40)).toBeCloseTo(0.5)
+  })
+
+  test('returns 1 for score 80 (max intensity)', () => {
+    expect(deriveSentCellIntensity(80)).toBe(1)
+  })
+
+  test('clamps to 1 for score > 80', () => {
+    expect(deriveSentCellIntensity(100)).toBe(1)
+  })
+
+  test('clamps to 1 for score -100', () => {
+    expect(deriveSentCellIntensity(-100)).toBe(1)
+  })
+
+  test('returns fractional value for small positive score', () => {
+    expect(deriveSentCellIntensity(8)).toBeCloseTo(0.1)
+  })
+})
+
+// ── deriveSplitPcts ─────────────────────────────────────────────────────────
+
+describe('deriveSplitPcts', () => {
+  test('returns all zeros when total is 0', () => {
+    const split: SentimentSplit = { bull: 0, neu: 0, bear: 0 }
+    expect(deriveSplitPcts(split)).toEqual({ bull: 0, neu: 0, bear: 0 })
+  })
+
+  test('computes 100% bull when only bull has count', () => {
+    const split: SentimentSplit = { bull: 50, neu: 0, bear: 0 }
+    expect(deriveSplitPcts(split)).toEqual({ bull: 100, neu: 0, bear: 0 })
+  })
+
+  test('computes equal thirds (rounded) for equal counts', () => {
+    const split: SentimentSplit = { bull: 1, neu: 1, bear: 1 }
+    // Each is 33.33… → rounds to 33
+    expect(deriveSplitPcts(split)).toEqual({ bull: 33, neu: 33, bear: 33 })
+  })
+
+  test('handles bull/bear split with no neutral', () => {
+    const split: SentimentSplit = { bull: 60, neu: 0, bear: 40 }
+    expect(deriveSplitPcts(split)).toEqual({ bull: 60, neu: 0, bear: 40 })
+  })
+
+  test('rounds to integer percentages', () => {
+    const split: SentimentSplit = { bull: 2, neu: 3, bear: 5 }
+    // total 10: bull=20, neu=30, bear=50
+    expect(deriveSplitPcts(split)).toEqual({ bull: 20, neu: 30, bear: 50 })
+  })
+
+  test('handles large counts correctly', () => {
+    const split: SentimentSplit = { bull: 1000, neu: 2000, bear: 7000 }
+    // total 10000: bull=10, neu=20, bear=70
+    expect(deriveSplitPcts(split)).toEqual({ bull: 10, neu: 20, bear: 70 })
   })
 })

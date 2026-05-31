@@ -2,9 +2,10 @@ import { auth } from "@clerk/nextjs/server";
 import { listWatchlistEntries } from "@monorepo-template/core/db/watchlist-entries";
 import { getAllTrackedQueries } from "@monorepo-template/core/db/user-data";
 import { getSpikingTokens, listTrackedTokens } from "@monorepo-template/core/db/tokens";
-import { getPulse } from "@monorepo-template/core/db/aggregates";
+import { getPulse, readAggregateTopK } from "@monorepo-template/core/db/aggregates";
 import { listTriggers } from "@monorepo-template/core/db/alerts";
 import type { AlertCondition } from "@monorepo-template/core/db/alerts";
+import { bucketRange, hourBucket } from "@monorepo-template/core/db/keys";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -34,12 +35,59 @@ export interface TodayAlert {
   tone: "buzz" | "sent" | "handle" | "narrative";
 }
 
+export interface SentimentToken {
+  sym: string;
+  mentions: number;
+  score: number;
+  d: number;
+}
+
+export interface SentimentSplit {
+  bull: number;
+  neu: number;
+  bear: number;
+}
+
 export interface TodayResponse {
   kpis: TodayKPIs;
   pulse: TodayPulse;
   spikes: TodaySpike[];
   alerts: TodayAlert[];
   watchlistSymbols: string[];
+  sentimentGrid: SentimentToken[];
+  sentimentSplit: SentimentSplit;
+}
+
+// ── Sentiment counts helper ────────────────────────────────────────────────
+
+interface SentCounts {
+  positive: number;
+  neutral: number;
+  negative: number;
+}
+
+/**
+ * Reads SENTIMENT_BY_QUERY aggregate counts for a symbol within [from, to].
+ * Returns zeros on failure.
+ */
+async function fetchSentimentCounts(sym: string, from: string, to: string): Promise<SentCounts> {
+  try {
+    const rows = await readAggregateTopK({ type: "SENTIMENT_BY_QUERY", query: sym, from, to, k: 1000 });
+    let positive = 0, neutral = 0, negative = 0;
+    for (const row of rows) {
+      if (row.value === "positive") positive += row.count;
+      else if (row.value === "neutral") neutral += row.count;
+      else if (row.value === "negative") negative += row.count;
+    }
+    return { positive, neutral, negative };
+  } catch {
+    return { positive: 0, neutral: 0, negative: 0 };
+  }
+}
+
+function sentScore(counts: SentCounts): number {
+  const total = counts.positive + counts.neutral + counts.negative;
+  return total > 0 ? Math.round(((counts.positive - counts.negative) / total) * 100) : 0;
 }
 
 // ── Alert condition → tone mapping ─────────────────────────────────────────
@@ -132,12 +180,57 @@ export async function GET() {
     tone: conditionToTone(trigger.condition),
   }));
 
+  // ── sentiment grid — per-symbol fan-out (cap at 12 to bound cost) ─────────
+  const sentimentGrid: SentimentToken[] = [];
+  const sentimentSplit: SentimentSplit = { bull: 0, neu: 0, bear: 0 };
+
+  if (watchlistSymbols.length > 0) {
+    const symsForGrid = watchlistSymbols.slice(0, 12);
+
+    // Current 24h window
+    const curBuckets = bucketRange("24H", "hour");
+    const curFrom = curBuckets[0];
+    const curTo = curBuckets[curBuckets.length - 1];
+
+    // Prior 24h window: the 24h preceding the current window
+    const priorToDate = new Date(curFrom);
+    const priorFromDate = new Date(priorToDate.getTime() - 24 * 3_600_000);
+    // Use hourBucket so the prior-window bounds match the stored sort-key
+    // format exactly ("...THH:00:00Z"); a hand-built ".000Z" string would
+    // lexically exclude the final hour from the BETWEEN range.
+    const priorFrom = hourBucket(priorFromDate);
+    const priorTo = hourBucket(new Date(priorToDate.getTime() - 3_600_000));
+
+    const [curCountsArr, priorCountsArr] = await Promise.all([
+      Promise.all(symsForGrid.map((sym) => fetchSentimentCounts(sym, curFrom, curTo))),
+      Promise.all(symsForGrid.map((sym) => fetchSentimentCounts(sym, priorFrom, priorTo))),
+    ]);
+
+    for (let i = 0; i < symsForGrid.length; i++) {
+      const sym = symsForGrid[i];
+      const cur = curCountsArr[i];
+      const prior = priorCountsArr[i];
+      const mentions = cur.positive + cur.neutral + cur.negative;
+      const score = sentScore(cur);
+      const priorScore = sentScore(prior);
+      const d = score - priorScore;
+      sentimentGrid.push({ sym, mentions, score, d });
+
+      // Accumulate split totals
+      sentimentSplit.bull += cur.positive;
+      sentimentSplit.neu += cur.neutral;
+      sentimentSplit.bear += cur.negative;
+    }
+  }
+
   const response: TodayResponse = {
     kpis: { mentions24h, tokenCount, netSentiment, alertCount },
     pulse: { series: pulseSeries },
     spikes,
     alerts,
     watchlistSymbols,
+    sentimentGrid,
+    sentimentSplit,
   };
 
   return Response.json(response);

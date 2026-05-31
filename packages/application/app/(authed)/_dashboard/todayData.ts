@@ -35,12 +35,27 @@ export interface TodayAlert {
   tone: 'buzz' | 'sent' | 'handle' | 'narrative'
 }
 
+export interface SentimentToken {
+  sym: string
+  mentions: number
+  score: number
+  d: number
+}
+
+export interface SentimentSplit {
+  bull: number
+  neu: number
+  bear: number
+}
+
 export interface TodayApiResponse {
   kpis: TodayKPIs
   pulse: TodayPulse
   spikes: TodaySpike[]
   alerts: TodayAlert[]
   watchlistSymbols: string[]
+  sentimentGrid: SentimentToken[]
+  sentimentSplit: SentimentSplit
 }
 
 export interface LiveFeedTweet {
@@ -189,4 +204,29 @@ export function mapApiSpikes(spikes: TodaySpike[]): SpikeCardData[] {
     mentions: s.mentions,
     sentiment: s.sentiment,
   }))
+}
+
+// ── Sentiment grid helpers ────────────────────────────────────────────────
+
+/**
+ * Derives the cell background intensity from a sentiment score.
+ * Returns an opacity value 0..1 based on |score| / 80, clamped to 0..1.
+ * Used to drive color-mix intensity in SentCell.
+ */
+export function deriveSentCellIntensity(score: number): number {
+  return Math.min(Math.abs(score) / 80, 1)
+}
+
+/**
+ * Converts raw split counts to display percentages (0..100, integer).
+ * If total is 0, returns all zeros.
+ */
+export function deriveSplitPcts(split: SentimentSplit): { bull: number; neu: number; bear: number } {
+  const total = split.bull + split.neu + split.bear
+  if (total === 0) return { bull: 0, neu: 0, bear: 0 }
+  return {
+    bull: Math.round((split.bull / total) * 100),
+    neu: Math.round((split.neu / total) * 100),
+    bear: Math.round((split.bear / total) * 100),
+  }
 }
