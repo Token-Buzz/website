@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.1](https://github.com/Token-Buzz/website/compare/v0.46.0...v0.46.1) (2026-05-31)
+
+
+### 🐛 Fixes
+
+* **application:** remove broken OpenNext hum function split (fixes Hum chat 500) ([#317](https://github.com/Token-Buzz/website/issues/317)) ([24d3fe2](https://github.com/Token-Buzz/website/commit/24d3fe2f14fdc42a54e81f993c59dbb9c1a55266))
+
 ## [0.46.0](https://github.com/Token-Buzz/website/compare/v0.45.0...v0.46.0) (2026-05-31)
 
 
