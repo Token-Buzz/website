@@ -23,6 +23,8 @@ interface DashboardGridProps {
   editing: boolean
   isMobile: boolean
   ticker?: string
+  selectedIds: Set<string>
+  onToggleSelect: (cardId: string) => void
   onLayoutChange: (cards: DashboardCard[]) => void
   onRemoveCard: (cardId: string) => void
   onAddToContext: (card: DashboardCard) => void
@@ -37,6 +39,8 @@ export function DashboardGrid({
   editing,
   isMobile,
   ticker,
+  selectedIds,
+  onToggleSelect,
   onLayoutChange,
   onRemoveCard,
   onAddToContext,
@@ -75,6 +79,9 @@ export function DashboardGrid({
               onAddToContext={() => onAddToContext(card)}
               onAddToDashboard={() => onAddToDashboard(card)}
               dragItem={dragItem}
+              selected={selectedIds.has(card.id)}
+              onToggleSelect={() => onToggleSelect(card.id)}
+              editing={editing}
             />
           )
 
@@ -140,6 +147,9 @@ export function DashboardGrid({
             onAddToContext={() => onAddToContext(card)}
             onAddToDashboard={() => onAddToDashboard(card)}
             dragItem={dragItem}
+            selected={selectedIds.has(card.id)}
+            onToggleSelect={() => onToggleSelect(card.id)}
+            editing={editing}
           />
         )
 

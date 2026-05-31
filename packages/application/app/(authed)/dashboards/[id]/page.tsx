@@ -8,10 +8,18 @@ import { Button, Eyebrow, Card, Icon, Ticker } from '../../_dashboard/primitives
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import { CARD_META, ALL_CARD_TYPES } from '../_components/registry'
 import { DashboardPickerModal } from '../_components/DashboardPickerModal'
-import { addHumContext, buildHumContextItem } from '../_components/cardActions'
+import {
+  addHumContext,
+  buildHumContextItem,
+  resolveCardQuery,
+  resolveCardSymbol,
+  selectionScopeAvailability,
+  applyScopeToSelectedCards,
+} from '../_components/cardActions'
 import { nextCardPosition } from '../_components/grid'
 import { dashboardScopeQuery } from '../_components/scope'
 import { DashboardGrid } from '../_components/DashboardGrid'
+
 // ── AddCardMenu ───────────────────────────────────────────────────────────────
 
 interface AddCardMenuProps {
@@ -120,6 +128,319 @@ function AddCardMenu({ onAdd, isMobile }: AddCardMenuProps) {
   )
 }
 
+// ── ScopeEditModal ────────────────────────────────────────────────────────────
+
+interface ScopeEditModalProps {
+  field: 'query' | 'ticker'
+  initialValue: string
+  onSave: (value: string) => void
+  onClose: () => void
+}
+
+function ScopeEditModal({ field, initialValue, onSave, onClose }: ScopeEditModalProps) {
+  const [value, setValue] = useState(initialValue)
+
+  // Escape-to-close
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
+  // Body scroll lock
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [])
+
+  function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget) onClose()
+  }
+
+  const title = field === 'query' ? 'Change Query' : 'Change Ticker'
+  const placeholder = field === 'query' ? 'e.g. bitcoin news' : 'e.g. BTC'
+  const label = field === 'query' ? 'Query' : 'Ticker symbol'
+
+  return (
+    <div
+      onClick={handleBackdropClick}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 100,
+        background: 'rgba(0,0,0,0.45)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="scope-edit-modal-title"
+        style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          width: '100%',
+          maxWidth: 400,
+          boxShadow: '0 8px 40px rgba(0,0,0,0.2)',
+          padding: 28,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 20,
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <Eyebrow style={{ marginBottom: 4 }}>Bulk action</Eyebrow>
+            <h2
+              id="scope-edit-modal-title"
+              style={{
+                font: '600 18px/1.2 var(--font-sans)',
+                color: 'var(--fg-1)',
+                margin: 0,
+                letterSpacing: '-0.015em',
+              }}
+            >
+              {title}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              color: 'var(--fg-3)',
+              padding: 4,
+              borderRadius: 4,
+              lineHeight: 0,
+              flexShrink: 0,
+            }}
+          >
+            <Icon name="close" size={18} />
+          </button>
+        </div>
+
+        {/* Input */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <label
+            htmlFor="scope-edit-input"
+            style={{
+              font: '600 13px/1.2 var(--font-sans)',
+              color: 'var(--fg-1)',
+            }}
+          >
+            {label}
+          </label>
+          <input
+            id="scope-edit-input"
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={placeholder}
+            autoFocus
+            style={{
+              font: '500 13px/1.2 var(--font-sans)',
+              color: 'var(--fg-1)',
+              background: 'var(--bg-sunken)',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              padding: '8px 10px',
+              outline: 'none',
+              width: '100%',
+              boxSizing: 'border-box',
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && value.trim()) onSave(value)
+            }}
+          />
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={!value.trim()}
+            onClick={() => onSave(value)}
+          >
+            Save
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── BulkToolbar ───────────────────────────────────────────────────────────────
+
+interface BulkToolbarProps {
+  selectedCount: number
+  canChangeQuery: boolean
+  canChangeTicker: boolean
+  isMobile: boolean
+  onAddToContext: () => void
+  onAddToDashboard: () => void
+  onRemove: () => void
+  onChangeQuery: () => void
+  onChangeTicker: () => void
+  onClear: () => void
+}
+
+function BulkToolbar({
+  selectedCount,
+  canChangeQuery,
+  canChangeTicker,
+  isMobile,
+  onAddToContext,
+  onAddToDashboard,
+  onRemove,
+  onChangeQuery,
+  onChangeTicker,
+  onClear,
+}: BulkToolbarProps) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: isMobile ? 6 : 8,
+        flexWrap: 'wrap',
+        padding: '10px 14px',
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--buzz-500)',
+        borderRadius: 8,
+      }}
+    >
+      {/* Count badge */}
+      <span
+        style={{
+          font: '600 12px/1 var(--font-sans)',
+          color: 'var(--buzz-500)',
+          background: 'rgba(var(--buzz-500-rgb, 255,107,44),0.1)',
+          borderRadius: 4,
+          padding: '4px 8px',
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
+        }}
+      >
+        {selectedCount} selected
+      </span>
+
+      <div style={{ width: 1, height: 20, background: 'var(--border)', flexShrink: 0 }} />
+
+      {/* Action buttons */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 6, flexWrap: 'wrap' }}>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon="sparkle"
+          onClick={onAddToContext}
+          aria-label="Add selected to context"
+          title="Add to context"
+        >
+          {isMobile ? '' : 'Add to context'}
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          icon="grid"
+          onClick={onAddToDashboard}
+          aria-label="Add selected to dashboard"
+          title="Add to dashboard"
+        >
+          {isMobile ? '' : 'Add to dashboard'}
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          icon="activity"
+          onClick={onChangeQuery}
+          disabled={!canChangeQuery}
+          aria-label="Change query for selected cards"
+          title={canChangeQuery ? 'Change query' : 'No analytics cards selected'}
+          style={{
+            opacity: canChangeQuery ? 1 : 0.4,
+            cursor: canChangeQuery ? 'pointer' : 'not-allowed',
+          }}
+        >
+          {isMobile ? '' : 'Change query'}
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          icon="trend"
+          onClick={onChangeTicker}
+          disabled={!canChangeTicker}
+          aria-label="Change ticker for selected cards"
+          title={canChangeTicker ? 'Change ticker' : 'No candlestick cards selected'}
+          style={{
+            opacity: canChangeTicker ? 1 : 0.4,
+            cursor: canChangeTicker ? 'pointer' : 'not-allowed',
+          }}
+        >
+          {isMobile ? '' : 'Change ticker'}
+        </Button>
+
+        <Button
+          variant="danger"
+          size="sm"
+          icon="trash"
+          onClick={onRemove}
+          aria-label="Remove selected cards from dashboard"
+          title="Remove from dashboard"
+        >
+          {isMobile ? '' : 'Remove'}
+        </Button>
+      </div>
+
+      {/* Spacer + clear */}
+      <div style={{ flex: 1 }} />
+      <button
+        onClick={onClear}
+        aria-label="Clear selection"
+        style={{
+          border: 'none',
+          background: 'transparent',
+          cursor: 'pointer',
+          color: 'var(--fg-3)',
+          font: '500 12px/1 var(--font-sans)',
+          padding: '4px 6px',
+          borderRadius: 4,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          flexShrink: 0,
+        }}
+        onMouseEnter={(e) => {
+          ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--fg-1)'
+        }}
+        onMouseLeave={(e) => {
+          ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--fg-3)'
+        }}
+      >
+        <Icon name="close" size={12} />
+        Clear
+      </button>
+    </div>
+  )
+}
+
 // ── DashboardDetailPage ───────────────────────────────────────────────────────
 
 export default function DashboardDetailPage() {
@@ -130,15 +451,25 @@ export default function DashboardDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [persistError, setPersistError] = useState<string | null>(null)
-  const [pickerCard, setPickerCard] = useState<DashboardCard | null>(null)
+  const [pickerCards, setPickerCards] = useState<DashboardCard[] | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
+
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  // Scope edit modal state: null when closed
+  const [scopeEdit, setScopeEdit] = useState<{ field: 'query' | 'ticker' } | null>(null)
 
   // ── Initial fetch ────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!id) return
     let cancelled = false
+
+    // Reset selection whenever the dashboard id changes (synchronous at effect start is intentional)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedIds(new Set())
 
     async function fetchDashboard() {
       setLoading(true)
@@ -211,7 +542,25 @@ export default function DashboardDetailPage() {
     return () => clearTimeout(timer)
   }, [notice])
 
-  // ── Event handlers ────────────────────────────────────────────────────────
+  // ── Selection helpers ─────────────────────────────────────────────────────
+
+  function toggleSelect(cardId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(cardId)) {
+        next.delete(cardId)
+      } else {
+        next.add(cardId)
+      }
+      return next
+    })
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set())
+  }
+
+  // ── Per-card event handlers ───────────────────────────────────────────────
 
   function handleAddCard(type: DashboardCardType) {
     if (!dashboard) return
@@ -232,19 +581,60 @@ export default function DashboardDetailPage() {
   function handleAddToContext(card: DashboardCard) {
     if (!dashboard) return
     const label = CARD_META[card.type]?.label ?? card.type
+    // Use per-card resolved query/symbol, not the dashboard-wide defaults
     addHumContext(
       buildHumContextItem({
         cardType: card.type,
         label,
-        query: dashboardScopeQuery(dashboard),
-        ticker: dashboard.ticker,
+        query: resolveCardQuery(card, dashboard),
+        ticker: resolveCardSymbol(card, dashboard) || undefined,
       }),
     )
     setNotice('Added "' + label + '" to Hum context')
   }
 
   function handleAddToDashboard(card: DashboardCard) {
-    setPickerCard(card)
+    setPickerCards([card])
+  }
+
+  // ── Bulk action handlers ──────────────────────────────────────────────────
+
+  function handleBulkRemove() {
+    if (!dashboard) return
+    void persistCards(dashboard.cards.filter((c) => !selectedIds.has(c.id)))
+    clearSelection()
+  }
+
+  function handleBulkAddToContext() {
+    if (!dashboard) return
+    for (const card of dashboard.cards) {
+      if (!selectedIds.has(card.id)) continue
+      const label = CARD_META[card.type]?.label ?? card.type
+      addHumContext(
+        buildHumContextItem({
+          cardType: card.type,
+          label,
+          query: resolveCardQuery(card, dashboard),
+          ticker: resolveCardSymbol(card, dashboard) || undefined,
+        }),
+      )
+    }
+    setNotice(`Added ${selectedIds.size} card${selectedIds.size > 1 ? 's' : ''} to Hum context`)
+    clearSelection()
+  }
+
+  function handleBulkAddToDashboard() {
+    if (!dashboard) return
+    const cards = dashboard.cards.filter((c) => selectedIds.has(c.id))
+    setPickerCards(cards)
+  }
+
+  function handleBulkScopeApply(field: 'query' | 'ticker', value: string) {
+    if (!dashboard) return
+    const updated = applyScopeToSelectedCards(dashboard.cards, selectedIds, field, value)
+    void persistCards(updated)
+    setScopeEdit(null)
+    clearSelection()
   }
 
   // ── Render helpers ────────────────────────────────────────────────────────
@@ -345,6 +735,19 @@ export default function DashboardDetailPage() {
 
   const scopeQuery = dashboardScopeQuery(dashboard)
   const { cards } = dashboard
+
+  // Derive toolbar availability from the selected cards
+  const selectedCards = cards.filter((c) => selectedIds.has(c.id))
+  const { canChangeQuery, canChangeTicker } = selectionScopeAvailability(selectedCards)
+
+  // Pre-fill for single-card scope edits
+  const singleSelectedCard = selectedCards.length === 1 ? selectedCards[0] : null
+  const scopeEditInitialValue =
+    scopeEdit && singleSelectedCard
+      ? scopeEdit.field === 'query'
+        ? (typeof singleSelectedCard.options.query === 'string' ? singleSelectedCard.options.query : '')
+        : (typeof singleSelectedCard.options.ticker === 'string' ? singleSelectedCard.options.ticker : '')
+      : ''
 
   return (
     <div style={wrapperStyle}>
@@ -494,6 +897,22 @@ export default function DashboardDetailPage() {
         </div>
       )}
 
+      {/* ── Bulk action toolbar (shown when ≥1 card selected) ───────────── */}
+      {selectedIds.size > 0 && (
+        <BulkToolbar
+          selectedCount={selectedIds.size}
+          canChangeQuery={canChangeQuery}
+          canChangeTicker={canChangeTicker}
+          isMobile={isMobile}
+          onAddToContext={handleBulkAddToContext}
+          onAddToDashboard={handleBulkAddToDashboard}
+          onRemove={handleBulkRemove}
+          onChangeQuery={() => setScopeEdit({ field: 'query' })}
+          onChangeTicker={() => setScopeEdit({ field: 'ticker' })}
+          onClear={clearSelection}
+        />
+      )}
+
       {/* ── Grid / Empty state ──────────────────────────────────────────── */}
       {cards.length === 0 ? (
         // Empty state
@@ -548,6 +967,8 @@ export default function DashboardDetailPage() {
           editing={editing}
           isMobile={isMobile}
           ticker={dashboard.ticker}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelect}
           onLayoutChange={persistCards}
           onRemoveCard={handleRemoveCard}
           onAddToContext={handleAddToContext}
@@ -556,15 +977,31 @@ export default function DashboardDetailPage() {
       )}
 
       {/* Picker modal — "Add to dashboard" */}
-      {pickerCard && dashboard && (
+      {pickerCards && dashboard && (
         <DashboardPickerModal
-          cards={[pickerCard]}
+          cards={pickerCards}
           currentDashboardId={dashboard.dashboardId}
-          onClose={() => setPickerCard(null)}
+          onClose={() => setPickerCards(null)}
           onAdded={({ name }) => {
-            setPickerCard(null)
-            setNotice('Added card to "' + name + '"')
+            setPickerCards(null)
+            const count = pickerCards.length
+            setNotice(
+              count > 1
+                ? `Added ${count} cards to "${name}"`
+                : 'Added card to "' + name + '"',
+            )
+            clearSelection()
           }}
+        />
+      )}
+
+      {/* Scope edit modal — Change Query / Change Ticker */}
+      {scopeEdit && (
+        <ScopeEditModal
+          field={scopeEdit.field}
+          initialValue={scopeEditInitialValue}
+          onSave={(value) => handleBulkScopeApply(scopeEdit.field, value)}
+          onClose={() => setScopeEdit(null)}
         />
       )}
     </div>

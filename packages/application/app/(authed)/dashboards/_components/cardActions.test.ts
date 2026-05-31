@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { buildHumContextItem, copyCardForDashboard, buildQueryDashboardCards, buildInitialDashboardCards, ANALYTICS_CARD_TYPES, resolveCardQuery, resolveCardSymbol } from './cardActions'
+import { buildHumContextItem, copyCardForDashboard, buildQueryDashboardCards, buildInitialDashboardCards, ANALYTICS_CARD_TYPES, resolveCardQuery, resolveCardSymbol, selectionScopeAvailability, applyScopeToSelectedCards } from './cardActions'
 import type { DashboardCard } from '@monorepo-template/core/db/dashboards'
 
 describe('buildHumContextItem', () => {
@@ -364,5 +364,133 @@ describe('resolveCardSymbol', () => {
   test('card options.ticker beats dashboard.ticker even when dashboard.ticker is non-empty', () => {
     const card = makeCard({ ticker: 'LINK' })
     expect(resolveCardSymbol(card, { ticker: 'BTC', query: 'bitcoin' })).toBe('LINK')
+  })
+})
+
+// ── selectionScopeAvailability ──────────────────────────────────────────────
+
+describe('selectionScopeAvailability', () => {
+  function makeAnalytics(id: string): DashboardCard {
+    return { id, type: 'mentions', position: { x: 0, y: 0, w: 6, h: 9 }, options: {} }
+  }
+  function makeCandlestick(id: string): DashboardCard {
+    return { id, type: 'candlestick', position: { x: 0, y: 0, w: 12, h: 12 }, options: {} }
+  }
+
+  test('empty selection → both false', () => {
+    const result = selectionScopeAvailability([])
+    expect(result).toEqual({ canChangeQuery: false, canChangeTicker: false })
+  })
+
+  test('analytics-only selection → canChangeQuery true, canChangeTicker false', () => {
+    const result = selectionScopeAvailability([makeAnalytics('a'), makeAnalytics('b')])
+    expect(result).toEqual({ canChangeQuery: true, canChangeTicker: false })
+  })
+
+  test('candlestick-only selection → canChangeQuery false, canChangeTicker true', () => {
+    const result = selectionScopeAvailability([makeCandlestick('c1'), makeCandlestick('c2')])
+    expect(result).toEqual({ canChangeQuery: false, canChangeTicker: true })
+  })
+
+  test('mixed selection → both true', () => {
+    const result = selectionScopeAvailability([makeAnalytics('a'), makeCandlestick('c')])
+    expect(result).toEqual({ canChangeQuery: true, canChangeTicker: true })
+  })
+
+  test('single analytics card → canChangeQuery true, canChangeTicker false', () => {
+    const result = selectionScopeAvailability([makeAnalytics('a')])
+    expect(result).toEqual({ canChangeQuery: true, canChangeTicker: false })
+  })
+
+  test('single candlestick card → canChangeQuery false, canChangeTicker true', () => {
+    const result = selectionScopeAvailability([makeCandlestick('c')])
+    expect(result).toEqual({ canChangeQuery: false, canChangeTicker: true })
+  })
+})
+
+// ── applyScopeToSelectedCards ───────────────────────────────────────────────
+
+describe('applyScopeToSelectedCards', () => {
+  const analytics: DashboardCard = {
+    id: 'a1',
+    type: 'mentions',
+    position: { x: 0, y: 0, w: 6, h: 9 },
+    options: { query: 'old-query' },
+  }
+  const candle: DashboardCard = {
+    id: 'c1',
+    type: 'candlestick',
+    position: { x: 0, y: 0, w: 12, h: 12 },
+    options: { ticker: 'OLD' },
+  }
+  const unselected: DashboardCard = {
+    id: 'u1',
+    type: 'hashtags',
+    position: { x: 6, y: 0, w: 6, h: 9 },
+    options: { query: 'untouched' },
+  }
+
+  test('applies query only to selected analytics cards, skips unselected', () => {
+    const result = applyScopeToSelectedCards([analytics, unselected], ['a1'], 'query', 'new-query')
+    expect(result[0].options.query).toBe('new-query')
+    expect(result[1].options.query).toBe('untouched')
+  })
+
+  test('does NOT apply query to candlestick cards (type-gating)', () => {
+    const result = applyScopeToSelectedCards([analytics, candle], new Set(['a1', 'c1']), 'query', 'bitcoin')
+    expect(result[0].options.query).toBe('bitcoin')
+    // candlestick card should be untouched
+    expect(result[1].options.query).toBeUndefined()
+    expect(result[1].options.ticker).toBe('OLD')
+  })
+
+  test('applies ticker only to candlestick cards, skips analytics (type-gating)', () => {
+    const result = applyScopeToSelectedCards([analytics, candle], new Set(['a1', 'c1']), 'ticker', 'ETH')
+    // analytics card unchanged
+    expect(result[0].options.ticker).toBeUndefined()
+    expect(result[0].options.query).toBe('old-query')
+    // candlestick updated
+    expect(result[1].options.ticker).toBe('ETH')
+  })
+
+  test('trims whitespace from the value', () => {
+    const result = applyScopeToSelectedCards([analytics], ['a1'], 'query', '  bitcoin  ')
+    expect(result[0].options.query).toBe('bitcoin')
+  })
+
+  test('does not mutate the original cards array', () => {
+    const original = [{ ...analytics, options: { ...analytics.options } }]
+    applyScopeToSelectedCards(original, ['a1'], 'query', 'new')
+    expect(original[0].options.query).toBe('old-query')
+  })
+
+  test('does not mutate the original options object of a matched card', () => {
+    const original = [{ ...analytics, options: { ...analytics.options } }]
+    const optRef = original[0].options
+    applyScopeToSelectedCards(original, ['a1'], 'query', 'new')
+    expect(optRef.query).toBe('old-query')
+  })
+
+  test('preserves other options fields when updating', () => {
+    const card: DashboardCard = { id: 'x', type: 'mentions', position: { x: 0, y: 0, w: 6, h: 9 }, options: { query: 'old', threshold: 5 } }
+    const result = applyScopeToSelectedCards([card], ['x'], 'query', 'new')
+    expect(result[0].options.threshold).toBe(5)
+    expect(result[0].options.query).toBe('new')
+  })
+
+  test('accepts Set<string> as selectedIds', () => {
+    const result = applyScopeToSelectedCards([analytics], new Set(['a1']), 'query', 'set-based')
+    expect(result[0].options.query).toBe('set-based')
+  })
+
+  test('accepts string[] as selectedIds', () => {
+    const result = applyScopeToSelectedCards([analytics], ['a1'], 'query', 'array-based')
+    expect(result[0].options.query).toBe('array-based')
+  })
+
+  test('returns a new array (not the same reference)', () => {
+    const cards = [analytics]
+    const result = applyScopeToSelectedCards(cards, [], 'query', 'val')
+    expect(result).not.toBe(cards)
   })
 })

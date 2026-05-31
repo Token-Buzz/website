@@ -138,6 +138,66 @@ export function resolveCardSymbol(
   return dashboardScopeQuery(dashboard)
 }
 
+// ── Selection helpers ────────────────────────────────────────────────────────
+
+/**
+ * Given a set of cards (the ones currently selected), returns which bulk scope
+ * actions are available:
+ * - canChangeQuery: at least one card is NOT a candlestick (analytics cards have a query)
+ * - canChangeTicker: at least one card IS a candlestick
+ *
+ * Pure — no React, no side-effects.
+ */
+export function selectionScopeAvailability(cards: DashboardCard[]): {
+  canChangeQuery: boolean
+  canChangeTicker: boolean
+} {
+  let canChangeQuery = false
+  let canChangeTicker = false
+  for (const card of cards) {
+    if (card.type === 'candlestick') {
+      canChangeTicker = true
+    } else {
+      canChangeQuery = true
+    }
+    if (canChangeQuery && canChangeTicker) break
+  }
+  return { canChangeQuery, canChangeTicker }
+}
+
+/**
+ * Returns a NEW cards array with the given field set on each selected card.
+ * - field 'query' is only applied to non-candlestick cards (analytics)
+ * - field 'ticker' is only applied to candlestick cards
+ * Mixed selections do the right thing: only the matching type is updated.
+ * Inputs are never mutated.
+ *
+ * Pure — no React, no side-effects.
+ */
+export function applyScopeToSelectedCards(
+  cards: DashboardCard[],
+  selectedIds: Set<string> | string[],
+  field: 'query' | 'ticker',
+  value: string,
+): DashboardCard[] {
+  const idSet: Set<string> =
+    selectedIds instanceof Set ? selectedIds : new Set(selectedIds)
+  const trimmed = value.trim()
+
+  return cards.map((card) => {
+    if (!idSet.has(card.id)) return card
+
+    // Type-gating: query only for analytics, ticker only for candlestick
+    if (field === 'query' && card.type === 'candlestick') return card
+    if (field === 'ticker' && card.type !== 'candlestick') return card
+
+    return {
+      ...card,
+      options: { ...card.options, [field]: trimmed },
+    }
+  })
+}
+
 /**
  * Builds the initial set of cards for a newly-created dashboard based on
  * its ticker and/or query scope. If a ticker is given, a full-width
