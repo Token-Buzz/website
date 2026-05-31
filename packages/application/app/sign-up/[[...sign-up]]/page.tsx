@@ -14,6 +14,7 @@ import { ContinueButton } from '../../_auth/ContinueButton'
 import { usePasswordStrength } from '../../_auth/usePasswordStrength'
 import { clerkErrorMessage } from '../../_auth/clerkErrors'
 import { postAuthDest } from '../../_auth/postAuthDest'
+import { AuthLoading } from '../../_auth/AuthLoading'
 
 type Step = 'form' | 'code'
 
@@ -107,6 +108,9 @@ export default function SignUpPage() {
     })
     if (ssoError) setError(clerkErrorMessage(ssoError))
   }
+
+  if (!isLoaded) return <AuthLoading message="Loading…" />
+  if (isSignedIn) return <AuthLoading message="Taking you to the app…" />
 
   return (
     <AuthShell>
