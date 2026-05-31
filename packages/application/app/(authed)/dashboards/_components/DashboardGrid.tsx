@@ -64,6 +64,7 @@ export function DashboardGrid({
                 meta={meta}
                 type={card.type}
                 query={query}
+                ticker={ticker}
                 onRemove={() => onRemoveCard(card.id)}
                 onAddToContext={() => onAddToContext(card)}
                 onAddToDashboard={() => onAddToDashboard(card)}
@@ -140,6 +141,7 @@ export function DashboardGrid({
                   meta={meta}
                   type={card.type}
                   query={query}
+                  ticker={ticker}
                   onRemove={() => onRemoveCard(card.id)}
                   onAddToContext={() => onAddToContext(card)}
                   onAddToDashboard={() => onAddToDashboard(card)}

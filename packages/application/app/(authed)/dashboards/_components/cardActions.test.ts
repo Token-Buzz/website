@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { buildHumContextItem, copyCardForDashboard, buildQueryDashboardCards, ANALYTICS_CARD_TYPES } from './cardActions'
+import { buildHumContextItem, copyCardForDashboard, buildQueryDashboardCards, buildInitialDashboardCards, ANALYTICS_CARD_TYPES } from './cardActions'
 import type { DashboardCard } from '@monorepo-template/core/db/dashboards'
 
 describe('buildHumContextItem', () => {
@@ -176,5 +176,87 @@ describe('buildQueryDashboardCards', () => {
     expect(cards[0].position).toEqual({ x: 0, y: 0, w: 6, h: 9 })
     expect(cards[1].position).toEqual({ x: 6, y: 0, w: 6, h: 9 })
     expect(cards[2].position).toEqual({ x: 0, y: 9, w: 6, h: 9 })
+  })
+})
+
+describe('buildInitialDashboardCards', () => {
+  function makeIdFactory() {
+    let counter = 0
+    return () => `id-${counter++}`
+  }
+
+  test('ticker only → exactly 1 card, type candlestick, full-width position, empty options', () => {
+    const cards = buildInitialDashboardCards({ ticker: 'BTC' }, makeIdFactory())
+    expect(cards).toHaveLength(1)
+    expect(cards[0].type).toBe('candlestick')
+    expect(cards[0].position).toEqual({ x: 0, y: 0, w: 12, h: 12 })
+    expect(cards[0].options).toEqual({})
+    expect(cards[0].id).toBe('id-0')
+  })
+
+  test('query only → exactly 18 cards, types equal to ANALYTICS_CARD_TYPES in order, no candlestick', () => {
+    const cards = buildInitialDashboardCards({ query: 'bitcoin' }, makeIdFactory())
+    expect(cards).toHaveLength(18)
+    expect(cards.map((c) => c.type)).toEqual([...ANALYTICS_CARD_TYPES])
+    expect(cards.every((c) => c.type !== 'candlestick')).toBe(true)
+  })
+
+  test('query only → every card options.query equals the passed query', () => {
+    const cards = buildInitialDashboardCards({ query: 'ethereum news' }, makeIdFactory())
+    for (const card of cards) {
+      expect(card.options.query).toBe('ethereum news')
+    }
+  })
+
+  test('query only → first card {x:0,y:0,w:6,h:9}, second {x:6,y:0,w:6,h:9}, third {x:0,y:9,w:6,h:9}', () => {
+    const cards = buildInitialDashboardCards({ query: 'solana' }, makeIdFactory())
+    expect(cards[0].position).toEqual({ x: 0, y: 0, w: 6, h: 9 })
+    expect(cards[1].position).toEqual({ x: 6, y: 0, w: 6, h: 9 })
+    expect(cards[2].position).toEqual({ x: 0, y: 9, w: 6, h: 9 })
+  })
+
+  test('both ticker and query → 19 cards total; first is candlestick at top', () => {
+    const cards = buildInitialDashboardCards({ ticker: 'ETH', query: 'ethereum' }, makeIdFactory())
+    expect(cards).toHaveLength(19)
+    expect(cards[0].type).toBe('candlestick')
+    expect(cards[0].position).toEqual({ x: 0, y: 0, w: 12, h: 12 })
+  })
+
+  test('both ticker and query → first analytics card starts at y:12', () => {
+    const cards = buildInitialDashboardCards({ ticker: 'ETH', query: 'ethereum' }, makeIdFactory())
+    expect(cards[1].position).toEqual({ x: 0, y: 12, w: 6, h: 9 })
+    expect(cards[2].position).toEqual({ x: 6, y: 12, w: 6, h: 9 })
+    expect(cards[3].position).toEqual({ x: 0, y: 21, w: 6, h: 9 })
+  })
+
+  test('neither ticker nor query → empty array', () => {
+    const cards = buildInitialDashboardCards({}, makeIdFactory())
+    expect(cards).toEqual([])
+  })
+
+  test('whitespace-only ticker is treated as absent', () => {
+    const cards = buildInitialDashboardCards({ ticker: '   ', query: 'bitcoin' }, makeIdFactory())
+    expect(cards).toHaveLength(18)
+    expect(cards[0].type).not.toBe('candlestick')
+  })
+
+  test('whitespace-only query is treated as absent', () => {
+    const cards = buildInitialDashboardCards({ ticker: 'BTC', query: '   ' }, makeIdFactory())
+    expect(cards).toHaveLength(1)
+    expect(cards[0].type).toBe('candlestick')
+  })
+
+  test('query is trimmed before being stored in options', () => {
+    const cards = buildInitialDashboardCards({ query: '  ai agents  ' }, makeIdFactory())
+    for (const card of cards) {
+      expect(card.options.query).toBe('ai agents')
+    }
+  })
+
+  test('ids come only from the injected idFactory in call order', () => {
+    const cards = buildInitialDashboardCards({ ticker: 'BTC', query: 'bitcoin' }, makeIdFactory())
+    expect(cards.map((c) => c.id)).toEqual(
+      Array.from({ length: 19 }, (_, i) => `id-${i}`)
+    )
   })
 })

@@ -19,6 +19,8 @@ interface DashboardCardFrameProps {
   type: DashboardCardType
   /** Scope query derived from the dashboard, forwarded to the chart */
   query: string
+  /** Dashboard ticker, forwarded to CardBody for candlestick symbol resolution */
+  ticker?: string
   /** Called when the user chooses "Remove from dashboard" */
   onRemove: () => void
   /** Called when the user chooses "Add to context" (Hum M3) */
@@ -34,6 +36,7 @@ export function DashboardCardFrame({
   meta,
   type,
   query,
+  ticker,
   onRemove,
   onAddToContext,
   onAddToDashboard,
@@ -98,7 +101,7 @@ export function DashboardCardFrame({
         }}
       >
         <ChartErrorBoundary chartName={label}>
-          <CardBody type={type} query={query} />
+          <CardBody type={type} query={query} ticker={ticker} />
         </ChartErrorBoundary>
       </div>
     </Card>
