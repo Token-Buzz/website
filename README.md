@@ -91,7 +91,7 @@ flowchart TD
     end
 
     subgraph Store["Data Platform"]
-        DB[("Serverless NoSQL\nData Store")]
+        DB[("Serverless NoSQL Data Store")]
     end
 
     subgraph Delivery["Delivery Layer"]
