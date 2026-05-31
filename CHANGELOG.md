@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.0](https://github.com/Token-Buzz/website/compare/v0.46.2...v0.47.0) (2026-05-31)
+
+
+### 🚀 Features
+
+* **application:** show loading screen on sign-in/sign-up instead of flashing the form ([#323](https://github.com/Token-Buzz/website/issues/323)) ([f83b853](https://github.com/Token-Buzz/website/commit/f83b8538497ef098a07be614734e11954b1159ee)), closes [#294](https://github.com/Token-Buzz/website/issues/294)
+
 ## [0.46.2](https://github.com/Token-Buzz/website/compare/v0.46.1...v0.46.2) (2026-05-31)
 
 
