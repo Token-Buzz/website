@@ -6,10 +6,11 @@ import Wordmark from './Wordmark'
 import Button from './Button'
 
 const NAV_LINKS = [
-  { label: 'Features',  href: '#features',  isSection: true },
-  { label: 'Pricing',   href: '#pricing',   isSection: true },
-  { label: 'FAQ',       href: '#faq',        isSection: true },
-  { label: 'Changelog', href: '/changelog', isSection: false },
+  { label: 'Features',  href: '#features',  isSection: true,  external: false },
+  { label: 'Pricing',   href: '#pricing',   isSection: true,  external: false },
+  { label: 'FAQ',       href: '#faq',        isSection: true,  external: false },
+  { label: 'Docs',      href: 'https://runtimedesigns.gitbook.io/token-buzz', isSection: false, external: true },
+  { label: 'Changelog', href: '/changelog', isSection: false, external: false },
 ]
 
 function HamburgerIcon() {
@@ -74,10 +75,12 @@ export default function Nav() {
         <div style={{ flex: 1 }} />
 
         <div className="nav-links" style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
-          {NAV_LINKS.map(({ label, href, isSection }) => (
+          {NAV_LINKS.map(({ label, href, isSection, external }) => (
             <a
               key={label}
               href={linkHref(href, isSection)}
+              target={external ? '_blank' : undefined}
+              rel={external ? 'noopener noreferrer' : undefined}
               style={{
                 font: '500 14px var(--font-sans)',
                 color: 'var(--fg-2)',
@@ -119,10 +122,12 @@ export default function Nav() {
             </button>
           </div>
 
-          {NAV_LINKS.map(({ label, href, isSection }) => (
+          {NAV_LINKS.map(({ label, href, isSection, external }) => (
             <a
               key={label}
               href={linkHref(href, isSection)}
+              target={external ? '_blank' : undefined}
+              rel={external ? 'noopener noreferrer' : undefined}
               className="nav-mobile-link"
               onClick={close}
             >

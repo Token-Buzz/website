@@ -108,6 +108,23 @@ function ProfileFooter() {
             <Icon name="settings" size={14} />
             Settings
           </button>
+          <a
+            href="https://runtimedesigns.gitbook.io/token-buzz"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setOpen(false)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+              padding: '10px 14px', border: 'none', background: 'transparent',
+              color: 'var(--fg-2)', font: '500 13px var(--font-sans)', cursor: 'pointer',
+              textAlign: 'left', textDecoration: 'none',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          >
+            <Icon name="book" size={14} />
+            Documentation
+          </a>
           <div style={{ height: 1, background: 'var(--border)', margin: '0 10px' }} />
           <SignOutButton>
             <button
