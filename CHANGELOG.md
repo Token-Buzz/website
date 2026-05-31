@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.1](https://github.com/Token-Buzz/website/compare/v0.50.0...v0.50.1) (2026-05-31)
+
+
+### 🐛 Fixes
+
+* add favicon to application and marketing apps ([#336](https://github.com/Token-Buzz/website/issues/336)) ([c4a610a](https://github.com/Token-Buzz/website/commit/c4a610aeed1ea7fcdfc78c4a05eaaeaca5db58a2)), closes [#308](https://github.com/Token-Buzz/website/issues/308)
+
 ## [0.50.0](https://github.com/Token-Buzz/website/compare/v0.49.0...v0.50.0) (2026-05-31)
 
 
