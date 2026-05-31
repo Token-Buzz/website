@@ -60,6 +60,7 @@ function makeFakeProvider(bars: OHLCVBar[]): PriceProvider & { resolveCalls: num
       fetchCalls++
       return bars
     },
+    async search(_symbol: string) { return [] },
   }
 }
 
@@ -194,6 +195,7 @@ describe('graceful degradation', () => {
       id: 'throwing',
       async resolve(): Promise<TokenRef | null> { return FAKE_REF },
       async fetchOHLCV(): Promise<OHLCVBar[]> { throw new Error('API down') },
+      async search() { return [] },
     }
 
     // Should NOT throw; should return the cached bar (T0 is within [T0, T1]).
@@ -208,6 +210,7 @@ describe('graceful degradation', () => {
       id: 'throwing',
       async resolve(): Promise<TokenRef | null> { return FAKE_REF },
       async fetchOHLCV(): Promise<OHLCVBar[]> { throw new Error('API down') },
+      async search() { return [] },
     }
 
     const { bars: result } = await getOHLCV(SYM2, INTERVAL, T0, T1, throwingProvider)

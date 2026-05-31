@@ -10,6 +10,7 @@ import {
 import { PRICE_INTERVALS, INTERVAL_SECONDS, type PriceInterval, type OHLCVBar } from '@monorepo-template/core/providers/price'
 import type { SocialEvent } from '@monorepo-template/core/social-events'
 import { Eyebrow, fmtPrice } from './primitives'
+import { TokenVerifyModal } from './TokenVerifyModal'
 import {
   UP_COLOR, DOWN_COLOR, SMA_COLOR, EMA_COLOR, SMA_PERIOD, EMA_PERIOD,
   toCandleData, toVolumeData, pollIntervalMs, sma, ema, toChartMarkers,
@@ -42,6 +43,8 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
   const [livePrice, setLivePrice] = useState<number | null>(null)
   const [dataPaused, setDataPaused] = useState<{ retryAfterSec: number } | null>(null)
   const [retryCountdown, setRetryCountdown] = useState(0)
+  const [verifyOpen, setVerifyOpen] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -260,7 +263,7 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
       cancelled = true
       controller.abort()
     }
-  }, [symbol, tf])
+  }, [symbol, tf, reloadKey])
 
   // Polling effect — keeps the forming candle fresh
   useEffect(() => {
@@ -432,6 +435,29 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
               </span>
             )}
             <span style={{ font: '500 10px var(--font-mono)', color: '#A39378' }}>· live</span>
+            <button
+              onClick={() => setVerifyOpen(true)}
+              title="Verify this is the correct token"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                font: '600 10px var(--font-mono)',
+                color: '#A39378',
+                padding: '2px 5px',
+                borderRadius: 4,
+                lineHeight: 1,
+                letterSpacing: '0.03em',
+              }}
+              onMouseEnter={(e) => {
+                ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--buzz-500)'
+              }}
+              onMouseLeave={(e) => {
+                ;(e.currentTarget as HTMLButtonElement).style.color = '#A39378'
+              }}
+            >
+              verify
+            </button>
             {dataPaused && (
               <span style={{
                 font: '500 10px var(--font-mono)',
@@ -666,6 +692,14 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
           </div>
         )}
       </div>
+
+      {verifyOpen && (
+        <TokenVerifyModal
+          symbol={symbol}
+          onClose={() => setVerifyOpen(false)}
+          onSelected={() => { setVerifyOpen(false); setReloadKey((k) => k + 1) }}
+        />
+      )}
     </div>
   )
 }

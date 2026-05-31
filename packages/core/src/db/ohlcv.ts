@@ -1,9 +1,10 @@
-import { GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
+import { GetCommand, PutCommand, QueryCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from './client'
 import { ohlcvKey, tokenRefKey } from './keys'
 import {
   type OHLCVBar,
   type TokenRef,
+  type TokenCandidate,
   type PriceProvider,
   type PriceInterval,
   missingBuckets,
@@ -60,6 +61,62 @@ export async function resolveRef(symbol: string, provider: PriceProvider): Promi
     }),
   )
   return ref
+}
+
+export async function searchTokenCandidates(
+  symbol: string,
+  provider: PriceProvider = geckoTerminalProvider,
+): Promise<TokenCandidate[]> {
+  return provider.search(symbol)
+}
+
+/**
+ * Overwrite the cached TokenRef for `symbol` with `ref`, then invalidate all
+ * cached OHLCV rows for that symbol so the chart refetches from the new pool.
+ *
+ * OHLCV invalidation: query all sk values beginning with "OHLCV#" on the
+ * TOKEN#<SYM> partition and delete them in batches of 25.
+ */
+export async function setRef(symbol: string, ref: TokenRef): Promise<void> {
+  // Write the new ref.
+  await ddb.send(
+    new PutCommand({
+      TableName: TableNames.tokens,
+      Item: { ...tokenRefKey(symbol), ...ref },
+    }),
+  )
+
+  // Query all OHLCV rows for this symbol.
+  const pk = `TOKEN#${symbol.toUpperCase()}`
+  const res = await ddb.send(
+    new QueryCommand({
+      TableName: TableNames.tokens,
+      KeyConditionExpression: 'pk = :pk AND begins_with(sk, :p)',
+      ExpressionAttributeValues: {
+        ':pk': pk,
+        ':p': 'OHLCV#',
+      },
+      ProjectionExpression: 'pk, sk',
+    }),
+  )
+
+  const keys = (res.Items ?? []) as Array<{ pk: string; sk: string }>
+  if (keys.length === 0) return
+
+  // Delete in chunks of 25 (DynamoDB BatchWrite limit).
+  const CHUNK = 25
+  for (let i = 0; i < keys.length; i += CHUNK) {
+    const chunk = keys.slice(i, i + CHUNK)
+    await ddb.send(
+      new BatchWriteCommand({
+        RequestItems: {
+          [TableNames.tokens]: chunk.map((k) => ({
+            DeleteRequest: { Key: { pk: k.pk, sk: k.sk } },
+          })),
+        },
+      }),
+    )
+  }
 }
 
 export async function queryCachedOhlcv(
