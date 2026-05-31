@@ -73,11 +73,10 @@ export const ALL_CARD_TYPES: DashboardCardType[] = [
 
 // ── CandleChartCard ───────────────────────────────────────────────────────────
 
-function CandleChartCard({ query }: { query: string }) {
-  // query is the token symbol (same convention as other cards that use it as a ticker)
+function CandleChartCard({ symbol }: { symbol: string }) {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-      <CandleChart symbol={query} interval="1h" height={240} />
+      <CandleChart symbol={symbol} interval="1h" height={240} />
     </div>
   )
 }
@@ -87,6 +86,8 @@ function CandleChartCard({ query }: { query: string }) {
 interface CardBodyProps {
   type: DashboardCardType
   query: string
+  /** When present, used as the candlestick symbol instead of the scope query. */
+  ticker?: string
 }
 
 const comingSoonStyle: React.CSSProperties = {
@@ -98,7 +99,7 @@ const comingSoonStyle: React.CSSProperties = {
   color: 'var(--fg-4)',
 }
 
-export function CardBody({ type, query }: CardBodyProps) {
+export function CardBody({ type, query, ticker }: CardBodyProps) {
   switch (type) {
     case 'mentions':
       return <TopMentionsChart query={query} />
@@ -139,7 +140,7 @@ export function CardBody({ type, query }: CardBodyProps) {
     case 'top-authors':
       return <div style={comingSoonStyle}>Coming soon</div>
     case 'candlestick':
-      return <CandleChartCard query={query} />
+      return <CandleChartCard symbol={ticker?.trim() || query} />
     default: {
       // TypeScript exhaustiveness — should never happen at runtime
       const _exhaustive: never = type

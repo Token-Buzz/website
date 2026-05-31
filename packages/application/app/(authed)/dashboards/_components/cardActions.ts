@@ -1,5 +1,5 @@
 import type { DashboardCard, DashboardCardType } from '@monorepo-template/core/db/dashboards'
-import { nextCardPosition } from './grid'
+import { nextCardPosition, GRID_COLS, DEFAULT_CARD } from './grid'
 
 export const HUM_ADD_CONTEXT_EVENT = 'hum:add-context'
 
@@ -93,5 +93,50 @@ export function buildQueryDashboardCards(
     }
     cards.push(card)
   }
+  return cards
+}
+
+/**
+ * Builds the initial set of cards for a newly-created dashboard based on
+ * its ticker and/or query scope. If a ticker is given, a full-width
+ * candlestick card is prepended. If a query is given, all 18 analytics
+ * cards are appended below (tiled two-per-row). The `idFactory` is injected
+ * so this stays pure/testable (callers pass crypto.randomUUID).
+ */
+export function buildInitialDashboardCards(
+  scope: { ticker?: string; query?: string },
+  idFactory: () => string,
+): DashboardCard[] {
+  const ticker = scope.ticker?.trim()
+  const query = scope.query?.trim()
+  const cards: DashboardCard[] = []
+  let rowStart = 0
+
+  if (ticker) {
+    cards.push({
+      id: idFactory(),
+      type: 'candlestick',
+      position: { x: 0, y: 0, w: GRID_COLS, h: 12 },
+      options: {},
+    })
+    rowStart = 12
+  }
+
+  if (query) {
+    ANALYTICS_CARD_TYPES.forEach((type, i) => {
+      cards.push({
+        id: idFactory(),
+        type,
+        position: {
+          x: (i % 2) * (GRID_COLS / 2),
+          y: rowStart + Math.floor(i / 2) * DEFAULT_CARD.h,
+          w: DEFAULT_CARD.w,
+          h: DEFAULT_CARD.h,
+        },
+        options: { query },
+      })
+    })
+  }
+
   return cards
 }

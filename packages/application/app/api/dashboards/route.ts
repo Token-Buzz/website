@@ -3,6 +3,7 @@ import {
   createDashboard,
   listDashboards,
 } from "@monorepo-template/core/db/dashboards";
+import { buildInitialDashboardCards } from "@/app/(authed)/dashboards/_components/cardActions";
 
 export async function GET() {
   const { userId } = await auth();
@@ -63,8 +64,10 @@ export async function POST(req: Request) {
     );
   }
 
+  const cards = buildInitialDashboardCards({ ticker, query }, () => crypto.randomUUID());
+
   try {
-    const dashboard = await createDashboard(userId, { name, ticker, query });
+    const dashboard = await createDashboard(userId, { name, ticker, query, cards });
     return Response.json({ dashboard }, { status: 201 });
   } catch (err) {
     console.error("[POST /api/dashboards] createDashboard failed:", err);
