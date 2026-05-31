@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.2](https://github.com/Token-Buzz/website/compare/v0.44.1...v0.44.2) (2026-05-31)
+
+
+### 🐛 Fixes
+
+* **application:** stamp Hum greeting time on client to fix hydration mismatch ([#303](https://github.com/Token-Buzz/website/issues/303)) ([ebff7a5](https://github.com/Token-Buzz/website/commit/ebff7a519233b4fe81d5669c0f7d0b73347c4a0a)), closes [#293](https://github.com/Token-Buzz/website/issues/293)
+
 ## [0.44.1](https://github.com/Token-Buzz/website/compare/v0.44.0...v0.44.1) (2026-05-31)
 
 
