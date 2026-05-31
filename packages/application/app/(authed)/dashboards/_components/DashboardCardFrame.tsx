@@ -230,9 +230,16 @@ export function DashboardCardFrame({
     }
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect()
+      const half = 120 // popover width 240 / 2
+      const margin = 8
+      const center = rect.left + rect.width / 2
+      const clampedCenter = Math.min(
+        Math.max(center, half + margin),
+        window.innerWidth - half - margin,
+      )
       setPopoverPos({
         top: rect.bottom + 6,
-        left: rect.left + rect.width / 2,
+        left: clampedCenter,
       })
     }
     setPopoverOpen(true)
@@ -269,53 +276,6 @@ export function DashboardCardFrame({
           : {}),
       }}
     >
-      {/* Scope trigger row — centered pill button at the very top */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          marginBottom: 8,
-          flexShrink: 0,
-        }}
-        onPointerDown={(e) => e.stopPropagation()}
-        onDragStart={(e) => e.stopPropagation()}
-      >
-        <button
-          ref={triggerRef}
-          onClick={handleTriggerClick}
-          aria-label={`Edit ${scopeField === 'ticker' ? 'ticker' : 'query'}: ${triggerLabel}`}
-          aria-haspopup="dialog"
-          aria-expanded={popoverOpen}
-          style={{
-            background: 'var(--bg-sunken)',
-            border: `1px solid ${popoverOpen ? 'var(--buzz-500)' : 'var(--border)'}`,
-            borderRadius: 20,
-            padding: '3px 10px',
-            font: '500 11px/1.4 var(--font-mono)',
-            color: isEmpty ? 'var(--fg-3)' : 'var(--fg-1)',
-            cursor: 'pointer',
-            maxWidth: '80%',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            letterSpacing: '-0.01em',
-            transition: 'border-color 0.1s, color 0.1s',
-          }}
-          onMouseEnter={(e) => {
-            if (!popoverOpen) {
-              ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--buzz-500)'
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!popoverOpen) {
-              ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'
-            }
-          }}
-        >
-          {triggerLabel}
-        </button>
-      </div>
-
       {/* Header row */}
       <div
         style={{
@@ -375,96 +335,135 @@ export function DashboardCardFrame({
           </span>
         </div>
 
-        {/* TOP-RIGHT: always-visible icon action buttons (hidden in editing mode) */}
-        {!editing && (
-          <div
-            style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}
-            onPointerDown={(e) => e.stopPropagation()}
-            onDragStart={(e) => e.stopPropagation()}
+        {/* TOP-RIGHT: scope pill (always visible) + icon action buttons (hidden in editing mode) */}
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onDragStart={(e) => e.stopPropagation()}
+        >
+          {/* Scope pill — always visible */}
+          <button
+            ref={triggerRef}
+            onClick={handleTriggerClick}
+            aria-label={`Edit ${scopeField === 'ticker' ? 'ticker' : 'query'}: ${triggerLabel}`}
+            aria-haspopup="dialog"
+            aria-expanded={popoverOpen}
+            style={{
+              background: 'var(--bg-sunken)',
+              border: `1px solid ${popoverOpen ? 'var(--buzz-500)' : 'var(--border)'}`,
+              borderRadius: 20,
+              padding: '3px 10px',
+              font: '500 11px/1.4 var(--font-mono)',
+              color: isEmpty ? 'var(--fg-3)' : 'var(--fg-1)',
+              cursor: 'pointer',
+              maxWidth: 120,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              letterSpacing: '-0.01em',
+              transition: 'border-color 0.1s, color 0.1s',
+            }}
+            onMouseEnter={(e) => {
+              if (!popoverOpen) {
+                ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--buzz-500)'
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!popoverOpen) {
+                ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'
+              }
+            }}
           >
-            {/* Add to context */}
-            <button
-              onClick={onAddToContext}
-              aria-label="Add to context"
-              title="Add to context"
-              style={{
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                color: 'var(--fg-3)',
-                padding: '3px 4px',
-                borderRadius: 4,
-                lineHeight: 0,
-                display: 'flex',
-                alignItems: 'center',
-              }}
-              onMouseEnter={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--fg-1)'
-                ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-sunken)'
-              }}
-              onMouseLeave={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--fg-3)'
-                ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
-              }}
-            >
-              <Icon name="sparkle" size={13} />
-            </button>
+            {triggerLabel}
+          </button>
 
-            {/* Add to dashboard */}
-            <button
-              onClick={onAddToDashboard}
-              aria-label="Add to dashboard"
-              title="Add to dashboard"
-              style={{
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                color: 'var(--fg-3)',
-                padding: '3px 4px',
-                borderRadius: 4,
-                lineHeight: 0,
-                display: 'flex',
-                alignItems: 'center',
-              }}
-              onMouseEnter={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--fg-1)'
-                ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-sunken)'
-              }}
-              onMouseLeave={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--fg-3)'
-                ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
-              }}
-            >
-              <Icon name="grid" size={13} />
-            </button>
+          {/* Icon action buttons — hidden in editing mode */}
+          {!editing && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              {/* Add to context */}
+              <button
+                onClick={onAddToContext}
+                aria-label="Add to context"
+                title="Add to context"
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  color: 'var(--fg-3)',
+                  padding: '3px 4px',
+                  borderRadius: 4,
+                  lineHeight: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                onMouseEnter={(e) => {
+                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--fg-1)'
+                  ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-sunken)'
+                }}
+                onMouseLeave={(e) => {
+                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--fg-3)'
+                  ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+                }}
+              >
+                <Icon name="sparkle" size={13} />
+              </button>
 
-            {/* Remove from dashboard */}
-            <button
-              onClick={onRemove}
-              aria-label="Remove from dashboard"
-              title="Remove from dashboard"
-              style={{
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                color: 'var(--bear-500, #dc3545)',
-                padding: '3px 4px',
-                borderRadius: 4,
-                lineHeight: 0,
-                display: 'flex',
-                alignItems: 'center',
-              }}
-              onMouseEnter={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-sunken)'
-              }}
-              onMouseLeave={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
-              }}
-            >
-              <Icon name="trash" size={13} />
-            </button>
-          </div>
-        )}
+              {/* Add to dashboard */}
+              <button
+                onClick={onAddToDashboard}
+                aria-label="Add to dashboard"
+                title="Add to dashboard"
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  color: 'var(--fg-3)',
+                  padding: '3px 4px',
+                  borderRadius: 4,
+                  lineHeight: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                onMouseEnter={(e) => {
+                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--fg-1)'
+                  ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-sunken)'
+                }}
+                onMouseLeave={(e) => {
+                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--fg-3)'
+                  ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+                }}
+              >
+                <Icon name="grid" size={13} />
+              </button>
+
+              {/* Remove from dashboard */}
+              <button
+                onClick={onRemove}
+                aria-label="Remove from dashboard"
+                title="Remove from dashboard"
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  color: 'var(--bear-500, #dc3545)',
+                  padding: '3px 4px',
+                  borderRadius: 4,
+                  lineHeight: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                onMouseEnter={(e) => {
+                  ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-sunken)'
+                }}
+                onMouseLeave={(e) => {
+                  ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+                }}
+              >
+                <Icon name="trash" size={13} />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Chart body */}
