@@ -574,9 +574,10 @@ interface WatchlistViewProps {
   onSelectToken?: (t: Token | null) => void
   selectedToken?: Token | null
   initialFocus?: string | null
+  autoOpenAdd?: boolean
 }
 
-export function WatchlistView({ onSelectToken, selectedToken, initialFocus }: WatchlistViewProps) {
+export function WatchlistView({ onSelectToken, selectedToken, initialFocus, autoOpenAdd }: WatchlistViewProps) {
   const [entries, setEntries] = useState<WatchlistEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -595,7 +596,16 @@ export function WatchlistView({ onSelectToken, selectedToken, initialFocus }: Wa
   const dragSrcId = useRef<string | null>(null)
 
   const focusedRef = useRef(false)
+  const autoAddFiredRef = useRef(false)
   const isMobile = useIsMobile()
+
+  // ── Auto-open add modal when navigated from sidebar "+" ────────────────
+
+  useEffect(() => {
+    if (!autoOpenAdd || autoAddFiredRef.current) return
+    autoAddFiredRef.current = true
+    Promise.resolve().then(() => setShowAddModal(true)).catch(() => {})
+  }, [autoOpenAdd])
 
   // ── Load entries on mount ──────────────────────────────────────────────
 

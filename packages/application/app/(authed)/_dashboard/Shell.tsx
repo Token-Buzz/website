@@ -6,7 +6,6 @@ import { UserButton, SignOutButton, useClerk } from '@clerk/nextjs'
 import { Icon, Button, Eyebrow, Avatar } from './primitives'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import { HumPanel } from './HumPanel'
-import type { WatchlistGroup } from './types'
 import { CommandPalette } from './CommandPalette'
 import type { CommandItem, CommandSection } from './CommandPalette'
 import { pickById } from './commandRegistry'
@@ -29,14 +28,6 @@ const NAV_ITEMS_BASE = [
   { id: 'alerts',     label: 'Alerts',     icon: 'bell'       as const, href: '/alerts', count: '3' },
   { id: 'analytics',  label: 'Analytics',  icon: 'trend'      as const, href: '/analytics' },
   { id: 'history',    label: 'History',    icon: 'clock'      as const, href: '/history' },
-]
-
-const DEFAULT_WATCHLISTS: WatchlistGroup[] = [
-  { id: 'memecoins', name: 'Memecoins',       count: 12, color: 'var(--buzz-500)' },
-  { id: 'l1s',       name: 'L1s',             count: 8,  color: '#6E5BA3' },
-  { id: 'defi',      name: 'DeFi blue chips', count: 14, color: '#2E7F7B' },
-  { id: 'vc',        name: 'VC narratives',   count: 6,  color: '#B8527E' },
-  { id: 'ai',        name: 'AI agents',       count: 9,  color: '#C68A2E' },
 ]
 
 // ── NavItem ────────────────────────────────────────────────────────────────
@@ -71,32 +62,6 @@ function NavItem({
           padding: '2px 6px', borderRadius: 999,
         }}>{count}</span>
       )}
-    </div>
-  )
-}
-
-// ── WatchlistItem ──────────────────────────────────────────────────────────
-
-function WatchlistItem({
-  group, active, onClick,
-}: {
-  group: WatchlistGroup
-  active: boolean
-  onClick: () => void
-}) {
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '7px 10px', borderRadius: 6, cursor: 'pointer',
-        background: active ? 'var(--surface-active)' : 'transparent',
-        color: 'var(--fg-1)', font: '500 13px/1 var(--font-sans)',
-      }}
-    >
-      <span style={{ width: 6, height: 6, borderRadius: 1, background: group.color, flexShrink: 0 }} />
-      <span style={{ flex: 1 }}>{group.name}</span>
-      <span style={{ font: '500 11px/1 var(--font-mono)', color: 'var(--fg-3)' }}>{group.count}</span>
     </div>
   )
 }
@@ -186,14 +151,12 @@ function ProfileFooter() {
 // mobile drawer overlay without duplicating JSX.
 
 function SidebarContent({
-  activeWatchlist,
-  setActiveWatchlist,
+  watchlistEntries,
   onNavClick,
   onSearch,
   watchlistCount,
 }: {
-  activeWatchlist: string
-  setActiveWatchlist: (id: string) => void
+  watchlistEntries: { entryId: string; symbol: string }[] | null
   onNavClick?: () => void
   onSearch?: () => void
   watchlistCount: number | null
@@ -258,24 +221,48 @@ function SidebarContent({
         })}
       </div>
 
-      {/* Watchlists */}
+      {/* Watchlist */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px 6px' }}>
-          <Eyebrow>Watchlists</Eyebrow>
-          <Icon name="plus" size={14} style={{ color: 'var(--fg-3)', cursor: 'pointer' }} />
+          <Eyebrow>Watchlist</Eyebrow>
+          <span
+            role="button"
+            tabIndex={0}
+            aria-label="Add token to watchlist"
+            style={{ color: 'var(--fg-3)', cursor: 'pointer', lineHeight: 0 }}
+            onClick={() => { router.push('/watchlist?add=1'); onNavClick?.() }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                router.push('/watchlist?add=1')
+                onNavClick?.()
+              }
+            }}
+          >
+            <Icon name="plus" size={14} />
+          </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {DEFAULT_WATCHLISTS.map((g) => (
-            <WatchlistItem
-              key={g.id}
-              group={g}
-              active={activeWatchlist === g.id}
-              onClick={() => {
-                setActiveWatchlist(g.id)
-                onNavClick?.()
-              }}
-            />
-          ))}
+          {watchlistEntries === null ? null : watchlistEntries.length === 0 ? (
+            <span style={{ font: '500 12px var(--font-sans)', color: 'var(--fg-4)', padding: '2px 10px' }}>
+              No tokens yet
+            </span>
+          ) : (
+            watchlistEntries.slice(0, 12).map((entry) => (
+              <div
+                key={entry.entryId}
+                onClick={() => { router.push(`/watchlist?focus=${encodeURIComponent(entry.symbol)}`); onNavClick?.() }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '7px 10px', borderRadius: 6, cursor: 'pointer',
+                  color: 'var(--fg-1)', font: '500 13px/1 var(--font-sans)',
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: 1, background: swatchForId(entry.symbol), flexShrink: 0 }} />
+                <span style={{ flex: 1 }}>{entry.symbol}</span>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -290,13 +277,11 @@ function SidebarContent({
 // ── Sidebar (desktop persistent aside) ────────────────────────────────────
 
 function Sidebar({
-  activeWatchlist,
-  setActiveWatchlist,
+  watchlistEntries,
   onSearch,
   watchlistCount,
 }: {
-  activeWatchlist: string
-  setActiveWatchlist: (id: string) => void
+  watchlistEntries: { entryId: string; symbol: string }[] | null
   onSearch?: () => void
   watchlistCount: number | null
 }) {
@@ -307,8 +292,7 @@ function Sidebar({
       display: 'flex', flexDirection: 'column', gap: 16, flexShrink: 0,
     }}>
       <SidebarContent
-        activeWatchlist={activeWatchlist}
-        setActiveWatchlist={setActiveWatchlist}
+        watchlistEntries={watchlistEntries}
         onSearch={onSearch}
         watchlistCount={watchlistCount}
       />
@@ -323,15 +307,13 @@ function Sidebar({
 function MobileDrawer({
   open,
   onClose,
-  activeWatchlist,
-  setActiveWatchlist,
+  watchlistEntries,
   onSearch,
   watchlistCount,
 }: {
   open: boolean
   onClose: () => void
-  activeWatchlist: string
-  setActiveWatchlist: (id: string) => void
+  watchlistEntries: { entryId: string; symbol: string }[] | null
   onSearch?: () => void
   watchlistCount: number | null
 }) {
@@ -469,8 +451,7 @@ function MobileDrawer({
         </div>
 
         <SidebarContent
-          activeWatchlist={activeWatchlist}
-          setActiveWatchlist={setActiveWatchlist}
+          watchlistEntries={watchlistEntries}
           onNavClick={onClose}
           onSearch={onSearch}
           watchlistCount={watchlistCount}
@@ -689,7 +670,6 @@ function HumSlideOut({
 // ── AppShell ───────────────────────────────────────────────────────────────
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const [activeWatchlist, setActiveWatchlist] = useState('memecoins')
   const [humOpen, setHumOpen] = useState(false)
   const [humPreset, setHumPreset] = useState<string | undefined>(undefined)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -697,6 +677,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [dashboards, setDashboards] = useState<Dashboard[]>([])
   // null = not yet fetched; fetched once on mount from GET /api/watchlist
   const [watchlistCount, setWatchlistCount] = useState<number | null>(null)
+  const [watchlistEntries, setWatchlistEntries] = useState<{ entryId: string; symbol: string }[] | null>(null)
 
   const isMobile = useIsMobile()
   const router = useRouter()
@@ -712,15 +693,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setHumOpen(true)
   }, [])
 
-  // Fetch real watchlist entry count once on mount for the sidebar badge
+  // Fetch real watchlist entries once on mount for the sidebar badge and entry list
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
         const res = await fetch('/api/watchlist')
         if (!res.ok) return
-        const data = (await res.json()) as { entries?: unknown[] }
-        if (!cancelled) setWatchlistCount(data.entries?.length ?? 0)
+        const data = (await res.json()) as { entries?: { entryId: string; symbol: string }[] }
+        if (!cancelled) {
+          const mapped = (data.entries ?? []).map(({ entryId, symbol }) => ({ entryId, symbol }))
+          setWatchlistEntries(mapped)
+          setWatchlistCount(mapped.length)
+        }
       } catch { /* best-effort; badge stays hidden on error */ }
     })()
     return () => { cancelled = true }
@@ -868,8 +853,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Desktop persistent sidebar — hidden on mobile */}
       {!isMobile && (
         <Sidebar
-          activeWatchlist={activeWatchlist}
-          setActiveWatchlist={setActiveWatchlist}
+          watchlistEntries={watchlistEntries}
           onSearch={openPalette}
           watchlistCount={watchlistCount}
         />
@@ -880,8 +864,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <MobileDrawer
           open={drawerOpen}
           onClose={closeDrawer}
-          activeWatchlist={activeWatchlist}
-          setActiveWatchlist={setActiveWatchlist}
+          watchlistEntries={watchlistEntries}
           onSearch={openPalette}
           watchlistCount={watchlistCount}
         />
