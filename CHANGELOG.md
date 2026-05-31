@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.0](https://github.com/Token-Buzz/website/compare/v0.50.2...v0.51.0) (2026-05-31)
+
+
+### 🚀 Features
+
+* link GitBook documentation site from marketing and app ([#339](https://github.com/Token-Buzz/website/issues/339)) ([aecda83](https://github.com/Token-Buzz/website/commit/aecda83698c32e3a45f5ac397414d8191b60c6a7)), closes [#315](https://github.com/Token-Buzz/website/issues/315)
+
 ## [0.50.2](https://github.com/Token-Buzz/website/compare/v0.50.1...v0.50.2) (2026-05-31)
 
 
