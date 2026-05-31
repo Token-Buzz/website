@@ -7,7 +7,7 @@ const SOCIAL = [
   { icon: 'discord' as const,  label: 'Discord' },
 ]
 
-type FooterLink = { label: string; href: string }
+type FooterLink = { label: string; href: string; external?: boolean }
 type FooterCol  = { h: string; l: FooterLink[] }
 
 function cs(label: string): FooterLink { return { label, href: '/coming-soon' } }
@@ -17,7 +17,7 @@ const LINK_COLS: FooterCol[] = [
   { h: 'Company',   l: [cs('About'), cs('Blog'), cs('Press'), cs('Careers'), cs('Brand')] },
   {
     h: 'Resources',
-    l: [cs('Docs'), cs('Pricing'), cs('Status'), cs('Security'), { label: 'Changelog', href: '/changelog' }],
+    l: [{ label: 'Docs', href: 'https://runtimedesigns.gitbook.io/token-buzz', external: true }, cs('Pricing'), cs('Status'), cs('Security'), { label: 'Changelog', href: '/changelog' }],
   },
   {
     h: 'Legal',
@@ -107,6 +107,8 @@ export default function Footer() {
                   <li key={item.label}>
                     <a
                       href={item.href}
+                      target={item.external ? '_blank' : undefined}
+                      rel={item.external ? 'noopener noreferrer' : undefined}
                       style={{
                         font: '500 14px var(--font-sans)',
                         color: 'var(--data-fg)',
