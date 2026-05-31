@@ -15,6 +15,9 @@ import type { Dashboard } from '@monorepo-template/core/db/dashboards'
 import { swatchForId } from './commandSwatch'
 import { UpgradeModalProvider } from '@/app/_billing/UpgradeModalProvider'
 import { DunningBanner } from './DunningBanner'
+import { WATCHLIST_CHANGED_EVENT } from './watchlistEvents'
+import { TokenDetailPane } from './TokenDetailPane'
+import type { Token } from './types'
 
 // ── Sidebar nav items ──────────────────────────────────────────────────────
 
@@ -155,11 +158,13 @@ function SidebarContent({
   onNavClick,
   onSearch,
   watchlistCount,
+  onOpenToken,
 }: {
-  watchlistEntries: { entryId: string; symbol: string }[] | null
+  watchlistEntries: { entryId: string; symbol: string; query: string }[] | null
   onNavClick?: () => void
   onSearch?: () => void
   watchlistCount: number | null
+  onOpenToken?: (entry: { symbol: string; query: string; entryId: string }) => void
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -251,7 +256,10 @@ function SidebarContent({
             watchlistEntries.slice(0, 12).map((entry) => (
               <div
                 key={entry.entryId}
-                onClick={() => { router.push(`/watchlist?focus=${encodeURIComponent(entry.symbol)}`); onNavClick?.() }}
+                onClick={() => {
+                  onOpenToken?.({ symbol: entry.symbol, query: entry.query, entryId: entry.entryId })
+                  onNavClick?.()
+                }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '7px 10px', borderRadius: 6, cursor: 'pointer',
@@ -280,10 +288,12 @@ function Sidebar({
   watchlistEntries,
   onSearch,
   watchlistCount,
+  onOpenToken,
 }: {
-  watchlistEntries: { entryId: string; symbol: string }[] | null
+  watchlistEntries: { entryId: string; symbol: string; query: string }[] | null
   onSearch?: () => void
   watchlistCount: number | null
+  onOpenToken?: (entry: { symbol: string; query: string; entryId: string }) => void
 }) {
   return (
     <aside style={{
@@ -295,6 +305,7 @@ function Sidebar({
         watchlistEntries={watchlistEntries}
         onSearch={onSearch}
         watchlistCount={watchlistCount}
+        onOpenToken={onOpenToken}
       />
     </aside>
   )
@@ -310,12 +321,14 @@ function MobileDrawer({
   watchlistEntries,
   onSearch,
   watchlistCount,
+  onOpenToken,
 }: {
   open: boolean
   onClose: () => void
-  watchlistEntries: { entryId: string; symbol: string }[] | null
+  watchlistEntries: { entryId: string; symbol: string; query: string }[] | null
   onSearch?: () => void
   watchlistCount: number | null
+  onOpenToken?: (entry: { symbol: string; query: string; entryId: string }) => void
 }) {
   const drawerRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
@@ -455,6 +468,7 @@ function MobileDrawer({
           onNavClick={onClose}
           onSearch={onSearch}
           watchlistCount={watchlistCount}
+          onOpenToken={onOpenToken}
         />
       </div>
     </>
@@ -677,7 +691,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [dashboards, setDashboards] = useState<Dashboard[]>([])
   // null = not yet fetched; fetched once on mount from GET /api/watchlist
   const [watchlistCount, setWatchlistCount] = useState<number | null>(null)
-  const [watchlistEntries, setWatchlistEntries] = useState<{ entryId: string; symbol: string }[] | null>(null)
+  const [watchlistEntries, setWatchlistEntries] = useState<{ entryId: string; symbol: string; query: string }[] | null>(null)
+  // Token detail pane — global overlay from sidebar clicks
+  const [detailToken, setDetailToken] = useState<Token | null>(null)
+  const [detailExpanded, setDetailExpanded] = useState(false)
 
   const isMobile = useIsMobile()
   const router = useRouter()
@@ -693,23 +710,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setHumOpen(true)
   }, [])
 
-  // Fetch real watchlist entries once on mount for the sidebar badge and entry list
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch('/api/watchlist')
-        if (!res.ok) return
-        const data = (await res.json()) as { entries?: { entryId: string; symbol: string }[] }
-        if (!cancelled) {
-          const mapped = (data.entries ?? []).map(({ entryId, symbol }) => ({ entryId, symbol }))
-          setWatchlistEntries(mapped)
-          setWatchlistCount(mapped.length)
-        }
-      } catch { /* best-effort; badge stays hidden on error */ }
-    })()
-    return () => { cancelled = true }
+  const openTokenDetail = useCallback((entry: { symbol: string; query: string; entryId: string }) => {
+    setDetailExpanded(false)
+    setDetailToken({
+      sym: entry.symbol, name: entry.symbol, query: entry.query,
+      price: 0, d24: 0, mentions: 0, dbuzz: 0, sent: 'neu',
+      spark: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+      live: false, entryId: entry.entryId,
+    })
   }, [])
+
+  const closeDetail = useCallback(() => {
+    setDetailToken(null)
+    setDetailExpanded(false)
+  }, [])
+
+  // Fetch real watchlist entries — called on mount and whenever the watchlist changes.
+  const loadWatchlist = useCallback(async () => {
+    try {
+      const res = await fetch('/api/watchlist')
+      if (!res.ok) return
+      const data = (await res.json()) as { entries?: { entryId: string; symbol: string; query: string }[] }
+      const mapped = (data.entries ?? []).map(({ entryId, symbol, query }) => ({ entryId, symbol, query: query ?? '' }))
+      setWatchlistEntries(mapped)
+      setWatchlistCount(mapped.length)
+    } catch { /* best-effort; badge stays hidden on error */ }
+  }, [])
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { queueMicrotask(() => { void loadWatchlist() }) }, [])
+
+  // Re-fetch sidebar entries whenever a watchlist mutation fires (add / delete / reorder)
+  useEffect(() => {
+    window.addEventListener(WATCHLIST_CHANGED_EVENT, loadWatchlist)
+    return () => { window.removeEventListener(WATCHLIST_CHANGED_EVENT, loadWatchlist) }
+  }, [loadWatchlist])
 
   // Ensure drawer closes if screen widens past breakpoint.
   // setState is called inside a microtask callback to avoid the synchronous
@@ -742,6 +777,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       window.removeEventListener(HUM_OPEN_EVENT, openHum)
     }
   }, [])
+
+  // Body-scroll-lock while detail pane is open on mobile
+  useEffect(() => {
+    if (!isMobile) return
+    if (detailToken) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [detailToken, isMobile])
+
+  // Escape-to-close detail pane
+  useEffect(() => {
+    if (!detailToken) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        closeDetail()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [detailToken, closeDetail])
 
   // Deep-link: ?ask=<text> pre-fills the Hum composer on mount
   useEffect(() => {
@@ -856,6 +915,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           watchlistEntries={watchlistEntries}
           onSearch={openPalette}
           watchlistCount={watchlistCount}
+          onOpenToken={openTokenDetail}
         />
       )}
 
@@ -867,6 +927,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           watchlistEntries={watchlistEntries}
           onSearch={openPalette}
           watchlistCount={watchlistCount}
+          onOpenToken={openTokenDetail}
         />
       )}
 
@@ -906,6 +967,54 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onSelect: () => askHum(q),
         })}
       />
+
+      {/* Global token detail overlay — opened by clicking a sidebar watchlist entry */}
+      {detailToken && isMobile && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 60,
+          background: 'var(--bg)', overflowY: 'auto',
+        }}>
+          <TokenDetailPane
+            token={detailToken}
+            onClose={closeDetail}
+            onAskHum={askHum}
+          />
+        </div>
+      )}
+      {detailToken && !isMobile && (
+        <>
+          {/* Backdrop scrim */}
+          <div
+            aria-hidden="true"
+            onClick={closeDetail}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 55,
+              background: 'rgba(0,0,0,0.3)',
+            }}
+          />
+          {/* Right-anchored drawer */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 56,
+              width: detailExpanded ? 'min(1200px, calc(100vw - 320px))' : 680,
+              maxWidth: '100vw',
+              background: 'var(--bg)',
+              borderLeft: '1px solid var(--border)',
+              overflowY: 'auto',
+              transition: 'width 180ms ease',
+            }}
+          >
+            <TokenDetailPane
+              token={detailToken}
+              onClose={closeDetail}
+              onAskHum={askHum}
+              expanded={detailExpanded}
+              onToggleExpand={() => setDetailExpanded((v) => !v)}
+            />
+          </div>
+        </>
+      )}
     </div>
     </UpgradeModalProvider>
   )
