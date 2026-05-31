@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.2](https://github.com/Token-Buzz/website/compare/v0.46.1...v0.46.2) (2026-05-31)
+
+
+### 🐛 Fixes
+
+* **application:** per-card dashboard scope + card action icons & bulk actions ([#272](https://github.com/Token-Buzz/website/issues/272)) ([#318](https://github.com/Token-Buzz/website/issues/318)) ([9443bd4](https://github.com/Token-Buzz/website/commit/9443bd4f9998d81c91b223f3c6822118a0024ebc))
+
 ## [0.46.1](https://github.com/Token-Buzz/website/compare/v0.46.0...v0.46.1) (2026-05-31)
 
 
