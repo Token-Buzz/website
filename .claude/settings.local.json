@@ -40,7 +40,9 @@
       "mcp__920fb131-52a7-49f2-8df1-e015208db198__clickup_delete_task",
       "mcp__920fb131-52a7-49f2-8df1-e015208db198__clickup_update_task",
       "Bash(rm -f .claude/.track-current.json)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "mcp__5f2229b4-0ba5-4ced-a9dc-30a9da1e8195__aws___read_documentation",
+      "mcp__5f2229b4-0ba5-4ced-a9dc-30a9da1e8195__aws___search_documentation"
     ]
   }
 }

@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { resolveModel, totalInputTokens, toConverseMessages, formatContextItems, HUM_DEFAULT_MODEL } from "./models";
+import { resolveModel, totalInputTokens, toConverseMessages, formatContextItems, HUM_DEFAULT_MODEL } from "./_models";
 
 describe("resolveModel", () => {
   test("returns default when given undefined", () => {
