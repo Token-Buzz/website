@@ -313,9 +313,11 @@ interface TokenDetailPaneProps {
   // Controlled expand state — managed by the parent page (desktop only)
   expanded?: boolean
   onToggleExpand?: () => void
+  // Current pixel width of the pane; used to reflow chart+dial layout on desktop
+  paneWidth?: number
 }
 
-export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleExpand }: TokenDetailPaneProps) {
+export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleExpand, paneWidth }: TokenDetailPaneProps) {
   const [paneData, setPaneData] = useState<PaneData | null>(null)
   const [paneLoading, setPaneLoading] = useState(true)
   const [showAlertModal, setShowAlertModal] = useState(false)
@@ -714,11 +716,11 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
         ))}
       </div>
 
-      {/* Chart + sentiment dial — side-by-side on desktop, stacked on mobile */}
+      {/* Chart + sentiment dial — side-by-side when wide enough, stacked on mobile or narrow pane */}
       <div style={{
         padding: 20,
         display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : '1fr 240px',
+        gridTemplateColumns: (isMobile || (paneWidth !== undefined && paneWidth < 580)) ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) 240px',
         gap: 16,
         flexShrink: 0,
       }}>
