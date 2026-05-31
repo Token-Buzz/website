@@ -1,23 +1,55 @@
 import { describe, expect, test } from 'vitest'
-import { TIERS, DEFAULT_PLAN, evaluateHumQuota, evaluateIngestionQuota, PAID_PLANS, BILLING_INTERVALS, stripePriceId, historyRetentionTtl, PLAN_RANK, planMeets } from './tiers'
+import {
+  TIERS,
+  DEFAULT_PLAN,
+  evaluateHumQuota,
+  evaluateIngestionQuota,
+  evaluateRefreshQuota,
+  PAID_PLANS,
+  BILLING_INTERVALS,
+  stripePriceId,
+  historyRetentionTtl,
+  PLAN_RANK,
+  planMeets,
+  monthPeriod,
+  weekPeriod,
+  periodForPlan,
+} from './tiers'
 
 describe('TIERS', () => {
-  test('free tier has humMonthly=10, label=Free', () => {
-    expect(TIERS.free.humMonthly).toBe(10)
+  test('free tier has humLimit=10, label=Free, period=week', () => {
+    expect(TIERS.free.humLimit).toBe(10)
     expect(TIERS.free.label).toBe('Free')
     expect(TIERS.free.plan).toBe('free')
+    expect(TIERS.free.period).toBe('week')
   })
 
-  test('pro tier has humMonthly=500, label=Pro', () => {
-    expect(TIERS.pro.humMonthly).toBe(500)
+  test('pro tier has humLimit=500, label=Pro, period=month', () => {
+    expect(TIERS.pro.humLimit).toBe(500)
     expect(TIERS.pro.label).toBe('Pro')
     expect(TIERS.pro.plan).toBe('pro')
+    expect(TIERS.pro.period).toBe('month')
   })
 
-  test('alpha tier has humMonthly=null (unlimited), label=Alpha', () => {
-    expect(TIERS.alpha.humMonthly).toBeNull()
+  test('alpha tier has humLimit=null (unlimited), label=Alpha, period=month', () => {
+    expect(TIERS.alpha.humLimit).toBeNull()
     expect(TIERS.alpha.label).toBe('Alpha')
     expect(TIERS.alpha.plan).toBe('alpha')
+    expect(TIERS.alpha.period).toBe('month')
+  })
+})
+
+describe('TIERS period', () => {
+  test('free.period === week', () => {
+    expect(TIERS.free.period).toBe('week')
+  })
+
+  test('pro.period === month', () => {
+    expect(TIERS.pro.period).toBe('month')
+  })
+
+  test('alpha.period === month', () => {
+    expect(TIERS.alpha.period).toBe('month')
   })
 })
 
@@ -27,17 +59,31 @@ describe('DEFAULT_PLAN', () => {
   })
 })
 
-describe('ingestionMonthly', () => {
-  test('free has ingestionMonthly=5', () => {
-    expect(TIERS.free.ingestionMonthly).toBe(5)
+describe('ingestionLimit', () => {
+  test('free has ingestionLimit=10', () => {
+    expect(TIERS.free.ingestionLimit).toBe(10)
   })
 
-  test('pro has ingestionMonthly=50', () => {
-    expect(TIERS.pro.ingestionMonthly).toBe(50)
+  test('pro has ingestionLimit=50', () => {
+    expect(TIERS.pro.ingestionLimit).toBe(50)
   })
 
-  test('alpha has ingestionMonthly=null (unlimited)', () => {
-    expect(TIERS.alpha.ingestionMonthly).toBeNull()
+  test('alpha has ingestionLimit=null (unlimited)', () => {
+    expect(TIERS.alpha.ingestionLimit).toBeNull()
+  })
+})
+
+describe('refreshLimit', () => {
+  test('free has refreshLimit=20', () => {
+    expect(TIERS.free.refreshLimit).toBe(20)
+  })
+
+  test('pro has refreshLimit=500', () => {
+    expect(TIERS.pro.refreshLimit).toBe(500)
+  })
+
+  test('alpha has refreshLimit=null (unlimited)', () => {
+    expect(TIERS.alpha.refreshLimit).toBeNull()
   })
 })
 
@@ -114,25 +160,25 @@ describe('evaluateIngestionQuota', () => {
   test('free: allowed when used is below limit (used=0)', () => {
     const result = evaluateIngestionQuota('free', 0)
     expect(result.allowed).toBe(true)
-    expect(result.limit).toBe(5)
+    expect(result.limit).toBe(10)
   })
 
-  test('free: allowed when used=4 (one below limit)', () => {
-    const result = evaluateIngestionQuota('free', 4)
+  test('free: allowed when used=9 (one below limit)', () => {
+    const result = evaluateIngestionQuota('free', 9)
     expect(result.allowed).toBe(true)
-    expect(result.limit).toBe(5)
+    expect(result.limit).toBe(10)
   })
 
-  test('free: blocked at limit (used=5)', () => {
-    const result = evaluateIngestionQuota('free', 5)
+  test('free: blocked at limit (used=10)', () => {
+    const result = evaluateIngestionQuota('free', 10)
     expect(result.allowed).toBe(false)
-    expect(result.limit).toBe(5)
+    expect(result.limit).toBe(10)
   })
 
-  test('free: blocked over limit (used=6)', () => {
-    const result = evaluateIngestionQuota('free', 6)
+  test('free: blocked over limit (used=11)', () => {
+    const result = evaluateIngestionQuota('free', 11)
     expect(result.allowed).toBe(false)
-    expect(result.limit).toBe(5)
+    expect(result.limit).toBe(10)
   })
 
   test('pro: allowed when used=0', () => {
@@ -212,6 +258,39 @@ describe('evaluateHumQuota', () => {
   })
 })
 
+describe('evaluateRefreshQuota', () => {
+  test('free: allowed when used is below limit (used=0)', () => {
+    const result = evaluateRefreshQuota('free', 0)
+    expect(result.allowed).toBe(true)
+    expect(result.limit).toBe(20)
+  })
+
+  test('free: allowed when used=19 (one below limit)', () => {
+    const result = evaluateRefreshQuota('free', 19)
+    expect(result.allowed).toBe(true)
+    expect(result.limit).toBe(20)
+  })
+
+  test('free: blocked at limit (used=20)', () => {
+    const result = evaluateRefreshQuota('free', 20)
+    expect(result.allowed).toBe(false)
+    expect(result.limit).toBe(20)
+  })
+
+  test('free: blocked over limit (used=21)', () => {
+    const result = evaluateRefreshQuota('free', 21)
+    expect(result.allowed).toBe(false)
+    expect(result.limit).toBe(20)
+  })
+
+  test('alpha: always allowed regardless of usage, limit=null', () => {
+    expect(evaluateRefreshQuota('alpha', 0).allowed).toBe(true)
+    expect(evaluateRefreshQuota('alpha', 10000).allowed).toBe(true)
+    expect(evaluateRefreshQuota('alpha', 0).limit).toBeNull()
+    expect(evaluateRefreshQuota('alpha', 10000).limit).toBeNull()
+  })
+})
+
 describe('PLAN_RANK', () => {
   test('free=0, pro=1, alpha=2', () => {
     expect(PLAN_RANK.free).toBe(0)
@@ -268,3 +347,57 @@ describe('historyRetentionTtl', () => {
   })
 })
 
+describe('monthPeriod', () => {
+  test('returns YYYYMM for 2026-05-31', () => {
+    expect(monthPeriod(new Date('2026-05-31T12:00:00Z'))).toBe('202605')
+  })
+
+  test('returns YYYYMM for 2026-01-01', () => {
+    expect(monthPeriod(new Date('2026-01-01T00:00:00Z'))).toBe('202601')
+  })
+
+  test('returns YYYYMM for 2025-12-31', () => {
+    expect(monthPeriod(new Date('2025-12-31T23:59:59Z'))).toBe('202512')
+  })
+})
+
+describe('weekPeriod', () => {
+  test('returns a string matching /^\\d{4}W\\d{2}$/', () => {
+    expect(/^\d{4}W\d{2}$/.test(weekPeriod(new Date('2026-05-31T00:00:00Z')))).toBe(true)
+  })
+
+  // 2026-01-01 is a Thursday; ISO week 1 of 2026 (contains the first Thursday).
+  test('2026-01-01 → 2026W01', () => {
+    expect(weekPeriod(new Date('2026-01-01T00:00:00Z'))).toBe('2026W01')
+  })
+
+  test('two dates in the same ISO week produce the same key', () => {
+    // 2026-05-25 (Mon) and 2026-05-31 (Sun) are in the same week (W22).
+    const mon = weekPeriod(new Date('2026-05-25T00:00:00Z'))
+    const sun = weekPeriod(new Date('2026-05-31T00:00:00Z'))
+    expect(mon).toBe(sun)
+  })
+
+  test('dates one week apart produce different keys', () => {
+    const week22 = weekPeriod(new Date('2026-05-25T00:00:00Z'))
+    const week23 = weekPeriod(new Date('2026-06-01T00:00:00Z'))
+    expect(week22).not.toBe(week23)
+  })
+})
+
+describe('periodForPlan', () => {
+  test('free plan returns weekPeriod', () => {
+    const d = new Date('2026-05-31T00:00:00Z')
+    expect(periodForPlan('free', d)).toBe(weekPeriod(d))
+  })
+
+  test('pro plan returns monthPeriod', () => {
+    const d = new Date('2026-05-31T00:00:00Z')
+    expect(periodForPlan('pro', d)).toBe(monthPeriod(d))
+  })
+
+  test('alpha plan returns monthPeriod', () => {
+    const d = new Date('2026-05-31T00:00:00Z')
+    expect(periodForPlan('alpha', d)).toBe(monthPeriod(d))
+  })
+})

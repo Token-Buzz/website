@@ -342,7 +342,7 @@ export function UpgradeModal({ open, onClose, currentPlan, initialInterval }: Up
                       >
                         Hum AI:{' '}
                         <span style={{ color: 'var(--fg-1)', fontWeight: 600 }}>
-                          {tier.humMonthly !== null ? `${tier.humMonthly}` : 'Unlimited'} / mo
+                          {tier.humLimit !== null ? `${tier.humLimit}` : 'Unlimited'} / mo
                         </span>
                       </div>
                       <div
@@ -353,7 +353,7 @@ export function UpgradeModal({ open, onClose, currentPlan, initialInterval }: Up
                       >
                         Ingestion:{' '}
                         <span style={{ color: 'var(--fg-1)', fontWeight: 600 }}>
-                          {tier.ingestionMonthly !== null ? `${tier.ingestionMonthly}` : 'Unlimited'} / mo
+                          {tier.ingestionLimit !== null ? `${tier.ingestionLimit}` : 'Unlimited'} / mo
                         </span>
                       </div>
                     </div>
