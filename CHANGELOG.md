@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.1](https://github.com/Token-Buzz/website/compare/v0.44.0...v0.44.1) (2026-05-31)
+
+
+### 🐛 Fixes
+
+* **application:** highlight correct sidebar tab on /dashboards ([#271](https://github.com/Token-Buzz/website/issues/271)) ([#302](https://github.com/Token-Buzz/website/issues/302)) ([07a6b26](https://github.com/Token-Buzz/website/commit/07a6b2632e07819638d9bbe9396b9d8ac172cb7c))
+
 ## [0.44.0](https://github.com/Token-Buzz/website/compare/v0.43.0...v0.44.0) (2026-05-30)
 
 
