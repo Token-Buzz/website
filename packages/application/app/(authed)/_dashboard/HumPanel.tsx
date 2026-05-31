@@ -9,10 +9,19 @@ import type { HumStagedContext } from './humContext'
 import { HUM_CONTEXT_MIME, parseContext, fromCardEvent } from './humContext'
 import { formatRelativeTime } from './humTime'
 
+// The greeting's timestamp is intentionally NOT set here. Computing it at module
+// load produces different values on the server (evaluated at process boot) and the
+// client (evaluated at bundle load), which trips a React hydration mismatch (#418)
+// because the Hum panel is always mounted in the SSR DOM. The time is stamped on
+// the client after mount instead — see the effect in HumPanel.
 const INITIAL_MSG: HumMessage = {
   from: 'hum',
   text: "Morning. Market opened quiet, three of your tokens drifted overnight. Want a brief?",
-  time: new Date().toISOString().slice(11, 16) + ' UTC',
+}
+
+// HH:MM UTC stamp for the canned greeting — computed on the client only.
+function greetingTime(): string {
+  return new Date().toISOString().slice(11, 16) + ' UTC'
 }
 
 const SUGGESTIONS = [
@@ -111,6 +120,19 @@ export function HumPanel({ onClose, open, presetQuestion, onPresetConsumed }: Hu
   const loadedRef = useRef(false)
 
   const { openUpgrade } = useUpgradeModal()
+
+  // Stamp the canned greeting's time on the client after mount. Done here (not at
+  // module load) so the server-rendered HTML and the first client render agree —
+  // otherwise the differing timestamps cause a hydration mismatch (React #418).
+  // This is a one-shot post-mount stamp, not a cascading render loop.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMsgs((prev) =>
+      prev.length === 1 && prev[0].from === 'hum' && !prev[0].time
+        ? [{ ...prev[0], time: greetingTime() }]
+        : prev,
+    )
+  }, [])
 
   const refreshQuota = useCallback(() => {
     fetch('/api/hum/quota')
@@ -262,7 +284,7 @@ export function HumPanel({ onClose, open, presetQuestion, onPresetConsumed }: Hu
   }
 
   function startNewChat() {
-    setMsgs([INITIAL_MSG])
+    setMsgs([{ ...INITIAL_MSG, time: greetingTime() }])
     setConversationId(null)
     setStagedContext([])
     loadedRef.current = true
