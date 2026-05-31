@@ -778,6 +778,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // Open Hum panel and prefill composer when a quick-ask fires from the brief card
+  useEffect(() => {
+    function handleAsk(e: Event) {
+      const question = (e as CustomEvent<{ question: string }>).detail?.question
+      if (typeof question === 'string' && question.trim()) {
+        askHum(question.trim())
+      }
+    }
+    window.addEventListener('hum:ask', handleAsk)
+    return () => window.removeEventListener('hum:ask', handleAsk)
+  }, [askHum])
+
   // Body-scroll-lock while detail pane is open on mobile
   useEffect(() => {
     if (!isMobile) return

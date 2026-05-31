@@ -23,6 +23,7 @@ import {
   type SentimentToken,
   type SentimentSplit,
 } from './todayData'
+import type { BriefSignals } from './brief'
 
 // ── API response shape for live-feed ──────────────────────────────────────
 
@@ -508,8 +509,157 @@ function Narratives({ narratives }: { narratives: Narrative[] }) {
   )
 }
 
-// Phase 4: Brief (HUM) — AI morning brief
-// function Brief(...) { ... }
+// ── Brief (Phase 4 — HUM morning brief) ───────────────────────────────────
+
+type BriefState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'done'; brief: string; quickAsks: string[] }
+  | { status: 'quota' }
+  | { status: 'error' }
+
+function Brief({ signals }: { signals: BriefSignals }) {
+  const [state, setState] = useState<BriefState>({ status: 'idle' })
+
+  async function generate() {
+    setState({ status: 'loading' })
+    try {
+      const res = await fetch('/api/hum/brief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(signals),
+      })
+      if (res.status === 402) {
+        setState({ status: 'quota' })
+        return
+      }
+      if (!res.ok) {
+        setState({ status: 'error' })
+        return
+      }
+      const data = await res.json() as { brief?: string; quickAsks?: string[]; error?: string }
+      if (data.error || !data.brief) {
+        setState({ status: 'error' })
+        return
+      }
+      setState({ status: 'done', brief: data.brief, quickAsks: data.quickAsks ?? [] })
+    } catch {
+      setState({ status: 'error' })
+    }
+  }
+
+  function handleQuickAsk(question: string) {
+    window.dispatchEvent(new CustomEvent('hum:ask', { detail: { question } }))
+  }
+
+  return (
+    <Card padding={20} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{
+          background: 'var(--inv-bg)', color: 'var(--inv-fg)',
+          fontFamily: 'var(--font-display)', fontSize: 11,
+          padding: '3px 7px 2px', lineHeight: 1,
+        }}>HUM.</div>
+        <Eyebrow style={{ margin: 0 }}>Morning brief</Eyebrow>
+      </div>
+
+      {/* Idle — call-to-action */}
+      {state.status === 'idle' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ font: '400 13px/1.5 var(--font-sans)', color: 'var(--fg-3)' }}>
+            Get a 2–4 sentence AI read on what matters in your watchlist today.
+          </div>
+          <Button variant="primary" size="md" icon="sparkle" onClick={() => { void generate() }}>
+            Brief me
+          </Button>
+        </div>
+      )}
+
+      {/* Loading */}
+      {state.status === 'loading' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, font: '500 13px var(--font-sans)', color: 'var(--fg-3)' }}>
+          <div style={{ display: 'flex', gap: 3 }}>
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                style={{
+                  width: 5, height: 5, borderRadius: '50%', background: 'var(--fg-3)',
+                  animation: `tb-dot 1.2s ${i * 0.15}s ease-in-out infinite`,
+                }}
+              />
+            ))}
+          </div>
+          Hum is reading the tape…
+        </div>
+      )}
+
+      {/* Done — brief prose + quick-ask buttons */}
+      {state.status === 'done' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ font: '400 13px/1.6 var(--font-sans)', color: 'var(--fg-1)' }}>
+            {state.brief}
+          </div>
+          {state.quickAsks.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ font: '500 10px var(--font-sans)', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--fg-3)' }}>
+                Follow up
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {state.quickAsks.map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => handleQuickAsk(q)}
+                    style={{
+                      border: '1px solid var(--border)', background: 'var(--surface)',
+                      padding: '6px 12px', borderRadius: 999, cursor: 'pointer',
+                      font: '500 12px var(--font-sans)', color: 'var(--fg-2)',
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                    }}
+                  >
+                    <Icon name="sparkle" size={11} />
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <button
+            onClick={() => setState({ status: 'idle' })}
+            style={{ alignSelf: 'flex-start', font: '500 11px var(--font-mono)', color: 'var(--fg-3)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            Regenerate
+          </button>
+        </div>
+      )}
+
+      {/* Quota exhausted */}
+      {state.status === 'quota' && (
+        <div style={{ font: '400 13px/1.5 var(--font-sans)', color: 'var(--fg-3)' }}>
+          You&apos;ve hit your Hum limit —{' '}
+          <Link href="/account" style={{ color: 'var(--accent)', textDecoration: 'underline' }}>
+            upgrade to keep asking
+          </Link>.
+        </div>
+      )}
+
+      {/* Error */}
+      {state.status === 'error' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ font: '400 13px/1.5 var(--font-sans)', color: 'var(--fg-3)' }}>
+            Couldn&apos;t generate the brief right now.
+          </div>
+          <button
+            onClick={() => { void generate() }}
+            style={{ alignSelf: 'flex-start', font: '500 12px var(--font-sans)', color: 'var(--accent)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+          >
+            Try again
+          </button>
+        </div>
+      )}
+    </Card>
+  )
+}
 
 // ── TodayView ──────────────────────────────────────────────────────────────
 
@@ -660,6 +810,34 @@ export function TodayView({ firstName }: TodayViewProps) {
     )
   }
 
+  // ── Brief signals (derived from snapshot + narratives) ────────────────
+  const briefSignals: BriefSignals = {
+    kpis: {
+      mentions24h: kpis.mentions24h,
+      tokenCount: kpis.tokenCount,
+      netSentiment: kpis.netSentiment,
+      alertCount: kpis.alertCount,
+    },
+    spikes: (snapshot?.spikes ?? []).map((s) => ({
+      symbol: s.symbol,
+      deltaScore: s.deltaScore,
+      mentions: s.mentions,
+      sentiment: s.sentiment,
+    })),
+    sentimentGrid: sentimentGrid.map((t) => ({
+      sym: t.sym,
+      score: t.score,
+      mentions: t.mentions,
+      d: t.d,
+    })),
+    narratives: narratives.map((n) => ({
+      title: n.title,
+      growth: n.growth,
+      tokens: n.tokens,
+      mentions: n.mentions,
+    })),
+  }
+
   // ── Normal render ──────────────────────────────────────────────────────
   return (
     <div style={{ padding: '24px 24px 80px', display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1480, margin: '0 auto' }}>
@@ -669,7 +847,7 @@ export function TodayView({ firstName }: TodayViewProps) {
       {spikes.length > 0 && <Spikes spikes={spikes} />}
       {sentimentGrid.length > 0 && <SentimentGrid tokens={sentimentGrid} />}
       {narratives.length > 0 && <Narratives narratives={narratives} />}
-      {/* Phase 4: Brief (HUM) */}
+      <Brief signals={briefSignals} />
       <div style={{ display: 'grid', gridTemplateColumns: alerts.length > 0 ? '1.4fr 1fr' : '1fr', gap: 16 }}>
         <Stream stream={stream} loading={streamLoading} />
         {alerts.length > 0 && <AlertsLog alerts={alerts} />}
