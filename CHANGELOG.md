@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.52.0](https://github.com/Token-Buzz/website/compare/v0.51.0...v0.52.0) (2026-06-01)
+
+
+### 🚀 Features
+
+* **application:** token verification for candlestick charts ([#341](https://github.com/Token-Buzz/website/issues/341)) ([db0f567](https://github.com/Token-Buzz/website/commit/db0f567e0e2fc8ee8042acde22aeec87ed3dd3a3))
+
 ## [0.51.0](https://github.com/Token-Buzz/website/compare/v0.50.2...v0.51.0) (2026-05-31)
 
 
