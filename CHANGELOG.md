@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.60.0](https://github.com/Token-Buzz/website/compare/v0.59.0...v0.60.0) (2026-06-01)
+
+
+### 🚀 Features
+
+* **application:** surface token project links in detail pane (M13 Phase 2) ([#367](https://github.com/Token-Buzz/website/issues/367)) ([6a300ea](https://github.com/Token-Buzz/website/commit/6a300eacfc75927aa3487a2e590118b903ba3c61))
+
 ## [0.59.0](https://github.com/Token-Buzz/website/compare/v0.58.0...v0.59.0) (2026-06-01)
 
 
