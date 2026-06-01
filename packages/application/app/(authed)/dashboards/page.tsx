@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Button, Eyebrow, Card, Icon, Ticker } from '../_dashboard/primitives'
 import { useIsMobile } from '@/app/_hooks/useIsMobile'
 import type { Dashboard } from '@monorepo-template/core/db/dashboards'
+import { suggestQueryForTicker } from '@monorepo-template/core/lib/watchlist-query'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,19 @@ function CreateDashboardModal({ onClose, onCreated }: CreateModalProps) {
   const [query, setQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  function handleTickerChange(val: string) {
+    setTicker(val)
+    if (val.trim().length > 0) {
+      try {
+        setQuery(suggestQueryForTicker(val))
+      } catch {
+        // ignore if ticker is partially typed
+      }
+    } else {
+      setQuery('')
+    }
+  }
 
   // Close on backdrop click
   function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
@@ -111,10 +125,10 @@ function CreateDashboardModal({ onClose, onCreated }: CreateModalProps) {
   const inputStyle: React.CSSProperties = {
     width: '100%',
     padding: '9px 12px',
-    font: '500 14px/1.4 var(--font-sans)',
+    font: '500 14px var(--font-mono)',
     color: 'var(--fg-1)',
-    background: 'var(--surface)',
-    border: '1px solid var(--border)',
+    background: 'var(--bg-sunken)',
+    border: '1px solid var(--border-strong)',
     borderRadius: 6,
     outline: 'none',
     boxSizing: 'border-box',
@@ -222,8 +236,8 @@ function CreateDashboardModal({ onClose, onCreated }: CreateModalProps) {
                 id="dashboard-ticker"
                 type="text"
                 value={ticker}
-                onChange={(e) => setTicker(e.target.value)}
-                placeholder="e.g. BTC"
+                onChange={(e) => handleTickerChange(e.target.value)}
+                placeholder="e.g. PEPE"
                 style={inputStyle}
                 disabled={submitting}
               />
@@ -235,10 +249,13 @@ function CreateDashboardModal({ onClose, onCreated }: CreateModalProps) {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="e.g. AI agents L2"
-                style={inputStyle}
+                placeholder="e.g. $PEPE OR #PEPE"
+                style={{ ...inputStyle, font: '500 13px var(--font-mono)' }}
                 disabled={submitting}
               />
+              <span style={{ font: '400 11px var(--font-sans)', color: 'var(--fg-4)' }}>
+                Auto-filled from symbol. Edit freely.
+              </span>
             </div>
             <p style={{
               margin: 0,
