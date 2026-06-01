@@ -66,7 +66,7 @@ export default function CTA() {
             Cancel in one click.
           </div>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <Button variant="primary" size="lg" iconRight="arrowR" href="#">
+            <Button variant="primary" size="lg" iconRight="arrowR" href="#pricing">
               Get started — it&apos;s free
             </Button>
             <Button

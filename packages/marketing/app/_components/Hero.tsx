@@ -225,7 +225,7 @@ export default function Hero() {
             flexWrap: 'wrap',
           }}
         >
-          <Button variant="primary" size="lg" iconRight="arrowR" href="#">
+          <Button variant="primary" size="lg" iconRight="arrowR" href="#pricing">
             Start tracking — free
           </Button>
           <Button variant="ghost" size="lg" icon="play" href="#how">

@@ -233,7 +233,7 @@ export default function HowItWorks() {
             flexWrap: 'wrap',
           }}
         >
-          <Button variant="primary" size="lg" iconRight="arrowR" href="#">
+          <Button variant="primary" size="lg" iconRight="arrowR" href="#pricing">
             Start tracking — free
           </Button>
           <span
