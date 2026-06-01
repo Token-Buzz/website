@@ -94,6 +94,15 @@ jobs:
         # deploy alongside the unit tests, before credentials are configured.
         run: npm run test:integration
 
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E tests
+        # Boots the marketing app via next dev (:3000) and runs Chromium offline.
+        # No AWS/Clerk/DynamoDB needed, so this gates the deploy alongside
+        # unit/integration tests before credentials are configured.
+        run: npm run test:e2e
+
       - name: Configure AWS credentials (OIDC)
         if: steps.gate.outputs.deploy == 'true'
         uses: aws-actions/configure-aws-credentials@v4
