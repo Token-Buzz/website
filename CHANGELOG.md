@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.58.0](https://github.com/Token-Buzz/website/compare/v0.57.0...v0.58.0) (2026-06-01)
+
+
+### 🚀 Features
+
+* **marketing,application:** redirect invalid routes instead of 404 ([#363](https://github.com/Token-Buzz/website/issues/363)) ([260b69d](https://github.com/Token-Buzz/website/commit/260b69d1978406c941b542aa65b8aeaf422c5426)), closes [#356](https://github.com/Token-Buzz/website/issues/356)
+
 ## [0.57.0](https://github.com/Token-Buzz/website/compare/v0.56.0...v0.57.0) (2026-06-01)
 
 
