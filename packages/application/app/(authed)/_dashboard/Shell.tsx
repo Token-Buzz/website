@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, useTransition } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { UserButton, SignOutButton, useClerk } from '@clerk/nextjs'
 import { Icon, Button, Eyebrow, Avatar } from './primitives'
@@ -18,6 +18,8 @@ import { DunningBanner } from './DunningBanner'
 import { WATCHLIST_CHANGED_EVENT } from './watchlistEvents'
 import { TokenDetailPane } from './TokenDetailPane'
 import type { Token } from './types'
+import { NavigationContext, useNavigate } from './navigation'
+import { RouteProgress } from './RouteProgress'
 
 // ── Sidebar nav items ──────────────────────────────────────────────────────
 
@@ -74,7 +76,7 @@ function NavItem({
 function ProfileFooter() {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const router = useRouter()
+  const { navigate } = useNavigate()
 
   useEffect(() => {
     if (!open) return
@@ -95,7 +97,7 @@ function ProfileFooter() {
           boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
         }}>
           <button
-            onClick={() => { setOpen(false); router.push('/account') }}
+            onClick={() => { setOpen(false); navigate('/account') }}
             style={{
               display: 'flex', alignItems: 'center', gap: 10, width: '100%',
               padding: '10px 14px', border: 'none', background: 'transparent',
@@ -184,7 +186,7 @@ function SidebarContent({
   onOpenToken?: (entry: { symbol: string; query: string; entryId: string }) => void
 }) {
   const pathname = usePathname()
-  const router = useRouter()
+  const { navigate } = useNavigate()
 
   const activeNav = NAV_ITEMS_BASE.find((n) => pathname === n.href || pathname.startsWith(n.href + '/'))?.id ?? 'dashboard'
 
@@ -235,7 +237,7 @@ function SidebarContent({
               active={activeNav === item.id}
               count={count}
               onClick={() => {
-                router.push(item.href)
+                navigate(item.href)
                 onNavClick?.()
               }}
             />
@@ -252,11 +254,11 @@ function SidebarContent({
             tabIndex={0}
             aria-label="Add token to watchlist"
             style={{ color: 'var(--fg-3)', cursor: 'pointer', lineHeight: 0 }}
-            onClick={() => { router.push('/watchlist?add=1'); onNavClick?.() }}
+            onClick={() => { navigate('/watchlist?add=1'); onNavClick?.() }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault()
-                router.push('/watchlist?add=1')
+                navigate('/watchlist?add=1')
                 onNavClick?.()
               }
             }}
@@ -717,6 +719,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const { signOut } = useClerk()
 
+  // Navigation transition — drives the RouteProgress bar and is shared
+  // with child components (sidebar, profile footer) via NavigationContext.
+  const [isNavigating, startNavigation] = useTransition()
+  const navigate = useCallback(
+    (href: string) => { startNavigation(() => { router.push(href) }) },
+    [router],
+  )
+
   const openDrawer = useCallback(() => setDrawerOpen(true), [])
   const closeDrawer = useCallback(() => setDrawerOpen(false), [])
   const openPalette = useCallback(() => setPaletteOpen(true), [])
@@ -864,7 +874,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       id: 'new-dashboard',
       label: 'New dashboard',
       icon: 'plus' as const,
-      onSelect: () => router.push('/dashboards?new=1'),
+      onSelect: () => navigate('/dashboards?new=1'),
     },
     {
       id: 'ask-hum',
@@ -882,7 +892,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       id: 'open-settings',
       label: 'Open settings',
       icon: 'settings' as const,
-      onSelect: () => router.push('/account'),
+      onSelect: () => navigate('/account'),
     },
     {
       id: 'sign-out',
@@ -899,7 +909,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         el.setAttribute('data-theme', el.getAttribute('data-theme') === 'light' ? 'dark' : 'light')
       },
     },
-  ], [router, signOut, askHum])
+  ], [navigate, signOut, askHum])
 
   const quickAddItems: CommandItem[] = useMemo(
     () => pickById(actionCommands, ['new-dashboard', 'ask-hum', 'new-alert-via-hum']),
@@ -914,7 +924,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         id: item.id,
         label: item.label,
         icon: item.icon,
-        onSelect: () => router.push(item.href),
+        onSelect: () => navigate(item.href),
       })),
     },
     {
@@ -925,7 +935,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         label: d.name,
         swatch: swatchForId(d.dashboardId),
         keywords: [d.ticker, d.query].filter(Boolean).join(' '),
-        onSelect: () => router.push(`/dashboards/${d.dashboardId}`),
+        onSelect: () => navigate(`/dashboards/${d.dashboardId}`),
       })),
     },
     {
@@ -933,11 +943,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       heading: 'Actions',
       items: pickById(actionCommands, ['new-dashboard', 'ask-hum', 'open-settings', 'sign-out', 'toggle-theme']),
     },
-  ], [actionCommands, dashboards, router])
+  ], [actionCommands, dashboards, navigate])
 
   return (
     <UpgradeModalProvider>
+    <NavigationContext.Provider value={{ navigate, isNavigating }}>
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
+      <RouteProgress active={isNavigating} />
       {/* Desktop persistent sidebar — hidden on mobile */}
       {!isMobile && (
         <Sidebar
@@ -1045,6 +1057,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </>
       )}
     </div>
+    </NavigationContext.Provider>
     </UpgradeModalProvider>
   )
 }
