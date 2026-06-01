@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.55.0](https://github.com/Token-Buzz/website/compare/v0.54.0...v0.55.0) (2026-06-01)
+
+
+### 🚀 Features
+
+* **application:** externalize Hum AI model + system prompt to env ([#351](https://github.com/Token-Buzz/website/issues/351)) ([fc4534c](https://github.com/Token-Buzz/website/commit/fc4534cadaf5d5ba4594af6b3ef90d47dc7d9bc0))
+
 ## [0.54.0](https://github.com/Token-Buzz/website/compare/v0.53.0...v0.54.0) (2026-06-01)
 
 
