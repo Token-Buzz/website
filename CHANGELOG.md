@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.54.0](https://github.com/Token-Buzz/website/compare/v0.53.0...v0.54.0) (2026-06-01)
+
+
+### 🚀 Features
+
+* **application:** auto-populate dashboard query from ticker ([#346](https://github.com/Token-Buzz/website/issues/346)) ([f47b83e](https://github.com/Token-Buzz/website/commit/f47b83ef4149db9fcc61d96d378b939eb41c8ec8)), closes [#313](https://github.com/Token-Buzz/website/issues/313)
+
 ## [0.53.0](https://github.com/Token-Buzz/website/compare/v0.52.0...v0.53.0) (2026-06-01)
 
 
