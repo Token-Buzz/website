@@ -304,6 +304,16 @@ interface PaneData {
   tweets: LiveFeedTweet[]
 }
 
+// ── Token Profile (links) ──────────────────────────────────────────────────
+
+interface TokenProfile {
+  websiteUrl?: string
+  pressUrl?: string
+  githubUrl?: string
+  contractAddress?: string
+  chain?: string
+}
+
 // ── Token Detail Pane ──────────────────────────────────────────────────────
 
 interface TokenDetailPaneProps {
@@ -323,6 +333,7 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
   const [showAlertModal, setShowAlertModal] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [ingestError, setIngestError] = useState<React.ReactNode | null>(null)
+  const [profile, setProfile] = useState<TokenProfile | null>(null)
   const isMobile = useIsMobile()
 
   // Ref to abort stale in-flight fetches when the token changes mid-load
@@ -601,6 +612,26 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
   // as fallback placeholders when the API call fails, and re-running the fetch on every price
   // tick would cause excessive API requests.
 
+  // Fetch token profile (links) whenever the symbol changes
+  useEffect(() => {
+    let cancelled = false
+    async function loadProfile() {
+      setProfile(null)
+      try {
+        const res = await fetch(`/api/tokens/${encodeURIComponent(token.sym)}/profile`)
+        if (cancelled) return
+        if (!res.ok) return
+        const data = await res.json() as { profile: TokenProfile | null }
+        if (cancelled) return
+        setProfile(data.profile ?? null)
+      } catch {
+        // On error, leave profile null — links block hidden
+      }
+    }
+    void loadProfile()
+    return () => { cancelled = true }
+  }, [token.sym])
+
   const price = paneData?.price ?? (paneLoading ? null : token.price)
   const d24 = paneData?.d24 ?? token.d24
   const mentions = paneData?.mentions ?? token.mentions
@@ -745,6 +776,78 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
           </div>
         </div>
       </div>
+
+      {/* Links */}
+      {profile && (profile.websiteUrl || profile.pressUrl || profile.githubUrl || profile.contractAddress) && (
+        <div style={{ padding: '0 20px 16px', flexShrink: 0 }}>
+          <Eyebrow style={{ marginBottom: 10 }}>Links</Eyebrow>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {profile.websiteUrl && (
+              <a
+                href={profile.websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  border: '1px solid var(--border)', borderRadius: 8,
+                  padding: '6px 10px', fontFamily: 'var(--font-mono)',
+                  fontSize: 12, color: 'var(--fg-2)', textDecoration: 'none',
+                }}
+              >
+                <Icon name="globe" size={14} />
+                Website
+              </a>
+            )}
+            {profile.pressUrl && (
+              <a
+                href={profile.pressUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  border: '1px solid var(--border)', borderRadius: 8,
+                  padding: '6px 10px', fontFamily: 'var(--font-mono)',
+                  fontSize: 12, color: 'var(--fg-2)', textDecoration: 'none',
+                }}
+              >
+                <Icon name="book" size={14} />
+                Newsroom
+              </a>
+            )}
+            {profile.githubUrl && (
+              <a
+                href={profile.githubUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  border: '1px solid var(--border)', borderRadius: 8,
+                  padding: '6px 10px', fontFamily: 'var(--font-mono)',
+                  fontSize: 12, color: 'var(--fg-2)', textDecoration: 'none',
+                }}
+              >
+                <Icon name="github" size={14} />
+                GitHub
+              </a>
+            )}
+            {profile.contractAddress && (
+              <span
+                title={profile.contractAddress}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  border: '1px solid var(--border)', borderRadius: 8,
+                  padding: '6px 10px', fontFamily: 'var(--font-mono)',
+                  fontSize: 12, color: 'var(--fg-2)',
+                }}
+              >
+                <Icon name="doc" size={14} />
+                {profile.chain ? `${profile.chain} · ` : ''}
+                {profile.contractAddress.slice(0, 6)}…{profile.contractAddress.slice(-4)}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Mentions */}
       <div style={{ padding: '0 20px 20px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
