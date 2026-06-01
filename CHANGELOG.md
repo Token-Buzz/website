@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.60.1](https://github.com/Token-Buzz/website/compare/v0.60.0...v0.60.1) (2026-06-01)
+
+
+### 🐛 Fixes
+
+* **application:** stop candlestick/volume overlap in price chart ([#369](https://github.com/Token-Buzz/website/issues/369)) ([d398f6d](https://github.com/Token-Buzz/website/commit/d398f6d08c6f1d819909e6ac2e7de0fc319c4a4b)), closes [#354](https://github.com/Token-Buzz/website/issues/354)
+
 ## [0.60.0](https://github.com/Token-Buzz/website/compare/v0.59.0...v0.60.0) (2026-06-01)
 
 
