@@ -41,6 +41,23 @@ export function toVolumeData(bars: OHLCVBar[]): VolumePoint[] {
   }))
 }
 
+/**
+ * Derive a lightweight-charts price format (decimal precision + tick minMove)
+ * from a representative price, so low-priced tokens (e.g. $0.0000123) render
+ * readable axis labels instead of collapsing to "0.00".
+ */
+export function priceFormatFor(price: number): { type: 'price'; precision: number; minMove: number } {
+  const ref = Math.abs(price)
+  let precision: number
+  if (ref >= 100) precision = 2
+  else if (ref >= 1) precision = 4
+  else if (ref >= 0.01) precision = 5
+  else if (ref >= 0.0001) precision = 6
+  else if (ref >= 0.000001) precision = 8
+  else precision = 10
+  return { type: 'price', precision, minMove: 10 ** -precision }
+}
+
 // Simple moving average of close over `period` bars (time-ascending input)
 export function sma(bars: OHLCVBar[], period: number): LinePoint[] {
   if (period <= 0 || bars.length < period) return []

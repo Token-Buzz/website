@@ -13,7 +13,7 @@ import { Eyebrow, fmtPrice } from './primitives'
 import { TokenVerifyModal } from './TokenVerifyModal'
 import {
   UP_COLOR, DOWN_COLOR, SMA_COLOR, EMA_COLOR, SMA_PERIOD, EMA_PERIOD,
-  toCandleData, toVolumeData, pollIntervalMs, sma, ema, toChartMarkers,
+  toCandleData, toVolumeData, pollIntervalMs, sma, ema, toChartMarkers, priceFormatFor,
   type CandlePoint,
 } from './candleChart'
 
@@ -82,6 +82,7 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
       crosshair: { mode: CrosshairMode.Normal },
       timeScale: { timeVisible: true, secondsVisible: false, borderColor: '#2A2620' },
       rightPriceScale: { borderColor: '#2A2620' },
+      leftPriceScale: { visible: true, borderColor: '#2A2620', scaleMargins: { top: 0.8, bottom: 0 } },
     })
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
@@ -95,9 +96,8 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
 
     const volumeSeries = chart.addSeries(HistogramSeries, {
       priceFormat: { type: 'volume' },
-      priceScaleId: '',
+      priceScaleId: 'left',
     })
-    volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } })
 
     const smaSeries = chart.addSeries(LineSeries, {
       color: SMA_COLOR,
@@ -246,6 +246,15 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
           barsRef.current = bars
           smaSeriesRef.current?.setData(sma(bars, SMA_PERIOD).map((p) => ({ ...p, time: p.time as UTCTimestamp })))
           emaSeriesRef.current?.setData(ema(bars, EMA_PERIOD).map((p) => ({ ...p, time: p.time as UTCTimestamp })))
+          // Scale axis price precision to the token's magnitude so cheap
+          // tokens (sub-cent) still show readable labels on the right axis.
+          const refClose = bars.length > 0 ? bars[bars.length - 1].close : 0
+          if (refClose > 0) {
+            const pf = priceFormatFor(refClose)
+            candleSeriesRef.current?.applyOptions({ priceFormat: pf })
+            smaSeriesRef.current?.applyOptions({ priceFormat: pf })
+            emaSeriesRef.current?.applyOptions({ priceFormat: pf })
+          }
           lastBarTimeRef.current = bars.length > 0 ? bars[bars.length - 1].ts : 0
           chartRef.current?.timeScale().fitContent()
           setHasData(bars.length > 0)

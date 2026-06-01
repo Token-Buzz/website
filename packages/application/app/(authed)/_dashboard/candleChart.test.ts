@@ -3,7 +3,7 @@ import { PRICE_INTERVALS } from '@monorepo-template/core/providers/price'
 import {
   UP_COLOR, DOWN_COLOR,
   toCandleData, toVolumeData, pollIntervalMs,
-  sma, ema, toChartMarkers,
+  sma, ema, toChartMarkers, priceFormatFor,
 } from './candleChart'
 import type { SocialEvent } from '@monorepo-template/core/social-events'
 
@@ -250,5 +250,62 @@ describe('pollIntervalMs', () => {
       expect(ms).toBeGreaterThanOrEqual(30000)
       expect(ms).toBeLessThanOrEqual(300000)
     }
+  })
+})
+
+describe('priceFormatFor', () => {
+  it('type is always "price"', () => {
+    expect(priceFormatFor(150).type).toBe('price')
+    expect(priceFormatFor(0.0000123).type).toBe('price')
+  })
+
+  it('price >= 100 → precision 2, minMove 0.01', () => {
+    const result = priceFormatFor(150)
+    expect(result).toEqual({ type: 'price', precision: 2, minMove: 0.01 })
+  })
+
+  it('price 82.5 (>= 1, < 100) → precision 4', () => {
+    expect(priceFormatFor(82.5).precision).toBe(4)
+  })
+
+  it('price 5 (>= 1, < 100) → precision 4', () => {
+    expect(priceFormatFor(5).precision).toBe(4)
+  })
+
+  it('price 0.42 (>= 0.01, < 1) → precision 5', () => {
+    expect(priceFormatFor(0.42).precision).toBe(5)
+  })
+
+  it('price 0.005 (>= 0.0001, < 0.01) → precision 6', () => {
+    expect(priceFormatFor(0.005).precision).toBe(6)
+  })
+
+  it('price 0.0000123 (>= 0.000001, < 0.0001) → precision 8', () => {
+    expect(priceFormatFor(0.0000123).precision).toBe(8)
+  })
+
+  it('price 0.0000001 (< 0.000001) → precision 10', () => {
+    expect(priceFormatFor(0.0000001).precision).toBe(10)
+  })
+
+  it('minMove equals 10 ** -precision (precision 2 → exact 0.01)', () => {
+    const result = priceFormatFor(150)
+    expect(result.minMove).toBe(10 ** -result.precision)
+    expect(result.minMove).toBe(0.01)
+  })
+
+  it('minMove equals 10 ** -precision for sub-cent case (precision 8)', () => {
+    const result = priceFormatFor(0.0000123)
+    expect(result.minMove).toBeCloseTo(10 ** -result.precision, 15)
+  })
+
+  it('minMove equals 10 ** -precision for precision 10', () => {
+    const result = priceFormatFor(0.0000001)
+    expect(result.minMove).toBeCloseTo(10 ** -result.precision, 18)
+  })
+
+  it('works for negative prices (uses Math.abs)', () => {
+    expect(priceFormatFor(-150).precision).toBe(2)
+    expect(priceFormatFor(-0.0000123).precision).toBe(8)
   })
 })
