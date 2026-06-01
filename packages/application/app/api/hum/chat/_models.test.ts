@@ -1,21 +1,36 @@
-import { describe, test, expect } from "vitest";
-import { resolveModel, totalInputTokens, toConverseMessages, formatContextItems, HUM_DEFAULT_MODEL } from "./_models";
+import { describe, test, expect, beforeEach, afterEach } from "vitest";
+import { resolveModel, humModel, totalInputTokens, toConverseMessages, formatContextItems } from "./_models";
 
 describe("resolveModel", () => {
-  test("returns default when given undefined", () => {
-    expect(resolveModel(undefined)).toBe(HUM_DEFAULT_MODEL);
+  const ENV_MODEL = "us.anthropic.claude-sonnet-4-6";
+
+  beforeEach(() => {
+    process.env.HUM_MODEL = ENV_MODEL;
   });
 
-  test("returns default when given an unknown string", () => {
-    expect(resolveModel("claude-unknown-model")).toBe(HUM_DEFAULT_MODEL);
+  afterEach(() => {
+    delete process.env.HUM_MODEL;
   });
 
-  test("returns default when given an empty string", () => {
-    expect(resolveModel("")).toBe(HUM_DEFAULT_MODEL);
+  test("returns the env model when given undefined", () => {
+    expect(resolveModel(undefined)).toBe(ENV_MODEL);
   });
 
-  test("returns us.anthropic.claude-sonnet-4-6 when passed exactly", () => {
-    expect(resolveModel("us.anthropic.claude-sonnet-4-6")).toBe("us.anthropic.claude-sonnet-4-6");
+  test("returns the env model when given an unknown string (override ignored)", () => {
+    expect(resolveModel("some-other-model")).toBe(ENV_MODEL);
+  });
+
+  test("returns the env model when given an empty string", () => {
+    expect(resolveModel("")).toBe(ENV_MODEL);
+  });
+
+  test("returns the env model when passed exactly the configured model", () => {
+    expect(resolveModel(ENV_MODEL)).toBe(ENV_MODEL);
+  });
+
+  test("throws when HUM_MODEL is unset", () => {
+    delete process.env.HUM_MODEL;
+    expect(() => humModel()).toThrow("HUM_MODEL is not set");
   });
 });
 
