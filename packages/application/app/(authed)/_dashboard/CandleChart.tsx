@@ -28,7 +28,7 @@ interface SelectedEvents {
   point: { x: number; y: number }
 }
 
-export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleChartProps) {
+export function CandleChart({ symbol, interval = '1h', height = 380 }: CandleChartProps) {
   const [tf, setTf] = useState<PriceInterval>(interval)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -81,8 +81,8 @@ export function CandleChart({ symbol, interval = '1h', height = 320 }: CandleCha
       },
       crosshair: { mode: CrosshairMode.Normal },
       timeScale: { timeVisible: true, secondsVisible: false, borderColor: '#2A2620' },
-      rightPriceScale: { borderColor: '#2A2620' },
-      leftPriceScale: { visible: true, borderColor: '#2A2620', scaleMargins: { top: 0.8, bottom: 0 } },
+      rightPriceScale: { borderColor: '#2A2620', scaleMargins: { top: 0.1, bottom: 0.3 } },
+      leftPriceScale: { visible: true, borderColor: '#2A2620', scaleMargins: { top: 0.75, bottom: 0 } },
     })
 
     const candleSeries = chart.addSeries(CandlestickSeries, {

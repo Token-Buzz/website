@@ -755,7 +755,7 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
         gap: 16,
         flexShrink: 0,
       }}>
-        <CandleChart symbol={token.sym} height={260} />
+        <CandleChart symbol={token.sym} height={340} />
         <div style={{
           background: 'var(--surface)',
           border: '1px solid var(--border)',
