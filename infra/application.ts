@@ -1,11 +1,11 @@
 import { router } from "./router";
-import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey, neynarApiKey, stripeSecretKey, stripeWebhookSecret, stripePublishableKey, stripePriceProMonth, stripePriceProYear, stripePriceAlphaMonth, stripePriceAlphaYear, resendApiKey, contactFromAddress } from "./secrets";
+import { webDomain, clerkPublishableKey, clerkSecretKey, opencageApiKey, neynarApiKey, stripeSecretKey, stripeWebhookSecret, stripePublishableKey, stripePriceProMonth, stripePriceProYear, stripePriceAlphaMonth, stripePriceAlphaYear, resendApiKey, contactFromAddress, humModel, humSystemPrompt } from "./secrets";
 import { tweetsTable, aggregatesTable, tokensTable, userDataTable, authorLocationsTable, feedsTable } from "./db";
 import { byokKmsKey } from "./byok";
 
 const BEDROCK_HUM_ARN = [
-  "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6*",
-  "arn:aws:bedrock:*:*:inference-profile/*anthropic.claude-sonnet-4-6*",
+  "arn:aws:bedrock:*::foundation-model/anthropic.*",
+  "arn:aws:bedrock:*:*:inference-profile/*anthropic.*",
 ];
 
 const isProd = $app.stage === "production";
@@ -65,6 +65,8 @@ export const app = new sst.aws.Nextjs("Application", {
         STRIPE_PRICE_PRO_YEAR: stripePriceProYear.value,
         STRIPE_PRICE_ALPHA_MONTH: stripePriceAlphaMonth.value,
         STRIPE_PRICE_ALPHA_YEAR: stripePriceAlphaYear.value,
+        HUM_MODEL: humModel.value,
+        HUM_SYSTEM_PROMPT: humSystemPrompt.value,
     },
     permissions: [
         {

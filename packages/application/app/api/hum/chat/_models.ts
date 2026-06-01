@@ -1,4 +1,15 @@
-export const HUM_DEFAULT_MODEL = "us.anthropic.claude-sonnet-4-6";
+export function humModel(): string {
+  const model = process.env.HUM_MODEL;
+  if (!model) throw new Error("HUM_MODEL is not set");
+  return model;
+}
+
+export function resolveModel(requested?: string): string {
+  const model = humModel();
+  // Only honor a client-requested model if it matches the configured one;
+  // otherwise fall back to the configured HUM_MODEL.
+  return requested === model ? requested : model;
+}
 
 export function formatContextItems(
   items: Array<{ label?: string; summary?: string }> | undefined,
@@ -10,15 +21,6 @@ export function formatContextItems(
     .map((text) => `- ${text}`)
     .join("\n");
   return bullets ? `Attached context:\n${bullets}\n` : "";
-}
-export const HUM_MODELS = ["us.anthropic.claude-sonnet-4-6"] as const;
-export type HumModel = (typeof HUM_MODELS)[number];
-
-export function resolveModel(requested?: string): HumModel {
-  if (requested && (HUM_MODELS as readonly string[]).includes(requested)) {
-    return requested as HumModel;
-  }
-  return HUM_DEFAULT_MODEL;
 }
 
 // Bedrock Converse TokenUsage fields (all optional → missing/null = 0)

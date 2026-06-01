@@ -133,9 +133,11 @@ Secrets are declared in `infra/secrets.ts` as `sst.Secret` and seeded via the SS
 `CLOUDFLARE_API_TOKEN` is the exception: it is read as `process.env` in `app()` (before secrets load) and must be set as a Console **environment variable**, not a secret, in both environments.
 
 Secrets to configure in Console (same names for both environments, different values):
-`WEB_DOMAIN`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `RESEND_API_KEY`, `CONTACT_TO_ADDRESS`, `CONTACT_FROM_ADDRESS`, `CHANGELOG_GITHUB_TOKEN`, `NEYNAR_API_KEY`
+`WEB_DOMAIN`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `RESEND_API_KEY`, `CONTACT_TO_ADDRESS`, `CONTACT_FROM_ADDRESS`, `CHANGELOG_GITHUB_TOKEN`, `NEYNAR_API_KEY`, `HUM_MODEL`, `HUM_SYSTEM_PROMPT`
 
 `NEYNAR_API_KEY` is the free-tier Neynar key used by the Farcaster ingestor (M9), read server-side by the `/api/query` route and the `TweetPoller` cron.
+
+`HUM_MODEL` is the AWS Bedrock model id used by the Hum AI assistant (e.g. `us.anthropic.claude-sonnet-4-6`), and `HUM_SYSTEM_PROMPT` is Hum's chat system prompt. Both are read server-side by the `/api/hum/chat` route (the `/api/hum/brief` route shares `HUM_MODEL` via `resolveModel`). They fail loudly if unset — no fallback. The Bedrock IAM scope in `infra/application.ts` permits any `anthropic.*` model, so `HUM_MODEL` can be swapped to any Anthropic Claude model on Bedrock without an infra change.
 
 **Reddit is a per-user BYOK provider** (no project secret). Each user supplies their own Reddit app `client_id` + `client_secret` via the Account UI. Credentials are AES-KMS encrypted and stored in the `UserData` table under `BYOK#reddit`. Reddit is free-tier (no plan gate, no project-side metering).
 
@@ -168,7 +170,7 @@ Set under **Settings → Secrets and variables → Actions → Secrets** before 
 
 The workflows authenticate to AWS via OIDC (`aws-actions/configure-aws-credentials@v4` with `role-to-assume`), so no long-lived AWS access keys are stored in GitHub.
 
-SST application secrets (`sst.Secret` entries in `infra/secrets.ts`: `WEB_DOMAIN`, `CLERK_*`, `TURNSTILE_*`, `RESEND_API_KEY`, `CONTACT_*`, `OPENCAGE_API_KEY`, `CHANGELOG_GITHUB_TOKEN`, `NEYNAR_API_KEY`) are stored in AWS SSM Parameter Store, not in GitHub. Seed them per stage with `npx sst secret set <NAME> <value> --stage <stage>` (or use the `npm run set-sst-vars` script with a `.env.local`).
+SST application secrets (`sst.Secret` entries in `infra/secrets.ts`: `WEB_DOMAIN`, `CLERK_*`, `TURNSTILE_*`, `RESEND_API_KEY`, `CONTACT_*`, `OPENCAGE_API_KEY`, `CHANGELOG_GITHUB_TOKEN`, `NEYNAR_API_KEY`, `HUM_MODEL`, `HUM_SYSTEM_PROMPT`) are stored in AWS SSM Parameter Store, not in GitHub. Seed them per stage with `npx sst secret set <NAME> <value> --stage <stage>` (or use the `npm run set-sst-vars` script with a `.env.local`).
 
 ## GitHub tooling
 

@@ -16,3 +16,5 @@ export const stripePriceProMonth = new sst.Secret("STRIPE_PRICE_PRO_MONTH");
 export const stripePriceProYear = new sst.Secret("STRIPE_PRICE_PRO_YEAR");
 export const stripePriceAlphaMonth = new sst.Secret("STRIPE_PRICE_ALPHA_MONTH");
 export const stripePriceAlphaYear = new sst.Secret("STRIPE_PRICE_ALPHA_YEAR");
+export const humModel = new sst.Secret("HUM_MODEL");
+export const humSystemPrompt = new sst.Secret("HUM_SYSTEM_PROMPT");

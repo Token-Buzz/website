@@ -5,7 +5,11 @@ import { canUseHum, recordHumUsage } from "@monorepo-template/core/db/usage";
 
 const client = new BedrockRuntimeClient({ region: "us-east-1" });
 
-const SYSTEM_PROMPT = `You are Hum, TokenBuzz's crypto social intelligence assistant. You analyze on-chain data, social sentiment, and market narratives to help traders understand what's happening in the crypto market. You're concise, data-driven, and always cite your reasoning. You focus on social signals — who's talking, what they're saying, and what it means for token momentum. Never give financial advice. Always remind users to verify before trading.`;
+function systemPrompt(): string {
+  const prompt = process.env.HUM_SYSTEM_PROMPT;
+  if (!prompt) throw new Error("HUM_SYSTEM_PROMPT is not set");
+  return prompt;
+}
 
 export async function POST(req: Request) {
   try {
@@ -33,6 +37,7 @@ export async function POST(req: Request) {
     };
 
     const model = resolveModel(body.model);
+    const prompt = systemPrompt();
     const contextBlock = formatContextItems(body.contextItems);
     const userText = contextBlock ? `${contextBlock}\n${body.message}` : body.message;
     const messages = toConverseMessages(body.history, userText);
@@ -46,7 +51,7 @@ export async function POST(req: Request) {
             // cachePoint is Bedrock-native prompt caching. The system prompt is below the
             // model's min cacheable size today so it's a no-op, but Phase 3 context items
             // grow the prefix past the threshold, at which point it caches automatically.
-            system: [{ text: SYSTEM_PROMPT }, { cachePoint: { type: "default" } }],
+            system: [{ text: prompt }, { cachePoint: { type: "default" } }],
             messages,
             inferenceConfig: { maxTokens: 1024 },
           }));
