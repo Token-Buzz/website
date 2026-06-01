@@ -1,14 +1,21 @@
 import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from './client'
 import { planKey, usageKey } from './keys'
-import { type Plan, DEFAULT_PLAN, evaluateHumQuota, evaluateIngestionQuota } from '../billing/tiers'
+import {
+  type Plan,
+  DEFAULT_PLAN,
+  evaluateHumQuota,
+  evaluateIngestionQuota,
+  evaluateRefreshQuota,
+  monthPeriod,
+  periodForPlan,
+} from '../billing/tiers'
 import { effectivePlan } from '../billing/stripe'
 
 export type { Plan }
 
-export function currentPeriod(now: Date = new Date()): string {
-  return now.toISOString().slice(0, 7).replace('-', '')
-}
+/** Backward-compatible re-export of the monthly period helper. */
+export const currentPeriod = monthPeriod
 
 export interface HumQuotaStatus {
   allowed: boolean
@@ -48,18 +55,21 @@ export async function getHumUsage(
 }
 
 export async function canUseHum(userId: string): Promise<HumQuotaStatus> {
-  const [{ plan }, used] = await Promise.all([
-    getUserPlan(userId),
-    getHumUsage(userId),
-  ])
+  const { plan } = await getUserPlan(userId)
+  const period = periodForPlan(plan)
+  const [used] = await Promise.all([getHumUsage(userId, period)])
   const { allowed, limit } = evaluateHumQuota(plan, used)
   return { allowed, used, limit, plan }
 }
 
 export async function recordHumUsage(
   userId: string,
-  period = currentPeriod(),
+  period?: string,
 ): Promise<number> {
+  if (period === undefined) {
+    const { plan } = await getUserPlan(userId)
+    period = periodForPlan(plan)
+  }
   const { Attributes } = await ddb.send(
     new UpdateCommand({
       TableName: TableNames.userData,
@@ -97,18 +107,21 @@ export async function getIngestionUsage(
 }
 
 export async function canIngestQuery(userId: string): Promise<IngestionQuotaStatus> {
-  const [{ plan }, used] = await Promise.all([
-    getUserPlan(userId),
-    getIngestionUsage(userId),
-  ])
+  const { plan } = await getUserPlan(userId)
+  const period = periodForPlan(plan)
+  const used = await getIngestionUsage(userId, period)
   const { allowed, limit } = evaluateIngestionQuota(plan, used)
   return { allowed, used, limit, plan }
 }
 
 export async function recordIngestionUsage(
   userId: string,
-  period = currentPeriod(),
+  period?: string,
 ): Promise<number> {
+  if (period === undefined) {
+    const { plan } = await getUserPlan(userId)
+    period = periodForPlan(plan)
+  }
   const { Attributes } = await ddb.send(
     new UpdateCommand({
       TableName: TableNames.userData,
@@ -125,3 +138,54 @@ export async function recordIngestionUsage(
   return (Attributes?.count as number) ?? 0
 }
 
+export interface RefreshQuotaStatus {
+  allowed: boolean
+  used: number
+  limit: number | null
+  plan: Plan
+}
+
+export async function getRefreshUsage(
+  userId: string,
+  period = currentPeriod(),
+): Promise<number> {
+  const { Item } = await ddb.send(
+    new GetCommand({
+      TableName: TableNames.userData,
+      Key: usageKey(userId, period, 'refresh'),
+    }),
+  )
+  return (Item?.count as number) ?? 0
+}
+
+export async function canRefreshQuery(userId: string): Promise<RefreshQuotaStatus> {
+  const { plan } = await getUserPlan(userId)
+  const period = periodForPlan(plan)
+  const used = await getRefreshUsage(userId, period)
+  const { allowed, limit } = evaluateRefreshQuota(plan, used)
+  return { allowed, used, limit, plan }
+}
+
+export async function recordRefreshUsage(
+  userId: string,
+  period?: string,
+): Promise<number> {
+  if (period === undefined) {
+    const { plan } = await getUserPlan(userId)
+    period = periodForPlan(plan)
+  }
+  const { Attributes } = await ddb.send(
+    new UpdateCommand({
+      TableName: TableNames.userData,
+      Key: usageKey(userId, period, 'refresh'),
+      UpdateExpression: 'ADD #count :one SET updatedAt = :now',
+      ExpressionAttributeNames: { '#count': 'count' },
+      ExpressionAttributeValues: {
+        ':one': 1,
+        ':now': new Date().toISOString(),
+      },
+      ReturnValues: 'ALL_NEW',
+    }),
+  )
+  return (Attributes?.count as number) ?? 0
+}

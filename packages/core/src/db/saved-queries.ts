@@ -161,3 +161,34 @@ export async function sweepExpiredSavedQueries(
 
   return { deleted }
 }
+
+/**
+ * True when the user already has a saved query whose text hashes to the same
+ * `queryHash` — i.e. they have run this exact query before. Used to classify a
+ * /api/query submission as a refresh (re-run) vs a new ingestion.
+ */
+export async function userHasQuery(userId: string, query: string): Promise<boolean> {
+  const hash = hashQuery(query)
+  let lastKey: Record<string, unknown> | undefined
+
+  do {
+    const { Items = [], LastEvaluatedKey } = await ddb.send(
+      new QueryCommand({
+        TableName: TableNames.userData,
+        KeyConditionExpression: 'pk = :pk AND begins_with(sk, :p)',
+        ExpressionAttributeValues: {
+          ':pk': `USER#${userId}`,
+          ':p': 'QUERY#',
+        },
+        ProjectionExpression: 'queryHash',
+        ExclusiveStartKey: lastKey as Record<string, import('@aws-sdk/client-dynamodb').AttributeValue> | undefined,
+      }),
+    )
+    for (const item of Items) {
+      if ((item as { queryHash: string }).queryHash === hash) return true
+    }
+    lastKey = LastEvaluatedKey as Record<string, unknown> | undefined
+  } while (lastKey !== undefined)
+
+  return false
+}

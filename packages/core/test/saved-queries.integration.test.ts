@@ -1,7 +1,7 @@
 /**
  * SavedQuery integration test — exercises the real
  * `packages/core/src/db/saved-queries.ts` functions (createSavedQuery,
- * getSavedQuery, hashQuery) against a local dynalite DynamoDB.
+ * getSavedQuery, hashQuery, userHasQuery) against a local dynalite DynamoDB.
  */
 
 import { describe, expect, test } from 'vitest'
@@ -9,6 +9,7 @@ import {
   createSavedQuery,
   getSavedQuery,
   hashQuery,
+  userHasQuery,
 } from '@monorepo-template/core/db/saved-queries'
 
 // ── createSavedQuery + getSavedQuery (with TTL) ───────────────────────────────
@@ -79,5 +80,42 @@ describe('hashQuery', () => {
     expect(h1).toBe(h2)
     expect(h1).toHaveLength(16)
     expect(/^[0-9a-f]{16}$/.test(h1)).toBe(true)
+  })
+})
+
+// ── userHasQuery ──────────────────────────────────────────────────────────────
+
+describe('userHasQuery', () => {
+  test('returns false when the user has no saved queries', async () => {
+    const result = await userHasQuery('sq_uhas_no_queries', 'foo bar')
+    expect(result).toBe(false)
+  })
+
+  test('returns true after createSavedQuery for the same query text', async () => {
+    const userId = 'sq_uhas_found'
+    const query = 'foo bar'
+    const snapshot = { mentions: [], sentimentAggregation: null }
+
+    await createSavedQuery({ userId, query, snapshot })
+
+    expect(await userHasQuery(userId, query)).toBe(true)
+  })
+
+  test('returns false for a different query text on the same user', async () => {
+    const userId = 'sq_uhas_diff_query'
+    const snapshot = { mentions: [], sentimentAggregation: null }
+
+    await createSavedQuery({ userId, query: 'foo bar', snapshot })
+
+    expect(await userHasQuery(userId, 'something else')).toBe(false)
+  })
+
+  test('different users are isolated — query on one does not appear for another', async () => {
+    const snapshot = { mentions: [], sentimentAggregation: null }
+
+    await createSavedQuery({ userId: 'sq_uhas_user_a', query: 'shared topic', snapshot })
+
+    // user_b has no queries; should not see user_a's entry.
+    expect(await userHasQuery('sq_uhas_user_b', 'shared topic')).toBe(false)
   })
 })

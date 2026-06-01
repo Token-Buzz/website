@@ -334,28 +334,46 @@ export function UpgradeModal({ open, onClose, currentPlan, initialInterval }: Up
 
                     {/* Quota rows */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <div
-                        style={{
-                          font: '400 13px/1.4 var(--font-sans)',
-                          color: 'var(--fg-2)',
-                        }}
-                      >
-                        Hum AI:{' '}
-                        <span style={{ color: 'var(--fg-1)', fontWeight: 600 }}>
-                          {tier.humMonthly !== null ? `${tier.humMonthly}` : 'Unlimited'} / mo
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          font: '400 13px/1.4 var(--font-sans)',
-                          color: 'var(--fg-2)',
-                        }}
-                      >
-                        Ingestion:{' '}
-                        <span style={{ color: 'var(--fg-1)', fontWeight: 600 }}>
-                          {tier.ingestionMonthly !== null ? `${tier.ingestionMonthly}` : 'Unlimited'} / mo
-                        </span>
-                      </div>
+                      {(() => {
+                        const per = tier.period === 'week' ? 'wk' : 'mo'
+                        return (
+                          <>
+                            <div
+                              style={{
+                                font: '400 13px/1.4 var(--font-sans)',
+                                color: 'var(--fg-2)',
+                              }}
+                            >
+                              Hum AI:{' '}
+                              <span style={{ color: 'var(--fg-1)', fontWeight: 600 }}>
+                                {tier.humLimit !== null ? `${tier.humLimit}` : 'Unlimited'} / {per}
+                              </span>
+                            </div>
+                            <div
+                              style={{
+                                font: '400 13px/1.4 var(--font-sans)',
+                                color: 'var(--fg-2)',
+                              }}
+                            >
+                              Ingestion:{' '}
+                              <span style={{ color: 'var(--fg-1)', fontWeight: 600 }}>
+                                {tier.ingestionLimit !== null ? `${tier.ingestionLimit}` : 'Unlimited'} / {per}
+                              </span>
+                            </div>
+                            <div
+                              style={{
+                                font: '400 13px/1.4 var(--font-sans)',
+                                color: 'var(--fg-2)',
+                              }}
+                            >
+                              Refresh:{' '}
+                              <span style={{ color: 'var(--fg-1)', fontWeight: 600 }}>
+                                {tier.refreshLimit !== null ? `${tier.refreshLimit}` : 'Unlimited'} / {per}
+                              </span>
+                            </div>
+                          </>
+                        )
+                      })()}
                     </div>
 
                     {/* CTA */}

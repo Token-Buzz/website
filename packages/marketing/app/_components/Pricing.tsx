@@ -26,8 +26,9 @@ const PLANS: PlanDef[] = [
     monthlyPrice: null,
     yearlyPrice: null,
     features: [
-      '10 Hum AI queries / month',
-      '5 token ingestions / month',
+      '10 Hum AI queries / week',
+      '10 token ingestions / week',
+      '20 ingestion refreshes / week',
       'X + Farcaster sources',
       'Unlimited dashboards, alerts & watchlists',
       'Email alerts',
@@ -43,6 +44,7 @@ const PLANS: PlanDef[] = [
     features: [
       '500 Hum AI queries / month',
       '50 token ingestions / month',
+      '500 ingestion refreshes / month',
       'X + Farcaster + Reddit sources',
       'Unlimited dashboards, alerts & watchlists',
       'Push, email & Discord alerts',
