@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.53.0](https://github.com/Token-Buzz/website/compare/v0.52.0...v0.53.0) (2026-06-01)
+
+
+### 🚀 Features
+
+* weekly Free-tier quotas + ingestion-refresh metric ([#343](https://github.com/Token-Buzz/website/issues/343)) ([6c7610e](https://github.com/Token-Buzz/website/commit/6c7610ea119dc956678f47d3bf780dbcf61a99d6))
+
 ## [0.52.0](https://github.com/Token-Buzz/website/compare/v0.51.0...v0.52.0) (2026-06-01)
 
 
