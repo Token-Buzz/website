@@ -76,7 +76,7 @@ export const ALL_CARD_TYPES: DashboardCardType[] = [
 function CandleChartCard({ symbol }: { symbol: string }) {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-      <CandleChart symbol={symbol} interval="1h" height={240} />
+      <CandleChart symbol={symbol} interval="1h" height={320} />
     </div>
   )
 }
