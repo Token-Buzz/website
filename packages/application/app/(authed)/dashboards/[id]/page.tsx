@@ -322,7 +322,8 @@ function BulkToolbar({
         padding: '10px 14px',
         background: 'var(--bg-elevated)',
         border: '1px solid var(--buzz-500)',
-        borderRadius: 8,
+        borderRadius: 999,
+        boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
       }}
     >
       {/* Count badge */}
@@ -410,8 +411,7 @@ function BulkToolbar({
         </Button>
       </div>
 
-      {/* Spacer + clear */}
-      <div style={{ flex: 1 }} />
+      {/* Clear */}
       <button
         onClick={onClear}
         aria-label="Clear selection"
@@ -947,18 +947,34 @@ export default function DashboardDetailPage() {
 
       {/* ── Bulk action toolbar (shown when ≥1 card selected) ───────────── */}
       {selectedIds.size > 0 && (
-        <BulkToolbar
-          selectedCount={selectedIds.size}
-          canChangeQuery={canChangeQuery}
-          canChangeTicker={canChangeTicker}
-          isMobile={isMobile}
-          onAddToContext={handleBulkAddToContext}
-          onAddToDashboard={handleBulkAddToDashboard}
-          onRemove={handleBulkRemove}
-          onChangeQuery={() => setScopeEdit({ field: 'query' })}
-          onChangeTicker={() => setScopeEdit({ field: 'ticker' })}
-          onClear={clearSelection}
-        />
+        <div
+          style={{
+            position: 'fixed',
+            left: 0,
+            right: 0,
+            bottom: isMobile ? 16 : 24,
+            display: 'flex',
+            justifyContent: 'center',
+            padding: '0 12px',
+            zIndex: 50,
+            pointerEvents: 'none',
+          }}
+        >
+          <div style={{ pointerEvents: 'auto', maxWidth: '100%' }}>
+            <BulkToolbar
+              selectedCount={selectedIds.size}
+              canChangeQuery={canChangeQuery}
+              canChangeTicker={canChangeTicker}
+              isMobile={isMobile}
+              onAddToContext={handleBulkAddToContext}
+              onAddToDashboard={handleBulkAddToDashboard}
+              onRemove={handleBulkRemove}
+              onChangeQuery={() => setScopeEdit({ field: 'query' })}
+              onChangeTicker={() => setScopeEdit({ field: 'ticker' })}
+              onClear={clearSelection}
+            />
+          </div>
+        </div>
       )}
 
       {/* ── Grid / Empty state ──────────────────────────────────────────── */}
