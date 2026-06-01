@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.56.0](https://github.com/Token-Buzz/website/compare/v0.55.0...v0.56.0) (2026-06-01)
+
+
+### 🚀 Features
+
+* **application:** volume Y-axis labels + floating bulk-action pill ([#348](https://github.com/Token-Buzz/website/issues/348)) ([b10d449](https://github.com/Token-Buzz/website/commit/b10d4491c66a10c36c734ff4956d87efab565460))
+
 ## [0.55.0](https://github.com/Token-Buzz/website/compare/v0.54.0...v0.55.0) (2026-06-01)
 
 
