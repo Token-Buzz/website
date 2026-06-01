@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.57.0](https://github.com/Token-Buzz/website/compare/v0.56.0...v0.57.0) (2026-06-01)
+
+
+### 🚀 Features
+
+* **application:** page-loading skeletons + route-progress bar ([#358](https://github.com/Token-Buzz/website/issues/358)) ([0432f09](https://github.com/Token-Buzz/website/commit/0432f0919500f7a11840098ddb6f5229b3b7eec7))
+
+
+### 🐛 Fixes
+
+* **application:** redirect unauthenticated users away from authed pages ([#360](https://github.com/Token-Buzz/website/issues/360)) ([b405391](https://github.com/Token-Buzz/website/commit/b40539133b5579b322937cf1154d424f07690e11)), closes [#334](https://github.com/Token-Buzz/website/issues/334)
+* **marketing:** point CTA buttons to pricing section ([#353](https://github.com/Token-Buzz/website/issues/353)) ([5830dd6](https://github.com/Token-Buzz/website/commit/5830dd644b152d59ce4b0f79ab68d13778f9d9cd)), closes [#332](https://github.com/Token-Buzz/website/issues/332)
+
 ## [0.56.0](https://github.com/Token-Buzz/website/compare/v0.55.0...v0.56.0) (2026-06-01)
 
 
