@@ -17,10 +17,37 @@ export interface TokenRef {
   source: string    // provider id, e.g. 'geckoterminal'
 }
 
+export interface TokenCandidate {
+  pool: string              // DEX pool address
+  mint: string              // base-token SPL mint
+  name: string              // pool display name, e.g. "BONK / SOL"
+  baseSymbol: string | null
+  baseName: string | null
+  quoteSymbol: string | null
+  dex: string | null        // dex id or human name, e.g. "Raydium"
+  priceUsd: number | null
+  reserveUsd: number | null
+  volume24hUsd: number | null
+  chain: string             // 'solana'
+  source: string            // provider id, e.g. 'geckoterminal'
+}
+
+/** Convert a TokenCandidate to a TokenRef, using the supplied symbol as the canonical symbol. */
+export function candidateToRef(symbol: string, c: TokenCandidate): TokenRef {
+  return {
+    symbol: symbol.toUpperCase(),
+    mint: c.mint,
+    pool: c.pool,
+    chain: 'solana',
+    source: c.source,
+  }
+}
+
 export interface PriceProvider {
   readonly id: string
   resolve(symbol: string): Promise<TokenRef | null>
   fetchOHLCV(ref: TokenRef, interval: PriceInterval, from: number, to: number): Promise<OHLCVBar[]>
+  search(symbol: string): Promise<TokenCandidate[]>
 }
 
 export const INTERVAL_SECONDS: Record<PriceInterval, number> = {
