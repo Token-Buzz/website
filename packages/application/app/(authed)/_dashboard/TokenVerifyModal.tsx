@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Eyebrow, Icon, Button, fmtPrice } from './primitives'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -56,6 +57,13 @@ export function TokenVerifyModal({ symbol, onClose, onSelected }: TokenVerifyMod
   const [fetchSeq, setFetchSeq] = useState(0)
   const [selectingPool, setSelectingPool] = useState<string | null>(null)
   const [selectError, setSelectError] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+
+  // Client mount guard for portal
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true)
+  }, [])
 
   // Escape-to-close
   useEffect(() => {
@@ -135,7 +143,7 @@ export function TokenVerifyModal({ symbol, onClose, onSelected }: TokenVerifyMod
 
   const isBusy = selectingPool !== null
 
-  return (
+  const modal = (
     // Backdrop
     <div
       onClick={handleBackdropClick}
@@ -423,4 +431,7 @@ export function TokenVerifyModal({ symbol, onClose, onSelected }: TokenVerifyMod
       </div>
     </div>
   )
+
+  if (!mounted) return null
+  return createPortal(modal, document.body)
 }
