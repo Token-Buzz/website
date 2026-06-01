@@ -7,22 +7,30 @@
   "scripts": {
     "dev:marketing": "npm run dev -w packages/marketing",
     "dev:application": "npm run dev -w packages/application",
-    "lint": "npm run lint --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present && npm run lint:e2e",
     "lint:marketing": "npm run lint -w packages/marketing",
     "lint:application": "npm run lint -w packages/application",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint:e2e": "eslint playwright.config.ts e2e",
+    "typecheck": "npm run typecheck --workspaces --if-present && npm run typecheck:e2e",
     "typecheck:marketing": "npm run typecheck -w packages/marketing",
     "typecheck:application": "npm run typecheck -w packages/application",
+    "typecheck:e2e": "tsc --noEmit",
     "test:unit": "npm run test:unit --workspaces --if-present",
     "test:integration": "npm run test:integration --workspaces --if-present",
+    "test:e2e": "playwright test",
     "set-gitlab-vars": "tsx scripts/set-gitlab-vars.ts",
     "set-sst-vars": "tsx scripts/set-sst-vars.ts"
   },
   "devDependencies": {
     "@clerk/testing": "^2.0.34",
+    "@eslint/js": "^9",
+    "@playwright/test": "^1.60.0",
     "@tsconfig/node22": "^22",
+    "@types/node": "^22",
+    "eslint": "^9",
     "playwright": "^1.60.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "typescript-eslint": "^8"
   },
   "dependencies": {
     "sst": "4.14.1"
