@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.59.0](https://github.com/Token-Buzz/website/compare/v0.58.0...v0.59.0) (2026-06-01)
+
+
+### 🚀 Features
+
+* **marketing:** branded TB monogram favicon in Bungee Inline ([#364](https://github.com/Token-Buzz/website/issues/364)) ([5fd547d](https://github.com/Token-Buzz/website/commit/5fd547d5458fa093e7773e45be3fa8bea8f27225))
+
 ## [0.58.0](https://github.com/Token-Buzz/website/compare/v0.57.0...v0.58.0) (2026-06-01)
 
 
