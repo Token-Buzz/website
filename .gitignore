@@ -25,6 +25,7 @@ node_modules
 # playwright (e2e)
 /test-results/
 /playwright-report/
+/playwright-report-application/
 /playwright/.cache/
 /blob-report/
 

@@ -13,11 +13,12 @@ export default tseslint.config(
       '.sst/**',
       '.next/**',
       'playwright-report/**',
+      'playwright-report-application/**',
       'test-results/**',
     ],
   },
   {
-    files: ['playwright.config.ts', 'e2e/**/*.ts'],
+    files: ['playwright.config.ts', 'playwright.application.config.ts', 'e2e/**/*.ts'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     languageOptions: {
       ecmaVersion: 2022,

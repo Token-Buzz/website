@@ -14,6 +14,11 @@ const baseURL = `http://localhost:${PORT}`
 
 export default defineConfig({
   testDir: './e2e',
+  // The authed application suite lives under ./e2e/application and has its own
+  // standalone config (playwright.application.config.ts) that boots dynalite +
+  // the app server + Clerk. Exclude it here so the marketing suite stays
+  // self-contained and never tries to run the authed specs.
+  testIgnore: '**/application/**',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
