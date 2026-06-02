@@ -1,8 +1,8 @@
-import { auth } from '@clerk/nextjs/server'
+import { requireUserId } from "@/app/_auth/requireUserId";
 import { listSavedQueries } from '@monorepo-template/core/db/saved-queries'
 
 export async function GET() {
-  const { userId } = await auth()
+  const userId = await requireUserId()
   if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const queries = await listSavedQueries(userId)

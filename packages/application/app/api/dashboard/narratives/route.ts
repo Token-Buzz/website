@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { requireUserId } from "@/app/_auth/requireUserId";
 import { getAllTrackedQueries } from "@monorepo-template/core/db/user-data";
 import { readAggregateTopK } from "@monorepo-template/core/db/aggregates";
 import { bucketRange, hourBucket } from "@monorepo-template/core/db/keys";
@@ -8,7 +8,7 @@ import type { Narrative } from "@/app/(authed)/_dashboard/types";
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function GET() {
-  const { userId } = await auth();
+  const userId = await requireUserId();
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const allQueries = await getAllTrackedQueries(userId).catch(() => [] as string[]);

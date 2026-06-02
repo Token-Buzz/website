@@ -96,9 +96,29 @@ protocol: `https://app.pr-12.staging.tokenbuzz.app`. Override with
 ### Optional — auth token (for application API routes)
 
 Without `AUTH_TOKEN`, only the four marketing pages are exercised. To include
-the application API routes, provide a Clerk session JWT.
+the application API routes, provide a Clerk auth token.
 
-**Option A — `@clerk/testing` (recommended, headless):**
+**Preferred for load tests — long-lived JWT template token:**
+
+Create a **JWT template** in the Clerk dashboard (Clerk Dashboard → JWT
+Templates → New template). Set the **Token lifetime** to a long value (up to
+315360000 s = 10 years). Then mint a token for the `+clerk_test` user via the
+Clerk Backend API or the dashboard's "Generate token" button, and export it:
+
+```bash
+export AUTH_TOKEN=<long-lived-jwt>
+```
+
+The application's `requireUserId()` helper accepts this token on `pr-<N>` and
+non-production stages by verifying it directly with `verifyToken` (Clerk SDK)
+using the instance secret key. **Production rejects this path entirely** — the
+load-test JWT fallback is gated to `APP_STAGE !== "production"` at runtime,
+so a misconfigured token cannot authenticate against the live site.
+
+The JWT template setting lives under **Clerk Dashboard → JWT Templates**.
+Choose "Blank" and set the lifetime; no custom claims are required.
+
+**Option A — `@clerk/testing` (recommended, headless, short-lived):**
 
 Install ad hoc (do not commit):
 ```bash

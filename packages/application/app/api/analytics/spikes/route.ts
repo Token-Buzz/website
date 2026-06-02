@@ -1,8 +1,8 @@
-import { auth } from "@clerk/nextjs/server";
+import { requireUserId } from "@/app/_auth/requireUserId";
 import { getSpikingTokens } from "@monorepo-template/core/db/tokens";
 
 export async function GET(req: Request) {
-  const { userId } = await auth();
+  const userId = await requireUserId();
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);

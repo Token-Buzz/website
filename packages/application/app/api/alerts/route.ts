@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { requireUserId } from "@/app/_auth/requireUserId";
 import {
   createAlert,
   listAlerts,
@@ -42,7 +42,7 @@ function toRuleDTO(rule: AlertRule): AlertRuleDTO {
 }
 
 export async function GET(_req: Request) {
-  const { userId } = await auth();
+  const userId = await requireUserId();
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const alerts = await listAlerts(userId);
@@ -50,7 +50,7 @@ export async function GET(_req: Request) {
 }
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
+  const userId = await requireUserId();
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: Record<string, unknown>;
