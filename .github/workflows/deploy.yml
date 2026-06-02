@@ -77,6 +77,13 @@ jobs:
         id: gate
         run: echo "deploy=${{ (!contains(github.event.head_commit.message, '[skip deploy]') && !contains(github.event.pull_request.title, '[skip deploy]')) }}" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve application-E2E gate
+        id: e2e_app
+        # The authed application E2E suite is opt-in and master-only: it runs
+        # only on a push to master whose head commit message contains [E2E].
+        # On pull requests it never runs.
+        run: echo "run=${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[E2E]') }}" >> "$GITHUB_OUTPUT"
+
       - name: Install dependencies
         run: npm ci
 
@@ -102,6 +109,20 @@ jobs:
         # No AWS/Clerk/DynamoDB needed, so this gates the deploy alongside
         # unit/integration tests before credentials are configured.
         run: npm run test:e2e
+
+      - name: Application E2E tests (authed, offline)
+        # Opt-in via [E2E] on a master merge (see "Resolve application-E2E gate").
+        # Fully offline: the suite's globalSetup boots dynalite (in-memory
+        # DynamoDB) and signs in with Clerk test tokens against `next dev` on
+        # :3002 — no AWS. It runs before AWS credentials are configured, so a
+        # failure here skips the deploy steps below (it gates the production
+        # deploy). Requires the Clerk DEV/test instance keys as repo secrets.
+        if: steps.e2e_app.outputs.run == 'true'
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_TEST_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_TEST_SECRET_KEY }}
+          CLERK_TEST_EMAIL: ${{ secrets.CLERK_TEST_EMAIL }}
+        run: npm run test:e2e:application
 
       - name: Configure AWS credentials (OIDC)
         if: steps.gate.outputs.deploy == 'true'
