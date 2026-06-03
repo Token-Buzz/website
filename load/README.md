@@ -98,27 +98,69 @@ protocol: `https://app.pr-12.staging.tokenbuzz.app`. Override with
 Without `AUTH_TOKEN`, only the four marketing pages are exercised. To include
 the application API routes, provide a Clerk auth token.
 
-**Preferred for load tests — long-lived JWT template token:**
+App API routes need a token that outlives Clerk's ~60 s session token. However,
+**a long-lived JWT is a non-revocable bearer credential** — Clerk JWTs cannot
+be individually revoked; the only revocation lever is rotating the instance's
+signing keys, which invalidates every token at once. The correct posture is to
+**mint a short-lived (~1 h) token per run** rather than keeping a static
+long-lived one. **Do not use a 10-year token.**
 
-Create a **JWT template** in the Clerk dashboard (Clerk Dashboard → JWT
-Templates → New template). Set the **Token lifetime** to a long value (up to
-315360000 s = 10 years). Then mint a token for the `+clerk_test` user via the
-Clerk Backend API or the dashboard's "Generate token" button, and export it:
+#### One-time setup — JWT template (staging Clerk dashboard)
+
+1. Open the **staging** Clerk Dashboard → **JWT Templates** → **New template**.
+2. Name it `loadtest`, choose **Blank**, keep the default claims (the `sub`
+   claim must remain — it carries the user id).
+3. Set **Token lifetime** to `3600` seconds (1 hour).
+
+This only needs to be done once per staging instance.
+
+#### Per-run — mint a fresh token
 
 ```bash
-export AUTH_TOKEN=<long-lived-jwt>
+export AUTH_TOKEN=$(node load/scripts/mint-token.mjs)
+# then run your k6 scenario as usual:
+k6 run load/scenarios/smoke.js
 ```
 
-The application's `requireUserId()` helper accepts this token on `pr-<N>` and
-non-production stages by verifying it directly with `verifyToken` (Clerk SDK)
-using the instance secret key. **Production rejects this path entirely** — the
-load-test JWT fallback is gated to `APP_STAGE !== "production"` at runtime,
-so a misconfigured token cannot authenticate against the live site.
+The script (`load/scripts/mint-token.mjs`) reads these env vars — the two
+required ones are already present in Claude Code web sessions:
 
-The JWT template setting lives under **Clerk Dashboard → JWT Templates**.
-Choose "Blank" and set the lifetime; no custom claims are required.
+| Env var | Default | Purpose |
+|---|---|---|
+| `CLERK_SECRET_KEY` | _(required)_ | Staging instance secret key (`sk_test_…`) |
+| `CLERK_TEST_EMAIL` | _(required)_ | `+clerk_test@…` address to mint for |
+| `CLERK_JWT_TEMPLATE` | `loadtest` | JWT template name |
+| `TOKEN_TTL_SECONDS` | `3600` | Token lifetime passed to `getToken` |
 
-**Option A — `@clerk/testing` (recommended, headless, short-lived):**
+The script looks up the user by email, calls the Clerk Backend API to create a
+session, calls `getToken` with the template + TTL, and **prints only the raw
+JWT to stdout** — nothing else — so the `$()` capture works cleanly. All
+diagnostics go to stderr.
+
+#### Security note
+
+The token only authenticates on non-production stages. The `requireUserId()`
+helper accepts the `Authorization: Bearer` fallback **solely when
+`APP_STAGE !== "production"`** — production rejects it entirely, so a leaked
+token cannot authenticate against the live site. Because a Clerk JWT cannot be
+revoked once issued:
+
+- Keep `TTL` short (the default 3600 s is the recommended maximum for load tests).
+- **Never commit `AUTH_TOKEN`** to version control and keep it out of CI logs.
+- Re-mint at the start of each run — the script makes this trivial.
+- The combination of the staging Clerk instance and the `+clerk_test` user
+  limits blast radius: the token is useless on production even if it leaks.
+
+---
+
+#### Fallbacks (if Backend session creation is unavailable)
+
+Use these if `mint-token.mjs` exits with a 403/forbidden error (e.g. your
+staging Clerk plan disallows Backend API session creation). Note that both
+options produce short-lived session tokens that **may expire mid-run** for
+longer load scenarios.
+
+**Option A — `@clerk/testing` (headless, short-lived):**
 
 Install ad hoc (do not commit):
 ```bash
@@ -136,7 +178,7 @@ import { setupClerkTestingToken } from "@clerk/testing/playwright";
 
 See `CLAUDE.md` section "Local UI / browser testing" for the full pattern.
 
-**Option B — copy from browser:**
+**Option B — copy from browser (short-lived):**
 
 1. Sign in to the app at `https://app.pr-<N>.staging.tokenbuzz.app`.
 2. Open DevTools → Application → Cookies → copy the `__session` value.
