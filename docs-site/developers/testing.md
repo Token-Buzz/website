@@ -73,6 +73,8 @@ To run it locally, have the Clerk dev/test keys present in the environment, then
 
 The authed application E2E suite does **not** run on pull requests, and does not run on most `master` pushes. It is **opt-in**: it runs only when the event is a push to `master` **and** the head (merge/squash) commit message contains the literal tag `[E2E]`. To exercise it, include `[E2E]` in the commit message you merge to `master`. When it runs, it runs offline before AWS credentials are configured, so a failure **blocks** the production deploy.
 
+The convenient way to add the tag when wrapping up a PR is the `/merge-and-close-and-test` command, which mirrors `/merge-and-close` but injects `[E2E]` into the squash commit body so the resulting `master` deploy runs the authed suite.
+
 ##### Required CI secrets
 
 The authed suite needs three GitHub Actions repository secrets, which **must be the Clerk dev/test instance** (a `pk_test…` / `sk_test…` pair — never the production Clerk instance):
