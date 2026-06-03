@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test'
 import { clerk, setupClerkTestingToken } from '@clerk/testing/playwright'
 
+// In CI this suite runs only on master pushes tagged [E2E] (the opt-in gate);
+// on PRs it never runs.
 /**
  * Authed smoke suite for the application app (@website/application).
  *
