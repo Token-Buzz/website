@@ -20,6 +20,8 @@ import type { Server } from 'node:http'
  *     reproduce the minimal table definitions here rather than deep-importing.
  *  3. Runs clerkSetup() to mint the Clerk testing token (uses CLERK_SECRET_KEY +
  *     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY). Requires outbound network to Clerk.
+ *  4. Ensures the CLERK_TEST_EMAIL user exists in the Clerk dev instance via the
+ *     Clerk Backend API (clerk.signIn does not create users). Idempotent.
  *
  * Returns a teardown fn that stops dynalite.
  */
@@ -258,6 +260,62 @@ async function startDynalite(): Promise<Server | undefined> {
   return server.listening ? server : undefined
 }
 
+/**
+ * Ensure the CLERK_TEST_EMAIL user EXISTS in the Clerk Development instance.
+ *
+ * WHY: `clerk.signIn({ strategy: 'email_code', identifier: CLERK_TEST_EMAIL })`
+ * (used by the smoke specs) signs in an EXISTING user — it does NOT create one.
+ * In CI the Clerk dev instance has no pre-seeded user, so sign-in fails with
+ * "Couldn't find your account." Creating the user here (via the Clerk Backend
+ * API) makes the suite hermetic: CI no longer depends on a manually pre-created
+ * dashboard user. The `+clerk_test` address + Clerk's fixed dev OTP `424242`
+ * handle the email_code sign-in, so no password is needed.
+ *
+ * Idempotent: if the user already exists (the local sandbox case), Clerk returns
+ * HTTP 422 `form_identifier_exists` — we treat that as success and return.
+ * Any other non-OK response throws loudly so a real misconfiguration (bad secret
+ * key, or a publishable/secret key from different Clerk instances) fails fast.
+ */
+async function ensureTestUserExists(): Promise<void> {
+  const secretKey = process.env.CLERK_SECRET_KEY
+  const email = process.env.CLERK_TEST_EMAIL
+  // The globalSetup guard above already asserts these are present; narrow types.
+  if (!secretKey || !email) {
+    throw new Error('[application e2e] CLERK_SECRET_KEY / CLERK_TEST_EMAIL missing')
+  }
+
+  const res = await fetch('https://api.clerk.com/v1/users', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email_address: [email],
+      skip_password_requirement: true,
+    }),
+  })
+
+  if (res.ok) {
+    console.log('[application e2e] ensured Clerk test user exists (created)')
+    return
+  }
+
+  const bodyText = await res.text()
+
+  // 422 form_identifier_exists ⇒ the user is already there (the local case).
+  if (res.status === 422 && /form_identifier_exists|taken|already/i.test(bodyText)) {
+    console.log('[application e2e] ensured Clerk test user exists (already present)')
+    return
+  }
+
+  throw new Error(
+    `[application e2e] Failed to ensure Clerk test user via Backend API ` +
+      `(HTTP ${res.status}). This usually means a bad CLERK_SECRET_KEY or a ` +
+      `publishable/secret key mismatch (different Clerk instances). Response: ${bodyText}`,
+  )
+}
+
 async function createTables(): Promise<void> {
   const client = new DynamoDBClient({
     endpoint: ENDPOINT,
@@ -298,6 +356,10 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
 
   // Mint the Clerk testing token (needs outbound network to the Clerk API).
   await clerkSetup()
+
+  // Ensure the test user exists in the Clerk dev instance (clerk.signIn does not
+  // create users) — makes the suite hermetic so CI doesn't need a pre-seeded user.
+  await ensureTestUserExists()
 
   return async () => {
     if (!server) return
