@@ -112,3 +112,101 @@ Additionally, on **`master` pushes whose commit message contains `[E2E]`**, the 
 ## A note on the application (authed) app
 
 The authenticated `application` app **is** covered by a committed E2E suite — the opt-in, offline `npm run test:e2e:application` suite described above, which uses dynalite for DynamoDB and [`@clerk/testing`](https://clerk.com/docs/testing/playwright/overview) test tokens for Clerk sign-in. Because it is master-only and opt-in via the `[E2E]` commit tag, day-to-day exploratory checks of authed UI flows are still commonly done through ad-hoc Playwright runs locally (same Clerk test-token recipe) rather than waiting on CI.
+
+## Appendix — test inventory (file-by-file)
+
+A map of what each test file covers, grouped by layer. The `describe`/`test` titles in each file are the source of truth for exact behaviour; this list is a navigational aid and will drift as suites grow, so treat counts as approximate.
+
+### Unit tests (`npm run test:unit`) — pure logic, no DB or network
+
+Run by each workspace's `test:unit` script (Vitest). External services (DynamoDB client, Twitter/Reddit/KMS, …) are mocked; files live beside the code as `*.test.ts` (the config excludes `*.integration.test.ts`).
+
+**DynamoDB key builders** (`packages/core/src/db/`) — assert the exact `pk`/`sk`/GSI string format and key-space disjointness so the single-table design stays consistent:
+
+- `db/conversation-keys.test.ts` — conversation + message key format and disjoint prefixes.
+- `db/feed-keys.test.ts` — token-profile, feed-item, feed/guid/source GSIs, watchlist-by-symbol GSI.
+- `db/notification-prefs-key.test.ts` — notification-prefs key format.
+- `db/rate-limit.test.ts` — rate-limit key, retry-after seconds, near-limit threshold, EMF metric shape.
+- `db/saved-query-keys.test.ts` — saved-query key format.
+- `db/stripe-keys.test.ts` — Stripe event + customer key format.
+- `db/usage-keys.test.ts` — plan + usage key format.
+
+**External data adapters** (`packages/core/src/lib/`) — map each provider's API response to the internal `RawTweet`, plus error/retry/pagination handling:
+
+- `lib/twitter.test.ts` · `lib/reddit.test.ts` · `lib/discord.test.ts` · `lib/telegram.test.ts` · `lib/farcaster.test.ts` — per-provider mappers, typed API errors, retry on 5xx/network (no retry on 4xx), pagination, rate-limit/`Retry-After` handling; Reddit/Telegram also cover BYOK credential encode/decode/validate.
+
+**Billing & subscriptions** (`packages/core/src/billing/`):
+
+- `billing/stripe.test.ts` — status mapping (active/past_due/trialing), price-ID lookup, dunning detection, grace window, effective-plan logic.
+- `billing/tiers.test.ts` — free/pro/alpha limits, quota evaluation (ingestion/HUM/refresh), plan rank, history TTL, billing period.
+
+**Analytics, price & movers** (`packages/core/src/`):
+
+- `movers.test.ts` — buzz-delta percent change, no-prior sentinel, zero-volume edge; rolling 1H/24H window ranges.
+- `ticker.test.ts` — derive price + 24h delta from candle bars (empty/short/zero-prior edges).
+- `live-feed.test.ts` — merge paginated feeds newest-first with limit + cursor composition.
+- `social-events.test.ts` — volume/sentiment spike detection (sigma outliers, min-sample guard), KOL-handle check, event builders.
+- `providers.test.ts`, `providers/geckoterminal.test.ts`, `providers/jupiter.test.ts`, `providers/price.test.ts` — provider registry + price-source adapters.
+
+**Queries & ingestion** (`packages/core/src/lib/`, `sources/`):
+
+- `lib/queryId.test.ts` — query-ID encode/decode round-trip + hash validation.
+- `lib/recent-queries.test.ts` — dedup keeping most recent, limit, order.
+- `lib/poll-assignment.test.ts` — assign queries to BYOK holders (case-insensitive dedup, first-holder-wins).
+- `lib/group-queries.test.ts` — Today/Yesterday/This-week/Older bucketing.
+- `sources/ingestion-mode.test.ts`, `sources/registry.test.ts`, `sources/apify-adapter.test.ts` — ingestion-mode resolution, source registry, Apify adapter.
+
+**Alerting & crypto** (`packages/core/src/`):
+
+- `alerts-eval.test.ts` — rule evaluation for mention_spike / price_move / sentiment_swing, threshold boundaries, cooldown.
+- `lib/crypto.test.ts` — KMS encrypt/decrypt of secrets (mocked KMS).
+
+**Application UI logic** (`packages/application/app/`):
+
+- `_dashboard/humTime.test.ts` — relative-time formatting; `_dashboard/commandRegistry.test.ts` — pick-by-id ordering; `_dashboard/humContext.test.ts` — Hum context build/serialize; plus `_dashboard/brief`, `candleChart`, `narratives`, `todayData`, `commandSwatch`, and `_analytics/concurrencyGate` dashboard/analytics helpers.
+- `dashboards/_components/grid.test.ts`, `scope.test.ts`, `cardActions.test.ts` — grid layout save/restore, scope filtering, card actions.
+- `_auth/postAuthDest.test.ts`, `_auth/redirectDest.test.ts` — post-sign-in destination + redirect rules.
+- `api/webhooks/stripe/_email.test.ts` — alert email URL/subject building; `api/hum/chat/_models.test.ts` — Hum model selection.
+
+**Jobs / scripts / marketing:**
+
+- `packages/jobs/src/alert-email.test.ts`, `alert-evaluator.test.ts` — alert email building + evaluation job.
+- `packages/scripts/src/stamp.test.ts`, `release-notes.test.ts` — cycle-time stamp + release-notes generation.
+- `packages/marketing/app/_components/tickerFormat.test.ts` — ticker symbol formatting.
+
+### Integration tests (`npm run test:integration`) — real DynamoDB code against dynalite
+
+Vitest with `packages/core/vitest.integration.config.ts`: a `globalSetup` boots in-memory **dynalite**, recreates the `infra/db.ts` tables + GSIs, and the real `packages/core/src/db` functions run actual write→read round-trips. Catches index/table-shape bugs unit tests can't. All files are `packages/core/test/*.integration.test.ts`:
+
+- `account.integration.test.ts` — export/delete all user data, ciphertext redaction.
+- `billing.integration.test.ts` — Stripe event idempotency, customer↔user index, subscription→plan writes, grace/downgrade.
+- `monitors.integration.test.ts`, `monitor-poll.integration.test.ts`, `monitor-poll-apify.integration.test.ts` — monitor CRUD + poll-state transitions (incl. Apify).
+- `alerts.integration.test.ts` — alert-rule CRUD + trigger records.
+- `saved-queries.integration.test.ts`, `saved-queries-list.integration.test.ts`, `saved-query-retention.integration.test.ts` — saved-query CRUD, list pagination, per-plan TTL.
+- `dashboards.integration.test.ts`, `watchlist-entries.integration.test.ts` — dashboard layouts + watchlist entries.
+- `feeds.integration.test.ts`, `live-feed.integration.test.ts`, `social-events.integration.test.ts` — feed-item storage + GSI queries, live-feed pagination, social-event ingestion.
+- `source-counts.integration.test.ts`, `pulse-series.integration.test.ts`, `spike-pipeline.integration.test.ts` — source mention counts, rolling pulse series, end-to-end spike detection.
+- `byok.integration.test.ts`, `byok-poll.integration.test.ts` — encrypted per-user BYOK credential storage + poll state.
+- `conversations.integration.test.ts` — Hum conversation/message storage + `updatedAt`-DESC ordering.
+- `ingestion-mode.integration.test.ts`, `poll-state.integration.test.ts`, `ohlcv.integration.test.ts`, `usage.integration.test.ts`, `token-ref.integration.test.ts`, `notification-prefs.integration.test.ts` — ingestion-mode state, poll-state TTL, candle history, usage-quota tracking, token-alias resolution, notification preferences.
+
+### Marketing E2E (`npm run test:e2e`) — `e2e/marketing/smoke.spec.ts`
+
+Playwright + Chromium against `next dev` (:3000), offline:
+
+1. Homepage hero + primary CTA (links to `#pricing`).
+2. Top navigation renders (Features / Pricing / Changelog links).
+3. Footer present with copyright.
+4. Footer "Contact" → `/contact` ("Get in touch").
+5. `/coming-soon` renders its heading.
+
+### Authed application E2E (`npm run test:e2e:application`) — `e2e/application/smoke.spec.ts`
+
+`global-setup.ts` boots dynalite + recreates tables, runs `clerkSetup()`, and creates the `CLERK_TEST_EMAIL` user via the Clerk Backend API; each test injects a Clerk testing token and signs in headlessly (email-code OTP `424242` for the `+clerk_test` address) against `next dev` (:3002):
+
+1. `/alerts` renders the "Alert rules" heading + "No alert rules yet" empty state.
+2. `/live-feed` renders the "Live feed" heading.
+
+### Not run in CI
+
+`npm test -w packages/core` runs Vitest under `sst shell` (needs a live AWS stage / `Resource` bindings) — for local checks that require real SST resources. CI uses the offline dynalite path instead so it stays reproducible and AWS-free.
