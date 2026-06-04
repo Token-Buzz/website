@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.60.2](https://github.com/Token-Buzz/website/compare/v0.60.1...v0.60.2) (2026-06-03)
+
+
+### 🐛 Fixes
+
+* **e2e:** create the Clerk test user in authed E2E global setup ([#385](https://github.com/Token-Buzz/website/issues/385)) ([ba2b903](https://github.com/Token-Buzz/website/commit/ba2b9036bafc07df3d556c77cdcb59752a5d8aea))
+
 ## [0.60.1](https://github.com/Token-Buzz/website/compare/v0.60.0...v0.60.1) (2026-06-01)
 
 
