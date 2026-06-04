@@ -456,7 +456,11 @@ function TriggerRow({
         body: JSON.stringify({ sk: trigger.sk }),
       })
     }
-    router.push(trigger.link)
+    if (trigger.link.startsWith('http://') || trigger.link.startsWith('https://')) {
+      window.open(trigger.link, '_blank', 'noopener,noreferrer')
+    } else {
+      router.push(trigger.link)
+    }
   }
 
   return (

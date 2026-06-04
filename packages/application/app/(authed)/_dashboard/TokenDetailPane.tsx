@@ -97,6 +97,55 @@ function SetAlertModal({ symbol, onClose }: { symbol: string; onClose: () => voi
   const [success, setSuccess] = useState(false)
   const isMobile = useIsMobile()
 
+  // ── Per-token press-release alert (M13 Phase 4) ──────────────────────────
+  const [pressAvailable, setPressAvailable] = useState(false)
+  const [pressEnabled, setPressEnabled] = useState(false)
+  const [pressSaving, setPressSaving] = useState(false)
+  const [pressError, setPressError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadPress() {
+      try {
+        const res = await fetch(`/api/tokens/${encodeURIComponent(symbol)}/press-alert`)
+        if (cancelled || !res.ok) return
+        const data = await res.json() as { available?: boolean; enabled?: boolean }
+        if (cancelled) return
+        setPressAvailable(Boolean(data.available))
+        setPressEnabled(Boolean(data.enabled))
+      } catch {
+        // Leave defaults (unavailable) on error
+      }
+    }
+    void loadPress()
+    return () => { cancelled = true }
+  }, [symbol])
+
+  async function togglePress() {
+    if (!pressAvailable || pressSaving) return
+    const next = !pressEnabled
+    setPressSaving(true)
+    setPressError(null)
+    // Optimistic update
+    setPressEnabled(next)
+    try {
+      const res = await fetch(`/api/tokens/${encodeURIComponent(symbol)}/press-alert`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: next }),
+      })
+      if (!res.ok) {
+        setPressEnabled(!next) // revert
+        setPressError('Couldn\'t update press alert.')
+      }
+    } catch {
+      setPressEnabled(!next) // revert
+      setPressError('Couldn\'t update press alert.')
+    } finally {
+      setPressSaving(false)
+    }
+  }
+
   const needsThreshold = condition === 'mention_spike' || condition === 'price_move'
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -158,6 +207,51 @@ function SetAlertModal({ symbol, onClose }: { symbol: string; onClose: () => voi
         ) : (
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Press-release opt-in (independent of the metric-alert form below) */}
+              <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: 12,
+                paddingBottom: 16, borderBottom: '1px solid var(--border-hairline)',
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ font: '600 13px var(--font-sans)', color: 'var(--fg-1)', marginBottom: 3 }}>
+                    Press releases
+                  </div>
+                  <div style={{ font: '400 12px/1.4 var(--font-sans)', color: 'var(--fg-3)' }}>
+                    {pressAvailable
+                      ? `Get notified when $${symbol} publishes a press release.`
+                      : 'No press feed available for this token.'}
+                  </div>
+                  {pressError && (
+                    <div style={{ font: '500 11px var(--font-sans)', color: 'var(--neg)', marginTop: 4 }}>
+                      {pressError}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={pressEnabled}
+                  aria-label="Toggle press-release alerts"
+                  disabled={!pressAvailable || pressSaving}
+                  onClick={() => { void togglePress() }}
+                  style={{
+                    flexShrink: 0,
+                    width: 42, height: 24, borderRadius: 999, border: 'none',
+                    position: 'relative',
+                    cursor: !pressAvailable || pressSaving ? 'default' : 'pointer',
+                    background: pressEnabled && pressAvailable ? 'var(--accent)' : 'var(--border-strong)',
+                    opacity: pressAvailable ? 1 : 0.5,
+                    transition: 'background 120ms cubic-bezier(0.2,0.7,0.2,1)',
+                  }}
+                >
+                  <span style={{
+                    position: 'absolute', top: 3, left: pressEnabled && pressAvailable ? 21 : 3,
+                    width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                    transition: 'left 120ms cubic-bezier(0.2,0.7,0.2,1)',
+                  }} />
+                </button>
+              </div>
+
               {/* Condition selector */}
               <div>
                 <Eyebrow style={{ marginBottom: 8 }}>Condition</Eyebrow>
