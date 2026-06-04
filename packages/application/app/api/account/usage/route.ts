@@ -1,11 +1,11 @@
-import { auth } from "@clerk/nextjs/server";
+import { requireUserId } from "@/app/_auth/requireUserId";
 import { canIngestQuery, canUseHum, canRefreshQuery } from "@monorepo-template/core/db/usage";
 import { TIERS } from "@monorepo-template/core/billing/tiers";
 import { getByokKeyStatus } from "@monorepo-template/core/db/byok";
 import { PROVIDERS } from "@monorepo-template/core/providers";
 
 export async function GET() {
-  const { userId } = await auth();
+  const userId = await requireUserId();
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const [ingestion, hum, refresh] = await Promise.all([

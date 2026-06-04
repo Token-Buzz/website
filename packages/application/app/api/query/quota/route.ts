@@ -1,8 +1,8 @@
-import { auth } from "@clerk/nextjs/server";
+import { requireUserId } from "@/app/_auth/requireUserId";
 import { canIngestQuery } from "@monorepo-template/core/db/usage";
 
 export async function GET() {
-  const { userId } = await auth();
+  const userId = await requireUserId();
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const quota = await canIngestQuery(userId);

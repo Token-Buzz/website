@@ -1,9 +1,9 @@
-import { auth } from "@clerk/nextjs/server";
+import { requireUserId } from "@/app/_auth/requireUserId";
 import { readAggregateTopK } from "@monorepo-template/core/db/aggregates";
 import { bucketRange } from "@monorepo-template/core/db/keys";
 
 export async function GET(req: Request) {
-  const { userId } = await auth();
+  const userId = await requireUserId();
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);

@@ -48,3 +48,7 @@ node_modules
 # separate repos
 packages/.api-caller
 
+# k6 load test — generated reports (per-run artifacts, not for committing)
+# load/baseline/*.json snapshots ARE committed (captured from real runs)
+load/reports/
+

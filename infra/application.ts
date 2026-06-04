@@ -67,6 +67,7 @@ export const app = new sst.aws.Nextjs("Application", {
         STRIPE_PRICE_ALPHA_YEAR: stripePriceAlphaYear.value,
         HUM_MODEL: humModel.value,
         HUM_SYSTEM_PROMPT: humSystemPrompt.value,
+        APP_STAGE: $app.stage,
     },
     permissions: [
         {

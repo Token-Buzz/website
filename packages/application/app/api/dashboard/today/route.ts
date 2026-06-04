@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { requireUserId } from "@/app/_auth/requireUserId";
 import { listWatchlistEntries } from "@monorepo-template/core/db/watchlist-entries";
 import { getAllTrackedQueries } from "@monorepo-template/core/db/user-data";
 import { getSpikingTokens, listTrackedTokens } from "@monorepo-template/core/db/tokens";
@@ -108,7 +108,7 @@ function conditionToTag(condition: AlertCondition): string {
 // ── Route handler ─────────────────────────────────────────────────────────
 
 export async function GET() {
-  const { userId } = await auth();
+  const userId = await requireUserId();
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   // Fan out all data fetches in parallel. Each is wrapped in a try/catch so
