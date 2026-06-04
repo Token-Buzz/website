@@ -403,6 +403,7 @@ interface PaneData {
 interface TokenProfile {
   websiteUrl?: string
   pressUrl?: string
+  pressFeedUrl?: string
   githubUrl?: string
   contractAddress?: string
   chain?: string
@@ -438,7 +439,14 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
   const [refreshing, setRefreshing] = useState(false)
   const [ingestError, setIngestError] = useState<React.ReactNode | null>(null)
   const [profile, setProfile] = useState<TokenProfile | null>(null)
+  const [profileRefresh, setProfileRefresh] = useState(0)
   const [pressItems, setPressItems] = useState<FeedItem[]>([])
+  const [feedHealth, setFeedHealth] = useState<{ stale: boolean; errorCount: number; lastError?: string } | null>(null)
+  // Link-override editor state
+  const [linksEditing, setLinksEditing] = useState(false)
+  const [linkPressUrl, setLinkPressUrl] = useState('')
+  const [linkPressFeedUrl, setLinkPressFeedUrl] = useState('')
+  const [linksSaving, setLinksSaving] = useState(false)
   const isMobile = useIsMobile()
 
   // Ref to abort stale in-flight fetches when the token changes mid-load
@@ -735,28 +743,30 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
     }
     void loadProfile()
     return () => { cancelled = true }
-  }, [token.sym])
+  }, [token.sym, profileRefresh])
 
-  // Fetch press feed items whenever the symbol changes
+  // Fetch press feed items (and feed health) whenever the symbol changes
   useEffect(() => {
     let cancelled = false
     async function loadPressItems() {
       setPressItems([])
+      setFeedHealth(null)
       try {
         const res = await fetch(`/api/tokens/${encodeURIComponent(token.sym)}/feed?kind=PRESS&limit=10`)
         if (cancelled) return
-        if (!res.ok) { setPressItems([]); return }
-        const data = await res.json() as { items: FeedItem[] }
+        if (!res.ok) { setPressItems([]); setFeedHealth(null); return }
+        const data = await res.json() as { items: FeedItem[]; feedHealth?: { stale: boolean; errorCount: number; lastError?: string } | null }
         if (cancelled) return
         setPressItems(data.items ?? [])
+        setFeedHealth(data.feedHealth ?? null)
       } catch {
         // On error, leave empty
-        if (!cancelled) setPressItems([])
+        if (!cancelled) { setPressItems([]); setFeedHealth(null) }
       }
     }
     void loadPressItems()
     return () => { cancelled = true }
-  }, [token.sym])
+  }, [token.sym, profileRefresh])
 
   const price = paneData?.price ?? (paneLoading ? null : token.price)
   const d24 = paneData?.d24 ?? token.d24
@@ -775,6 +785,44 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
     sent: (tw.sentiment === 'bull' || tw.sentiment === 'bear') ? tw.sentiment : 'neu',
     text: tw.text,
   }))
+
+  // Open the link-override editor and prefill from the user's saved overrides
+  async function openLinksEditor() {
+    setLinksEditing(true)
+    try {
+      const res = await fetch(`/api/tokens/${encodeURIComponent(token.sym)}/links`)
+      if (!res.ok) return
+      const data = await res.json() as { pressUrlOverride: string | null; pressFeedUrlOverride: string | null }
+      setLinkPressUrl(data.pressUrlOverride ?? '')
+      setLinkPressFeedUrl(data.pressFeedUrlOverride ?? '')
+    } catch {
+      // Leave inputs as-is on error
+    }
+  }
+
+  // Save link overrides (empty string → null to clear), then refresh the profile
+  async function saveLinksEditor() {
+    if (linksSaving) return
+    setLinksSaving(true)
+    try {
+      const res = await fetch(`/api/tokens/${encodeURIComponent(token.sym)}/links`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pressUrl: linkPressUrl.trim() === '' ? null : linkPressUrl.trim(),
+          pressFeedUrl: linkPressFeedUrl.trim() === '' ? null : linkPressFeedUrl.trim(),
+        }),
+      })
+      if (!res.ok) return
+      setLinksEditing(false)
+      // Re-fetch profile + press feed so the Links block reflects the override
+      setProfileRefresh((n) => n + 1)
+    } catch {
+      // Keep editor open on error
+    } finally {
+      setLinksSaving(false)
+    }
+  }
 
   // Manual refresh: bypass cooldown and re-trigger ingest
   function handleManualRefresh() {
@@ -904,9 +952,65 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
       </div>
 
       {/* Links */}
-      {profile && (profile.websiteUrl || profile.pressUrl || profile.githubUrl || profile.contractAddress) && (
-        <div style={{ padding: '0 20px 16px', flexShrink: 0 }}>
-          <Eyebrow style={{ marginBottom: 10 }}>Links</Eyebrow>
+      <div style={{ padding: '0 20px 16px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <Eyebrow>Links</Eyebrow>
+          <button
+            onClick={() => { if (linksEditing) { setLinksEditing(false) } else { void openLinksEditor() } }}
+            style={{
+              background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+              font: '500 11px var(--font-mono)', color: 'var(--accent)',
+              textDecoration: 'underline',
+            }}
+          >
+            {linksEditing ? 'Cancel' : 'Edit links'}
+          </button>
+        </div>
+
+        {/* Inline link-override editor */}
+        {linksEditing && (
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: 10,
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: 8, padding: 12, marginBottom: 12,
+          }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <Eyebrow>Newsroom URL</Eyebrow>
+              <input
+                type="url"
+                value={linkPressUrl}
+                onChange={(e) => setLinkPressUrl(e.target.value)}
+                placeholder="https://…"
+                style={{
+                  font: '500 13px var(--font-mono)', padding: '9px 12px',
+                  border: '1px solid var(--border-strong)', borderRadius: 6,
+                  background: 'var(--bg-sunken)', color: 'var(--fg-1)', outline: 'none', width: '100%',
+                }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <Eyebrow>Press feed (RSS) URL</Eyebrow>
+              <input
+                type="url"
+                value={linkPressFeedUrl}
+                onChange={(e) => setLinkPressFeedUrl(e.target.value)}
+                placeholder="https://…/feed.xml"
+                style={{
+                  font: '500 13px var(--font-mono)', padding: '9px 12px',
+                  border: '1px solid var(--border-strong)', borderRadius: 6,
+                  background: 'var(--bg-sunken)', color: 'var(--fg-1)', outline: 'none', width: '100%',
+                }}
+              />
+            </label>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Button variant="primary" size="sm" onClick={() => void saveLinksEditor()} disabled={linksSaving}>
+                {linksSaving ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {profile && (profile.websiteUrl || profile.pressUrl || profile.githubUrl || profile.contractAddress) && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {profile.websiteUrl && (
               <a
@@ -972,13 +1076,27 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
               </span>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Recent press */}
-      {pressItems.length > 0 && (
+      {(pressItems.length > 0 || feedHealth?.stale) && (
         <div style={{ padding: '0 20px 16px', flexShrink: 0 }}>
           <Eyebrow style={{ marginBottom: 10 }}>Recent press</Eyebrow>
+          {feedHealth?.stale && (
+            <div style={{
+              font: '400 12px/1.4 var(--font-sans)',
+              color: 'var(--fg-2)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              padding: '8px 12px',
+              marginBottom: 10,
+            }}>
+              Press feed is currently unreachable — showing the last fetched items.
+            </div>
+          )}
+          {pressItems.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
             {pressItems.map((item, i) => (
               <div
@@ -1024,6 +1142,7 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
               </div>
             ))}
           </div>
+          )}
         </div>
       )}
 
