@@ -314,6 +314,16 @@ interface TokenProfile {
   chain?: string
 }
 
+// ── Feed item ──────────────────────────────────────────────────────────────
+
+interface FeedItem {
+  title: string
+  link: string
+  summary?: string
+  sourceName: string
+  publishedAt: string
+}
+
 // ── Token Detail Pane ──────────────────────────────────────────────────────
 
 interface TokenDetailPaneProps {
@@ -334,6 +344,7 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
   const [refreshing, setRefreshing] = useState(false)
   const [ingestError, setIngestError] = useState<React.ReactNode | null>(null)
   const [profile, setProfile] = useState<TokenProfile | null>(null)
+  const [pressItems, setPressItems] = useState<FeedItem[]>([])
   const isMobile = useIsMobile()
 
   // Ref to abort stale in-flight fetches when the token changes mid-load
@@ -632,6 +643,27 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
     return () => { cancelled = true }
   }, [token.sym])
 
+  // Fetch press feed items whenever the symbol changes
+  useEffect(() => {
+    let cancelled = false
+    async function loadPressItems() {
+      setPressItems([])
+      try {
+        const res = await fetch(`/api/tokens/${encodeURIComponent(token.sym)}/feed?kind=PRESS&limit=10`)
+        if (cancelled) return
+        if (!res.ok) { setPressItems([]); return }
+        const data = await res.json() as { items: FeedItem[] }
+        if (cancelled) return
+        setPressItems(data.items ?? [])
+      } catch {
+        // On error, leave empty
+        if (!cancelled) setPressItems([])
+      }
+    }
+    void loadPressItems()
+    return () => { cancelled = true }
+  }, [token.sym])
+
   const price = paneData?.price ?? (paneLoading ? null : token.price)
   const d24 = paneData?.d24 ?? token.d24
   const mentions = paneData?.mentions ?? token.mentions
@@ -845,6 +877,58 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
                 {profile.contractAddress.slice(0, 6)}…{profile.contractAddress.slice(-4)}
               </span>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Recent press */}
+      {pressItems.length > 0 && (
+        <div style={{ padding: '0 20px 16px', flexShrink: 0 }}>
+          <Eyebrow style={{ marginBottom: 10 }}>Recent press</Eyebrow>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+            {pressItems.map((item, i) => (
+              <div
+                key={i}
+                style={{
+                  padding: '10px 14px',
+                  borderBottom: i < pressItems.length - 1 ? '1px solid var(--border-hairline)' : 'none',
+                }}
+              >
+                <a
+                  href={item.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    font: '500 13px var(--font-sans)',
+                    color: 'var(--fg-1)',
+                    textDecoration: 'none',
+                    display: 'block',
+                    marginBottom: 3,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {item.title}
+                </a>
+                {item.summary && (
+                  <p style={{
+                    font: '400 12px/1.4 var(--font-sans)',
+                    color: 'var(--fg-2)',
+                    margin: '0 0 4px',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}>
+                    {item.summary}
+                  </p>
+                )}
+                <div style={{ font: '500 11px var(--font-mono)', color: 'var(--fg-3)', display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span>{item.sourceName}</span>
+                  <span style={{ color: 'var(--fg-4)' }}>·</span>
+                  <span>{timeSince(item.publishedAt)} ago</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
