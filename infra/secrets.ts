@@ -18,5 +18,3 @@ export const stripePriceAlphaMonth = new sst.Secret("STRIPE_PRICE_ALPHA_MONTH");
 export const stripePriceAlphaYear = new sst.Secret("STRIPE_PRICE_ALPHA_YEAR");
 export const humModel = new sst.Secret("HUM_MODEL");
 export const humSystemPrompt = new sst.Secret("HUM_SYSTEM_PROMPT");
-export const cryptopanicApiKey = new sst.Secret("CRYPTOPANIC_API_KEY");
-export const cryptocompareApiKey = new sst.Secret("CRYPTOCOMPARE_API_KEY");

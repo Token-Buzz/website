@@ -124,6 +124,36 @@ const META: Record<ProviderId, ProviderMeta> = {
     docUrl: 'https://docs.apify.com/platform/integrations/api',
     docLabel: 'Apify API docs',
   },
+  cryptopanic: {
+    id: 'cryptopanic',
+    label: 'CryptoPanic',
+    fields: [
+      { name: 'apiKey', label: 'API token', placeholder: 'Your CryptoPanic API token', secret: true },
+    ],
+    instructions: [
+      'Sign up or log in at https://cryptopanic.com',
+      'Go to your Profile → API and copy your auth token',
+      'Paste it below and click "Validate & save"',
+      'Your token is stored encrypted and never shared',
+    ],
+    docUrl: 'https://cryptopanic.com/developers/api/',
+    docLabel: 'CryptoPanic API docs',
+  },
+  cryptocompare: {
+    id: 'cryptocompare',
+    label: 'CryptoCompare',
+    fields: [
+      { name: 'apiKey', label: 'API key', placeholder: 'Your CryptoCompare API key', secret: true },
+    ],
+    instructions: [
+      'Sign up or log in at https://www.cryptocompare.com',
+      'Go to your profile → API Keys and generate or copy an API key',
+      'Paste it below and click "Validate & save"',
+      'Your key is stored encrypted and never shared',
+    ],
+    docUrl: 'https://developers.cryptocompare.com/',
+    docLabel: 'CryptoCompare API docs',
+  },
 }
 
 /**
@@ -139,11 +169,15 @@ export function getEnabledProviderMeta(): ProviderMeta[] {
 }
 
 /**
- * Returns provider metadata for all per-source BYOK providers (excludes 'apify').
- * Use this for the per-source tab bar so Apify never appears as a per-source tab.
+ * Returns provider metadata for all per-source social providers (category 'social') —
+ * excludes Apify and news providers.
+ * Use this for the per-source tab bar so Apify and news providers never appear there.
  */
 export function getPerSourceProviderMeta(): ProviderMeta[] {
-  return getEnabledProviderMeta().filter((m) => m.id !== 'apify')
+  return Object.values(PROVIDERS)
+    .filter((p) => p.enabled && p.category === 'social')
+    .map((p) => META[p.id])
+    .filter((m): m is ProviderMeta => m !== undefined)
 }
 
 /**
@@ -151,4 +185,16 @@ export function getPerSourceProviderMeta(): ProviderMeta[] {
  */
 export function getApifyProviderMeta(): ProviderMeta | undefined {
   return getEnabledProviderMeta().find((m) => m.id === 'apify')
+}
+
+/**
+ * Returns provider metadata for all news-aggregate BYOK providers (category 'news'),
+ * in registry order. Automatically includes any new news providers added to PROVIDERS
+ * as long as a META entry exists for them.
+ */
+export function getNewsProviderMeta(): ProviderMeta[] {
+  return Object.values(PROVIDERS)
+    .filter((p) => p.enabled && p.category === 'news')
+    .map((p) => META[p.id])
+    .filter((m): m is ProviderMeta => m !== undefined)
 }

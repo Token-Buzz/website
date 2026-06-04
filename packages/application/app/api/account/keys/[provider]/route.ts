@@ -13,6 +13,8 @@ import {
 import { validateKey as validateTelegramCredential } from "@monorepo-template/core/lib/telegram";
 import { validateToken as validateDiscordToken } from "@monorepo-template/core/lib/discord";
 import { validateApifyToken } from "@monorepo-template/core/lib/apify";
+import { validateKey as validateCryptopanicKey } from "@monorepo-template/core/lib/cryptopanic";
+import { validateKey as validateCryptocompareKey } from "@monorepo-template/core/lib/cryptocompare";
 import { isEnabledProvider, getProvider } from "@monorepo-template/core/providers";
 
 // ── Shared response shape ──────────────────────────────────────────────────────
@@ -167,6 +169,38 @@ async function validateAndEncodeKey(
         };
       }
       return { ok: true, apiKey: trimmed, last4 };
+    }
+
+    case "cryptopanic": {
+      const apiKey = body.apiKey;
+      if (typeof apiKey !== "string" || apiKey.trim().length === 0) {
+        return { ok: false, error: "apiKey (string) is required" };
+      }
+      const trimmed = apiKey.trim();
+      const { ok } = await validateCryptopanicKey(trimmed);
+      if (!ok) {
+        return {
+          ok: false,
+          error: "That CryptoPanic API token was rejected. Double-check it and try again.",
+        };
+      }
+      return { ok: true, apiKey: trimmed, last4: trimmed.slice(-4) };
+    }
+
+    case "cryptocompare": {
+      const apiKey = body.apiKey;
+      if (typeof apiKey !== "string" || apiKey.trim().length === 0) {
+        return { ok: false, error: "apiKey (string) is required" };
+      }
+      const trimmed = apiKey.trim();
+      const { ok } = await validateCryptocompareKey(trimmed);
+      if (!ok) {
+        return {
+          ok: false,
+          error: "That CryptoCompare API key was rejected. Double-check it and try again.",
+        };
+      }
+      return { ok: true, apiKey: trimmed, last4: trimmed.slice(-4) };
     }
 
     default:

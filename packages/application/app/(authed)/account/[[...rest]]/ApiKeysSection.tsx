@@ -6,6 +6,7 @@ import { ContinueButton } from '@/app/_auth/ContinueButton'
 import {
   getPerSourceProviderMeta,
   getApifyProviderMeta,
+  getNewsProviderMeta,
   type ProviderMeta,
 } from './providerMeta'
 import type { IngestionMode, IngestionSettings } from '@monorepo-template/core/sources/ingestion-mode'
@@ -616,7 +617,7 @@ const SOURCE_LABELS: Record<SocialSource, string> = {
 
 // ── Segmented control ─────────────────────────────────────────────────────────
 
-type IngestionModeView = 'per-source' | 'apify'
+type IngestionModeView = 'per-source' | 'apify' | 'news'
 
 interface SegmentedControlProps {
   value: IngestionModeView
@@ -628,6 +629,7 @@ function SegmentedControl({ value, onChange, disabled }: SegmentedControlProps) 
   const options: { id: IngestionModeView; label: string }[] = [
     { id: 'per-source', label: 'Per-source keys' },
     { id: 'apify', label: 'Apify' },
+    { id: 'news', label: 'News Aggregates' },
   ]
   return (
     <div
@@ -642,7 +644,7 @@ function SegmentedControl({ value, onChange, disabled }: SegmentedControlProps) 
         opacity: disabled ? 0.6 : 1,
       }}
     >
-      {options.map((opt) => (
+      {options.map((opt, idx) => (
         <button
           key={opt.id}
           type="button"
@@ -653,7 +655,7 @@ function SegmentedControl({ value, onChange, disabled }: SegmentedControlProps) 
           style={{
             appearance: 'none',
             border: 0,
-            borderRight: opt.id === 'per-source' ? '1px solid var(--border)' : undefined,
+            borderRight: idx < options.length - 1 ? '1px solid var(--border)' : undefined,
             padding: 'var(--sp-2) var(--sp-4)',
             fontFamily: 'var(--font-sans)',
             fontSize: 'var(--fs-small)',
@@ -875,8 +877,10 @@ function ApifyPanel({ settings, onSettingsChange }: ApifyPanelProps) {
 
 export function ApiKeysSection() {
   const perSourceProviders = getPerSourceProviderMeta()
+  const newsProviders = getNewsProviderMeta()
 
   const [activeIndex, setActiveIndex] = useState(0)
+  const [newsActiveIndex, setNewsActiveIndex] = useState(0)
   const [modeView, setModeView] = useState<IngestionModeView>('per-source')
   const [ingestionSettings, setIngestionSettings] = useState<IngestionSettings | null>(null)
   const [modeLoading, setModeLoading] = useState(true)
@@ -899,6 +903,10 @@ export function ApiKeysSection() {
   }, [])
 
   async function handleModeViewChange(view: IngestionModeView) {
+    if (view === 'news') {
+      setModeView('news')
+      return
+    }
     setModeView(view)
     const newDefault: IngestionMode = view === 'apify' ? 'apify' : 'per-source'
     const updated: IngestionSettings = {
@@ -972,6 +980,33 @@ export function ApiKeysSection() {
                   hidden={i !== activeIndex}
                 >
                   {i === activeIndex && <ProviderPanel meta={p} />}
+                </div>
+              ))}
+            </>
+          )}
+        </>
+      ) : modeView === 'news' ? (
+        <>
+          {newsProviders.length === 0 ? (
+            <div style={{ color: 'var(--fg-3)', fontSize: 'var(--fs-small)' }}>
+              No news providers are currently enabled.
+            </div>
+          ) : (
+            <>
+              <TabBar
+                providers={newsProviders}
+                activeIndex={newsActiveIndex}
+                onSelect={setNewsActiveIndex}
+              />
+              {newsProviders.map((p, i) => (
+                <div
+                  key={p.id}
+                  id={`tab-panel-${p.id}`}
+                  role="tabpanel"
+                  aria-labelledby={`tab-${p.id}`}
+                  hidden={i !== newsActiveIndex}
+                >
+                  {i === newsActiveIndex && <ProviderPanel meta={p} />}
                 </div>
               ))}
             </>
