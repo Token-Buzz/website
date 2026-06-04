@@ -11,7 +11,7 @@
 
 import { DeleteCommand, GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from './client'
-import { watchlistEntryKey } from './keys'
+import { watchlistBySymbolGsi, watchlistEntryKey } from './keys'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -28,6 +28,12 @@ export interface WatchlistEntry {
   order: number
   addedAt: string
   updatedAt: string
+  /** Whether per-token press alerts are enabled for this entry (M13 Phase 4). */
+  pressAlerts?: boolean
+  /** WatchersBySymbol GSI key — present only when pressAlerts is true. */
+  gsi1pk?: string
+  /** WatchersBySymbol GSI key — present only when pressAlerts is true. */
+  gsi1sk?: string
 }
 
 export interface CreateWatchlistEntryInput {
@@ -138,8 +144,70 @@ export async function updateWatchlistEntry(
 
   updated.updatedAt = new Date().toISOString()
 
+  // Maintain the WatchersBySymbol GSI invariant. The `{...existing}` spread above
+  // would otherwise carry stale gsi keys when the symbol changes.
+  if (updated.pressAlerts === true) {
+    const gsi = watchlistBySymbolGsi(updated.symbol, userId)
+    updated.gsi1pk = gsi.gsi1pk
+    updated.gsi1sk = gsi.gsi1sk
+  } else {
+    delete updated.gsi1pk
+    delete updated.gsi1sk
+  }
+
   await ddb.send(new PutCommand({ TableName: TableNames.userData, Item: updated }))
   return updated
+}
+
+/**
+ * Toggles per-token press alerts for a watchlist entry. When enabled, the row
+ * joins the WatchersBySymbol partition on the ByokHolders GSI (gsi1pk/gsi1sk);
+ * when disabled, the full PutCommand replaces the item without those attributes,
+ * dropping it out of the GSI. Returns null if the entry does not exist.
+ */
+export async function setWatchlistAlertPrefs(
+  userId: string,
+  entryId: string,
+  prefs: { pressAlerts: boolean },
+): Promise<WatchlistEntry | null> {
+  const existing = await getWatchlistEntry(userId, entryId)
+  if (!existing) return null
+
+  const updated: WatchlistEntry = { ...existing }
+  updated.pressAlerts = prefs.pressAlerts
+  updated.updatedAt = new Date().toISOString()
+
+  if (prefs.pressAlerts) {
+    const gsi = watchlistBySymbolGsi(updated.symbol, userId)
+    updated.gsi1pk = gsi.gsi1pk
+    updated.gsi1sk = gsi.gsi1sk
+  } else {
+    delete updated.gsi1pk
+    delete updated.gsi1sk
+  }
+
+  await ddb.send(new PutCommand({ TableName: TableNames.userData, Item: updated }))
+  return updated
+}
+
+/**
+ * Returns the watchlist entries that have opted into press alerts for a given
+ * symbol, via the WatchersBySymbol partition on the ByokHolders GSI. Only
+ * opted-in entries carry gsi1pk/gsi1sk, so this returns exactly the watchers
+ * whose `pressAlerts` is true.
+ */
+export async function listWatchersForSymbol(symbol: string): Promise<WatchlistEntry[]> {
+  const { Items = [] } = await ddb.send(
+    new QueryCommand({
+      TableName: TableNames.userData,
+      IndexName: 'ByokHolders',
+      KeyConditionExpression: 'gsi1pk = :pk',
+      ExpressionAttributeValues: {
+        ':pk': `WATCHSYM#${symbol.toUpperCase()}`,
+      },
+    }),
+  )
+  return Items as WatchlistEntry[]
 }
 
 export async function deleteWatchlistEntry(userId: string, entryId: string): Promise<void> {

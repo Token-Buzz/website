@@ -92,15 +92,18 @@ function sentScore(counts: SentCounts): number {
 
 // ── Alert condition → tone mapping ─────────────────────────────────────────
 
-function conditionToTone(condition: AlertCondition): "buzz" | "sent" | "handle" | "narrative" {
+function conditionToTone(
+  condition: AlertCondition | undefined,
+): "buzz" | "sent" | "handle" | "narrative" {
   if (condition === "sentiment_swing") return "sent";
-  // mention_spike, price_move, and any others → buzz
+  // mention_spike, price_move, press triggers (no condition), and any others → buzz
   return "buzz";
 }
 
-function conditionToTag(condition: AlertCondition): string {
+function conditionToTag(condition: AlertCondition | undefined): string {
   if (condition === "mention_spike") return "BUZZ SPIKE";
   if (condition === "sentiment_swing") return "SENTIMENT FLIP";
+  if (condition === undefined) return "PRESS";
   // price_move — only remaining variant
   return "PRICE MOVE";
 }

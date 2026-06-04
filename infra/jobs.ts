@@ -190,6 +190,20 @@ tokensTable.subscribe(
   { filters: [{ eventName: ["INSERT", "MODIFY"] }] },
 );
 
+// M13 Phase 4 — Press-alert dispatcher: on a new FEED# INSERT, fan out tone:'press'
+// alerts to every watchlist entry opted into that symbol's press releases.
+feedsTable.subscribe(
+  "FeedAlertDispatcher",
+  {
+    handler: "packages/jobs/src/feed-alerts.handler",
+    link: allTables,
+    timeout: "60 seconds",
+    memory: "256 MB",
+    transform: { function: withTracing },
+  },
+  { filters: [{ eventName: ["INSERT"] }] },
+);
+
 // 7. Daily rollup — 00:15 UTC
 new sst.aws.Cron("DailyRollup", {
   schedule: "cron(15 0 * * ? *)",
