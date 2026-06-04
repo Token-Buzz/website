@@ -30,6 +30,10 @@ export interface WatchlistEntry {
   updatedAt: string
   /** Whether per-token press alerts are enabled for this entry (M13 Phase 4). */
   pressAlerts?: boolean
+  /** User-submitted newsroom override (M13 Phase 5); read precedence user → global PROFILE. */
+  pressUrlOverride?: string
+  /** User-submitted feed override (M13 Phase 5); read precedence user → global PROFILE. */
+  pressFeedUrlOverride?: string
   /** WatchersBySymbol GSI key — present only when pressAlerts is true. */
   gsi1pk?: string
   /** WatchersBySymbol GSI key — present only when pressAlerts is true. */
@@ -185,6 +189,40 @@ export async function setWatchlistAlertPrefs(
     delete updated.gsi1pk
     delete updated.gsi1sk
   }
+
+  await ddb.send(new PutCommand({ TableName: TableNames.userData, Item: updated }))
+  return updated
+}
+
+/**
+ * Sets (or clears) the per-user press link overrides on a watchlist entry.
+ * Passing a field as undefined leaves it unchanged; passing null (or an empty
+ * string) clears it. Returns null if the entry does not exist.
+ *
+ * This function does NOT disturb the WatchersBySymbol GSI keys — the
+ * `{...existing}` spread preserves gsi1pk/gsi1sk exactly as they are on the
+ * existing row, so an entry that appears in listWatchersForSymbol stays there.
+ */
+export async function setWatchlistLinkOverrides(
+  userId: string,
+  entryId: string,
+  overrides: { pressUrlOverride?: string | null; pressFeedUrlOverride?: string | null },
+): Promise<WatchlistEntry | null> {
+  const existing = await getWatchlistEntry(userId, entryId)
+  if (!existing) return null
+
+  const updated: WatchlistEntry = { ...existing }
+
+  if (overrides.pressUrlOverride !== undefined) {
+    if (overrides.pressUrlOverride) updated.pressUrlOverride = overrides.pressUrlOverride
+    else delete updated.pressUrlOverride
+  }
+  if (overrides.pressFeedUrlOverride !== undefined) {
+    if (overrides.pressFeedUrlOverride) updated.pressFeedUrlOverride = overrides.pressFeedUrlOverride
+    else delete updated.pressFeedUrlOverride
+  }
+
+  updated.updatedAt = new Date().toISOString()
 
   await ddb.send(new PutCommand({ TableName: TableNames.userData, Item: updated }))
   return updated
