@@ -24,6 +24,70 @@ load/
 
 ---
 
+## Test catalogue — what each scenario does
+
+The harness ships the four standard load-test archetypes (the same categories
+[k6's own docs](https://grafana.com/docs/k6/latest/testing-guides/test-types/)
+define). They all hit the **same** routes (the four marketing pages + the app
+API routes) and assert the **same** thresholds — they differ only in the
+*shape* of traffic they apply.
+
+| Scenario | Traffic shape | Duration | Answers… |
+|---|---|---|---|
+| `smoke` | 1 user, flat | ~1 min | "Does every route work at all?" |
+| `load` | ramp to 10 users, hold | ~8 min | "Is it healthy under normal traffic?" |
+| `stress` | step-ramp to 30 users | ~12 min | "Where does it start to degrade?" |
+| `spike` | sudden burst to 50 users | ~5.5 min | "Does it survive a surge and recover?" |
+
+### `smoke` — sanity check
+- **Profile:** 1 virtual user (VU), constant, ~1 minute.
+- **Purpose:** confirm every targeted route returns a success status before
+  bothering with heavier runs. The fastest, cheapest gate.
+- **Pass:** every route `2xx`, 0 failed requests. If smoke fails, fix that
+  before running anything else.
+- **When:** first, always — and as a quick post-deploy confirmation.
+
+### `load` — sustained normal traffic
+- **Profile:** ramp 1→10 VUs over 2 min, hold 10 VUs for 5 min, ramp down.
+- **Purpose:** simulate average expected traffic and confirm latency and error
+  rate stay within budget under sustained use.
+- **Pass:** p95 latency under threshold, error rate < 1%, checks > 99% across
+  the run — especially during the 5-minute steady state.
+- **When:** to validate that a release behaves under realistic everyday load.
+
+### `stress` — find the breaking point
+- **Profile:** step-ramp 5→10→20→30 VUs, partial recovery, ramp down.
+- **Purpose:** push past normal load to find the "knee" — the point where
+  latency degrades or errors appear. The steps make the inflection visible in
+  the report.
+- **Pass:** uses the **same thresholds as `load` on purpose**, so a regression
+  that only appears under stress still fails the run. Graceful degradation high
+  up is useful data — note the VU count where it turns and feed it back into
+  the thresholds.
+- **When:** to learn capacity/headroom, e.g. before a marketing push.
+
+### `spike` — sudden surge + recovery
+- **Profile:** baseline 5 VUs, jump to 50 VUs in 30 s, hold 1 min, drop back,
+  confirm recovery over 2 min.
+- **Purpose:** model a viral moment or scheduled announcement and verify the
+  system survives the burst **and** returns to healthy latency afterward (giving
+  Lambda concurrency time to autoscale).
+- **Pass:** survives the burst within the looser spike latency allowance, and
+  latency returns to baseline within ~30 s of recovery. Sustained elevation
+  after the spike is the thing to investigate.
+- **When:** to validate burst resilience.
+
+**Common to all four:** they run against a `pr-<N>` stage only — never
+production; they are capped (≤ 50 VUs / ≤ 20 RPS) to stay within $0 free-tier
+quotas; and they hit DynamoDB-backed reads / CloudFront cache hits, with no
+fan-out to paid upstream APIs.
+
+> These are **performance** tests, run on-demand against a deployed stage. They
+> are intentionally separate from the functional tests that gate CI on every
+> push (`npm run test:unit`, `npm run test:integration`).
+
+---
+
 ## 1. Install k6
 
 k6 is a standalone binary — no Node.js dependency.

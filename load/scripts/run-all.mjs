@@ -36,7 +36,7 @@ import { fileURLToPath } from "node:url";
 const SCENARIOS = ["smoke", "load", "stress", "spike"];
 
 /** Rough wall-clock minutes per scenario (used for time estimate only). */
-const SCENARIO_MINUTES = { smoke: 1, load: 8, stress: 14, spike: 5.5 };
+const SCENARIO_MINUTES = { smoke: 1, load: 8, stress: 12, spike: 5.5 };
 
 // ---------------------------------------------------------------------------
 // Helpers

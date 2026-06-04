@@ -9,7 +9,7 @@
  *   - Stages: 0→5→10→20→30 VUs, then ramp down
  *   - Each VU: ~25 requests/iteration with 1 s sleep between each
  *   - Peak RPS ≈ 30 VUs × ~0.4 req/s ≈ 12 req/s (under RPS_CAP of 20)
- *   - Total duration: ~14 min
+ *   - Total duration: ~12 min
  *
  * The thresholds are intentionally the same as the load test so that
  * regressions discovered at stress load also fail the run (exit non-zero).
