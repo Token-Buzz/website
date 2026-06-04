@@ -1,6 +1,6 @@
 import { QueryCommand, UpdateCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from './client'
-import { bucketRange } from './keys'
+import { bucketRange, newsVolumeKey, newsVolumePk } from './keys'
 
 // ── Phase 3 read helpers ─────────────────────────────────────────────────────
 
@@ -462,4 +462,71 @@ export async function writeDailyRollup(
       ...data,
     },
   }))
+}
+
+// ── M13: News-volume counters (press/news feed volume per symbol) ────────────
+
+/**
+ * Increment the press/news feed volume counter for a (symbol, kind, day) by `n`.
+ *
+ * Uses an atomic ADD so concurrent stream-consumer invocations accumulate
+ * correctly. Mirrors `incrementSourceCount` in source-counts.ts.
+ */
+export async function incrementNewsVolume(
+  symbol: string,
+  kind: 'PRESS' | 'NEWS',
+  dayBucket: string,
+  n = 1,
+): Promise<void> {
+  await ddb.send(
+    new UpdateCommand({
+      TableName: TableNames.aggregates,
+      Key: newsVolumeKey(symbol, kind, dayBucket),
+      UpdateExpression: 'ADD #count :n SET updatedAt = :now',
+      ExpressionAttributeNames: { '#count': 'count' },
+      ExpressionAttributeValues: {
+        ':n': n,
+        ':now': new Date().toISOString(),
+      },
+    }),
+  )
+}
+
+/**
+ * Read all news-volume counts for a symbol, optionally filtered to one kind.
+ *
+ * Returns `Array<{ kind, day, count }>` sorted by day descending. When `kind`
+ * is provided, only that kind's rows are returned (begins_with filter on sk).
+ */
+export async function readNewsVolume(
+  symbol: string,
+  kind?: 'PRESS' | 'NEWS',
+): Promise<Array<{ kind: string; day: string; count: number }>> {
+  const KeyConditionExpression = kind
+    ? 'pk = :pk AND begins_with(sk, :prefix)'
+    : 'pk = :pk'
+  const ExpressionAttributeValues: Record<string, string> = {
+    ':pk': newsVolumePk(symbol),
+  }
+  if (kind) ExpressionAttributeValues[':prefix'] = `${kind}#`
+
+  const { Items = [] } = await ddb.send(
+    new QueryCommand({
+      TableName: TableNames.aggregates,
+      KeyConditionExpression,
+      ExpressionAttributeValues,
+    }),
+  )
+
+  const result: Array<{ kind: string; day: string; count: number }> = []
+  for (const item of Items as Array<{ sk: string; count?: number }>) {
+    // sk format: <KIND>#<day>
+    const sep = item.sk.indexOf('#')
+    if (sep < 0) continue
+    const itemKind = item.sk.slice(0, sep)
+    const day = item.sk.slice(sep + 1)
+    result.push({ kind: itemKind, day, count: item.count ?? 0 })
+  }
+
+  return result.sort((a, b) => b.day.localeCompare(a.day))
 }

@@ -204,6 +204,20 @@ feedsTable.subscribe(
   { filters: [{ eventName: ["INSERT"] }] },
 );
 
+// M13 Phase 5 — Feed aggregator: on a new FEED# INSERT, increment the per-symbol
+// per-day NEWS_VOLUME counter (PRESS kind) on the Aggregates table.
+feedsTable.subscribe(
+  "FeedAggregator",
+  {
+    handler: "packages/jobs/src/feed-aggregator.handler",
+    link: allTables,
+    timeout: "60 seconds",
+    memory: "256 MB",
+    transform: { function: withTracing },
+  },
+  { filters: [{ eventName: ["INSERT"] }] },
+);
+
 // 7. Daily rollup — 00:15 UTC
 new sst.aws.Cron("DailyRollup", {
   schedule: "cron(15 0 * * ? *)",

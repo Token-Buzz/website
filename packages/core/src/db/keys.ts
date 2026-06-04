@@ -402,6 +402,18 @@ export const sourceCountKey = (query: string, source: string) => ({
 /** Partition key prefix for listing all per-source counts for a query. */
 export const sourceCountPk = (query: string) => `AGG#SRCCOUNT#${query}`
 
+// ── M13: News-volume counters (Aggregates table) ────────────────────────────
+
+/** Counter row on the Aggregates table for press/news feed volume per symbol.
+ *  pk = AGG#NEWS_VOLUME#<SYM>, sk = <KIND>#<dayBucket>  (dayBucket = YYYY-MM-DD). */
+export const newsVolumeKey = (symbol: string, kind: string, dayBucket: string) => ({
+  pk: `AGG#NEWS_VOLUME#${symbol.toUpperCase()}`,
+  sk: `${kind}#${dayBucket}`,
+})
+
+/** Partition key for listing all news-volume counts for a symbol. */
+export const newsVolumePk = (symbol: string) => `AGG#NEWS_VOLUME#${symbol.toUpperCase()}`
+
 // ── Time bucket helpers ─────────────────────────────────────────────────────
 
 export function hourBucket(ts: Date | string | number): string {

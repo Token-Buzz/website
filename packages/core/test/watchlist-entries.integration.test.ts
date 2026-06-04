@@ -23,6 +23,9 @@ import {
   updateWatchlistEntry,
   deleteWatchlistEntry,
   reorderWatchlistEntries,
+  setWatchlistAlertPrefs,
+  setWatchlistLinkOverrides,
+  listWatchersForSymbol,
 } from '@monorepo-template/core/db/watchlist-entries'
 import { getAllTrackedQueries } from '@monorepo-template/core/db/user-data'
 
@@ -308,6 +311,75 @@ describe('reorderWatchlistEntries', () => {
     expect(after1!.order).toBe(1)
     // e2 was not included in the reorder list — its order is unchanged
     expect(after2!.order).toBe(e2.order)
+  })
+})
+
+// ── setWatchlistLinkOverrides ─────────────────────────────────────────────────
+
+describe('setWatchlistLinkOverrides', () => {
+  const USER_ID = 'user_watch_overrides_test'
+
+  test('sets both overrides and persists them (read back via getWatchlistEntry)', async () => {
+    const created = await createWatchlistEntry({ userId: USER_ID, symbol: 'BTC', query: '$BTC' })
+
+    const updated = await setWatchlistLinkOverrides(USER_ID, created.entryId, {
+      pressUrlOverride: 'https://newsroom.example.com',
+      pressFeedUrlOverride: 'https://newsroom.example.com/feed.xml',
+    })
+    expect(updated).not.toBeNull()
+    expect(updated!.pressUrlOverride).toBe('https://newsroom.example.com')
+    expect(updated!.pressFeedUrlOverride).toBe('https://newsroom.example.com/feed.xml')
+
+    const fetched = await getWatchlistEntry(USER_ID, created.entryId)
+    expect(fetched!.pressUrlOverride).toBe('https://newsroom.example.com')
+    expect(fetched!.pressFeedUrlOverride).toBe('https://newsroom.example.com/feed.xml')
+  })
+
+  test('clearing one override with null removes it while the other persists', async () => {
+    const created = await createWatchlistEntry({ userId: USER_ID, symbol: 'ETH', query: '$ETH' })
+    await setWatchlistLinkOverrides(USER_ID, created.entryId, {
+      pressUrlOverride: 'https://a.example.com',
+      pressFeedUrlOverride: 'https://a.example.com/feed.xml',
+    })
+
+    const updated = await setWatchlistLinkOverrides(USER_ID, created.entryId, {
+      pressUrlOverride: null,
+    })
+    expect(updated!.pressUrlOverride).toBeUndefined()
+    // pressFeedUrlOverride was passed undefined → left unchanged
+    expect(updated!.pressFeedUrlOverride).toBe('https://a.example.com/feed.xml')
+
+    const fetched = await getWatchlistEntry(USER_ID, created.entryId)
+    expect(fetched!.pressUrlOverride).toBeUndefined()
+    expect(fetched!.pressFeedUrlOverride).toBe('https://a.example.com/feed.xml')
+  })
+
+  test('returns null when the entry does not exist', async () => {
+    const result = await setWatchlistLinkOverrides(USER_ID, 'we_ghost_0000', {
+      pressUrlOverride: 'https://x.example.com',
+    })
+    expect(result).toBeNull()
+  })
+
+  test('preserves the WatchersBySymbol GSI keys — entry stays in listWatchersForSymbol', async () => {
+    const created = await createWatchlistEntry({ userId: USER_ID, symbol: 'SOL', query: '$SOL' })
+    await setWatchlistAlertPrefs(USER_ID, created.entryId, { pressAlerts: true })
+
+    // Sanity: it's a watcher before the override write.
+    const before = await listWatchersForSymbol('SOL')
+    expect(before.map((w) => w.entryId)).toContain(created.entryId)
+
+    await setWatchlistLinkOverrides(USER_ID, created.entryId, {
+      pressUrlOverride: 'https://sol-newsroom.example.com',
+    })
+
+    // GSI keys must survive the full PutCommand replace.
+    const fetched = await getWatchlistEntry(USER_ID, created.entryId)
+    expect(fetched!.gsi1pk).toBe('WATCHSYM#SOL')
+    expect(fetched!.gsi1sk).toBe(`USER#${USER_ID}`)
+
+    const after = await listWatchersForSymbol('SOL')
+    expect(after.map((w) => w.entryId)).toContain(created.entryId)
   })
 })
 

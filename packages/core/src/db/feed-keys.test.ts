@@ -11,6 +11,8 @@ import {
   feedGuidGsi,
   feedSourceKey,
   watchlistBySymbolGsi,
+  newsVolumeKey,
+  newsVolumePk,
 } from './keys'
 
 const ISO_TS = '2026-05-30T12:00:00.000Z'
@@ -109,6 +111,36 @@ describe('watchlistBySymbolGsi', () => {
     const gsi = watchlistBySymbolGsi('eth', 'user_xyz')
     expect(gsi.gsi1pk).toBe('WATCHSYM#ETH')
     expect(gsi.gsi1sk).toBe('USER#user_xyz')
+  })
+})
+
+describe('newsVolumeKey', () => {
+  test('produces pk=AGG#NEWS_VOLUME#<SYM> and sk=<KIND>#<dayBucket>', () => {
+    expect(newsVolumeKey('BTC', 'PRESS', '2026-05-30')).toEqual({
+      pk: 'AGG#NEWS_VOLUME#BTC',
+      sk: 'PRESS#2026-05-30',
+    })
+  })
+
+  test('uppercases symbol', () => {
+    const key = newsVolumeKey('btc', 'NEWS', '2026-05-30')
+    expect(key.pk).toBe('AGG#NEWS_VOLUME#BTC')
+    expect(key.sk).toBe('NEWS#2026-05-30')
+  })
+
+  test('sk format is <KIND>#<dayBucket>', () => {
+    const key = newsVolumeKey('ETH', 'PRESS', '2026-01-02')
+    expect(key.sk).toBe('PRESS#2026-01-02')
+  })
+})
+
+describe('newsVolumePk', () => {
+  test('produces AGG#NEWS_VOLUME#<SYM>', () => {
+    expect(newsVolumePk('BTC')).toBe('AGG#NEWS_VOLUME#BTC')
+  })
+
+  test('uppercases symbol', () => {
+    expect(newsVolumePk('eth')).toBe('AGG#NEWS_VOLUME#ETH')
   })
 })
 
