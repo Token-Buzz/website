@@ -42,3 +42,9 @@
 * [Authentication](developers/authentication.md)
 * [Query API](developers/query-api.md)
 * [Analytics API](developers/analytics-api.md)
+
+## Performance
+
+* [Load & Performance Testing](performance/overview.md)
+* [Running Load Tests](performance/running-load-tests.md)
+* [Sizing & Cost](performance/sizing-and-cost.md)
