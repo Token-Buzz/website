@@ -10,7 +10,7 @@
  * verified here.
  */
 
-import { beforeEach, describe, expect, test } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   DynamoDBClient,
   ScanCommand,
@@ -259,24 +259,34 @@ describe('listConversations', () => {
   })
 
   test('sorts by updatedAt DESC (newest activity first)', async () => {
-    // Create two conversations and append a message to the older one last
-    // so its updatedAt is more recent.
-    const older = await createConversation(USER_ID, { title: 'Older' })
-    // Small delay to ensure distinct createdAt timestamps.
-    await new Promise((r) => setTimeout(r, 5))
-    const newer = await createConversation(USER_ID, { title: 'Newer' })
+    // Drive wall-clock time deterministically so the DESC-by-updatedAt sort can
+    // never tie. We fake ONLY `Date` (not setTimeout/setInterval) so the AWS SDK
+    // / dynalite real timers keep working.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(new Date('2024-01-01T00:00:00.000Z'))
+      const older = await createConversation(USER_ID, { title: 'Older' })
 
-    // Append a message to 'older' with a future timestamp → its updatedAt advances.
-    await appendMessage(USER_ID, older.conversationId, {
-      role: 'user',
-      text: 'Late message on older conv',
-      timestamp: '2099-01-01T00:00:00.000Z',
-    })
+      vi.setSystemTime(new Date('2024-01-01T00:00:01.000Z'))
+      const newer = await createConversation(USER_ID, { title: 'Newer' })
 
-    const convs = await listConversations(USER_ID)
-    expect(convs).toHaveLength(2)
-    // 'older' conv now has the most-recent updatedAt, so it should be first.
-    expect(convs[0].conversationId).toBe(older.conversationId)
-    expect(convs[1].conversationId).toBe(newer.conversationId)
+      // appendMessage sets the conversation's updatedAt to wall-clock now()
+      // (it ignores the message timestamp). Advance the clock so 'older' gets a
+      // strictly-later updatedAt than 'newer', making the DESC sort deterministic.
+      vi.setSystemTime(new Date('2024-01-01T00:00:02.000Z'))
+      await appendMessage(USER_ID, older.conversationId, {
+        role: 'user',
+        text: 'Late message on older conv',
+        timestamp: '2024-01-01T00:00:02.000Z',
+      })
+
+      const convs = await listConversations(USER_ID)
+      expect(convs).toHaveLength(2)
+      // 'older' now has the most-recent updatedAt, so it sorts first.
+      expect(convs[0].conversationId).toBe(older.conversationId)
+      expect(convs[1].conversationId).toBe(newer.conversationId)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
