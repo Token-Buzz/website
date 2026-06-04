@@ -28,6 +28,9 @@ import type { AlertCondition, AlertRule, SentimentTarget } from '../alerts-eval'
 
 export type { AlertCondition, AlertRule, SentimentTarget }
 
+/** Trigger flavour. 'metric' = threshold alert; 'press' = per-token press alert. (M14 adds 'news'.) */
+export type AlertTone = 'metric' | 'press'
+
 export interface AlertTrigger {
   /** Full DynamoDB sort key — passed to markTriggerRead for precise addressing. */
   sk: string
@@ -35,9 +38,13 @@ export interface AlertTrigger {
   userId: string
   alertId: string
   symbol: string
-  condition: AlertCondition
+  /** Undefined is treated as 'metric' for back-compat with existing trigger rows. */
+  tone?: AlertTone
+  /** Metric triggers only — press triggers have no condition. */
+  condition?: AlertCondition
   message: string
-  value: number
+  /** Metric triggers only — press triggers have no numeric value. */
+  value?: number
   link: string
   createdAt: string
   read: boolean
@@ -81,9 +88,10 @@ function itemToTrigger(item: Record<string, unknown>): AlertTrigger {
     userId: item.userId as string,
     alertId: item.alertId as string,
     symbol: item.symbol as string,
-    condition: item.condition as AlertCondition,
+    ...(item.tone !== undefined && { tone: item.tone as AlertTone }),
+    ...(item.condition !== undefined && { condition: item.condition as AlertCondition }),
     message: item.message as string,
-    value: item.value as number,
+    ...(item.value !== undefined && { value: item.value as number }),
     link: item.link as string,
     createdAt: item.createdAt as string,
     read: item.read as boolean,
@@ -298,6 +306,47 @@ export async function recordAlertTrigger(params: {
       throw err
     }
   }
+
+  return itemToTrigger(item as unknown as Record<string, unknown>)
+}
+
+/**
+ * Records a press-alert trigger in the same inbox partition as metric triggers
+ * (sk = TRIGGER#<isoTs>#<triggerId>). Press triggers have no parent rule row, so
+ * `alertId` is the synthetic literal 'press' and no rule is updated. They carry
+ * `tone: 'press'` and an external article `link`, and never write condition/value.
+ */
+export async function recordPressTrigger(params: {
+  userId: string
+  symbol: string
+  title: string
+  link: string
+  sourceName: string
+}): Promise<AlertTrigger> {
+  const { userId, symbol, title, link } = params
+  const triggerId = crypto.randomUUID()
+  const isoTs = new Date().toISOString()
+  const sym = symbol.toUpperCase()
+
+  const item: AlertTriggerItem & { tone: AlertTone } = {
+    ...alertTriggerKey(userId, isoTs, triggerId),
+    triggerId,
+    userId,
+    alertId: 'press',
+    symbol: sym,
+    tone: 'press',
+    message: `New press · $${sym}: ${title}`,
+    link,
+    createdAt: isoTs,
+    read: false,
+  }
+
+  await ddb.send(
+    new PutCommand({
+      TableName: TableNames.userData,
+      Item: item,
+    }),
+  )
 
   return itemToTrigger(item as unknown as Record<string, unknown>)
 }
