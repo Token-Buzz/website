@@ -88,6 +88,64 @@ fan-out to paid upstream APIs.
 
 ---
 
+## Sizing & cost — how to choose a VU count
+
+A **VU (virtual user)** is one simulated user — an independent worker that loops
+through the requests. More VUs = more simultaneous load. The right number is the
+one that matches the traffic you actually need to survive — **not** an arbitrary
+large number. Two tests at the same VU count can also produce very different load:
+what matters downstream is **requests/second (RPS)**, not raw VU count. These
+scripts sleep ~1 s between requests, so here **1 VU ≈ 1 RPS**.
+
+### Choosing the number
+
+1. **Measure real peak load, then multiply.** Target = (observed peak RPS) × a
+   **2–5× safety margin**. Size to the *peak* hour, not the daily average —
+   traffic is bursty and peak is often 2–5× the mean hour.
+2. **Before you have traffic, estimate from a goal.** Pick a target (e.g. "5,000
+   daily active users"), then apply a heuristic: **peak concurrent ≈ 5–10 % of
+   daily active users**, and a browsing user generates ~0.1–1 RPS. 5,000 DAU →
+   ~250–500 concurrent → a few hundred RPS → test around 500–1,000 VUs with
+   margin. Re-baseline against real numbers as soon as you have traffic.
+3. **This harness is capped at 50 VUs / ~20 RPS on purpose** — enough to confirm
+   the read paths are healthy while staying $0 on free-tier. Raise it only when
+   real traffic data justifies it.
+
+### Where to get real traffic numbers
+
+- **CloudWatch (already collecting, free):** the ground truth. Watch Lambda
+  **`ConcurrentExecutions`** (peak) and Lambda/CloudFront **request count per
+  minute** — that *is* your load, directly replicable as RPS.
+- **A web-analytics tool** (Plausible / Cloudflare Web Analytics / Vercel
+  Analytics): sessions, concurrent visitors, page views.
+
+### When to scale up (and the cost)
+
+VUs cost memory/CPU on the machine running k6 (~a few MB each):
+
+- **Up to a few thousand VUs** — fine on one decent machine (or your laptop).
+- **10k–100k VUs** — needs **distributed load generation** (a fleet of load
+  generators, or a commercial service like Grafana Cloud k6). On one machine you
+  saturate the *generator* first and end up measuring the test rig, not the app.
+
+There are **two** cost buckets: running k6, and the AWS bill from the traffic it
+generates (Lambda + DynamoDB + CloudFront). Rough order-of-magnitude for this
+stack, ~$5–8 per **million** requests to the authed API routes (Lambda-dominated;
+marketing pages are mostly CloudFront-cached and near-free). Assuming ~1 RPS/VU
+over a 10-minute run:
+
+| Test | ≈ RPS | Requests (10 min) | Load-gen cost | AWS cost | Also needs |
+|---|---|---|---|---|---|
+| **500 VUs** | ~500 | ~300k | ~$0 (laptop / one small VM) | **~$1–3** | nothing — runs as-is |
+| **100k VUs** | ~100k | ~60M | **$10–50/hr** fleet, or a commercial k6 plan | **~$250–500 per run** | raising the AWS Lambda concurrency limit ~100× (default ≈1,000) |
+
+These are order-of-magnitude estimates (real cost varies with response size,
+per-route DynamoDB reads, and Lambda duration/memory). The takeaway: **500 VUs is
+a couple of dollars and runs today; 100k VUs is hundreds of dollars per run plus a
+real engineering setup** — only justified at genuine consumer scale.
+
+---
+
 ## 1. Install k6
 
 k6 is a standalone binary — no Node.js dependency.
