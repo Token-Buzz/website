@@ -249,6 +249,32 @@ QUERY=bitcoin \
 k6 run load/scenarios/spike.js
 ```
 
+### Run all scenarios in sequence
+
+`load/scripts/run-all.mjs` runs smoke → load → stress → spike in order (or a
+subset you specify) and writes each scenario's report to its own file in
+`load/reports/`. k6 must be installed separately (see section 1 above).
+
+**bash / macOS / Linux:**
+```bash
+# set AUTH_TOKEN + BASE_URL first (see section 3 above), then:
+node load/scripts/run-all.mjs                    # smoke → load → stress → spike (~28 min)
+node load/scripts/run-all.mjs smoke spike         # just those two, in that order
+```
+
+**PowerShell (Windows):**
+```powershell
+$env:BASE_URL   = "https://pr-12.staging.tokenbuzz.app"
+$env:AUTH_TOKEN = $(node load/scripts/mint-token.mjs)
+node load/scripts/run-all.mjs                    # all four scenarios
+node load/scripts/run-all.mjs smoke spike         # subset
+```
+
+Each scenario writes its own report: `load/reports/smoke.html`,
+`load/reports/load.html`, etc. (instead of all overwriting `summary.html`).
+The runner prints a pass/fail table at the end and exits 1 if any scenario
+breached its thresholds, making it suitable for CI gating.
+
 **With Docker:**
 ```bash
 docker run --rm -i \
