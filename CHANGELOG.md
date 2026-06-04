@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.61.0](https://github.com/Token-Buzz/website/compare/v0.60.2...v0.61.0) (2026-06-04)
+
+
+### 🚀 Features
+
+* **load:** add self-run k6 load-testing harness (M16 Phase 2) ([#372](https://github.com/Token-Buzz/website/issues/372)) ([784629e](https://github.com/Token-Buzz/website/commit/784629e30ae5270f2294586c5a63cf16b9b5fea0))
+
 ## [0.60.2](https://github.com/Token-Buzz/website/compare/v0.60.1...v0.60.2) (2026-06-03)
 
 
