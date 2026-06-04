@@ -58,6 +58,7 @@
     "./lib/recent-queries": "./src/lib/recent-queries.ts",
     "./lib/poll-assignment": "./src/lib/poll-assignment.ts",
     "./lib/queryId": "./src/lib/queryId.ts",
+    "./lib/feeds": "./src/lib/feeds.ts",
     "./lib/twitter": "./src/lib/twitter.ts",
     "./lib/reddit": "./src/lib/reddit.ts",
     "./lib/telegram": "./src/lib/telegram.ts",
@@ -79,6 +80,7 @@
     "@aws-sdk/client-kms": "^3",
     "@aws-sdk/lib-dynamodb": "^3",
     "node-rake": "^1.0.1",
+    "rss-parser": "^3.13.0",
     "sst": "*",
     "telegram": "^2.26.22"
   },

@@ -94,6 +94,18 @@ if (isProd) {
       transform: { function: withTracing },
     },
   });
+
+  // 11. Press feed ingestion — every 5 minutes (production only)
+  new sst.aws.Cron("FeedPoller", {
+    schedule: "rate(5 minutes)",
+    function: {
+      handler: "packages/jobs/src/feed-poller.handler",
+      link: allTables,
+      timeout: "120 seconds",
+      memory: "256 MB",
+      transform: { function: withTracing },
+    },
+  });
 }
 
 // 2. DDB Streams aggregator — INSERT fan-out to Aggregates table.
