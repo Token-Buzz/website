@@ -417,6 +417,7 @@ interface FeedItem {
   summary?: string
   sourceName: string
   publishedAt: string
+  relevanceScore?: number
 }
 
 // ── Token Detail Pane ──────────────────────────────────────────────────────
@@ -441,6 +442,8 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
   const [profile, setProfile] = useState<TokenProfile | null>(null)
   const [profileRefresh, setProfileRefresh] = useState(0)
   const [pressItems, setPressItems] = useState<FeedItem[]>([])
+  const [newsItems, setNewsItems] = useState<FeedItem[]>([])
+  const [feedKind, setFeedKind] = useState<'PRESS' | 'NEWS'>('PRESS')
   const [feedHealth, setFeedHealth] = useState<{ stale: boolean; errorCount: number; lastError?: string } | null>(null)
   // Link-override editor state
   const [linksEditing, setLinksEditing] = useState(false)
@@ -745,26 +748,41 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
     return () => { cancelled = true }
   }, [token.sym, profileRefresh])
 
-  // Fetch press feed items (and feed health) whenever the symbol changes
+  // Fetch press + news feed items whenever the symbol changes (both in parallel)
   useEffect(() => {
     let cancelled = false
-    async function loadPressItems() {
+    async function loadFeedItems() {
       setPressItems([])
+      setNewsItems([])
       setFeedHealth(null)
-      try {
-        const res = await fetch(`/api/tokens/${encodeURIComponent(token.sym)}/feed?kind=PRESS&limit=10`)
-        if (cancelled) return
-        if (!res.ok) { setPressItems([]); setFeedHealth(null); return }
-        const data = await res.json() as { items: FeedItem[]; feedHealth?: { stale: boolean; errorCount: number; lastError?: string } | null }
-        if (cancelled) return
-        setPressItems(data.items ?? [])
-        setFeedHealth(data.feedHealth ?? null)
-      } catch {
-        // On error, leave empty
-        if (!cancelled) { setPressItems([]); setFeedHealth(null) }
+      async function loadPress() {
+        try {
+          const res = await fetch(`/api/tokens/${encodeURIComponent(token.sym)}/feed?kind=PRESS&limit=10`)
+          if (cancelled) return
+          if (!res.ok) return
+          const data = await res.json() as { items: FeedItem[]; feedHealth?: { stale: boolean; errorCount: number; lastError?: string } | null }
+          if (cancelled) return
+          setPressItems(data.items ?? [])
+          setFeedHealth(data.feedHealth ?? null)
+        } catch {
+          // On error, leave empty
+        }
       }
+      async function loadNews() {
+        try {
+          const res = await fetch(`/api/tokens/${encodeURIComponent(token.sym)}/feed?kind=NEWS&limit=10`)
+          if (cancelled) return
+          if (!res.ok) return
+          const data = await res.json() as { items: FeedItem[]; feedHealth?: unknown }
+          if (cancelled) return
+          setNewsItems(data.items ?? [])
+        } catch {
+          // On error, leave empty
+        }
+      }
+      await Promise.all([loadPress(), loadNews()])
     }
-    void loadPressItems()
+    void loadFeedItems()
     return () => { cancelled = true }
   }, [token.sym, profileRefresh])
 
@@ -829,6 +847,60 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
     if (!token.query || refreshing) return
     const priceNow = { price: paneData?.price ?? token.price, d24: paneData?.d24 ?? token.d24 }
     void runIngest(token.query, priceNow, true)
+  }
+
+  function renderFeedCard(item: FeedItem, i: number, list: FeedItem[], showRelevance: boolean) {
+    return (
+      <div
+        key={i}
+        style={{
+          padding: '10px 14px',
+          borderBottom: i < list.length - 1 ? '1px solid var(--border-hairline)' : 'none',
+        }}
+      >
+        <a
+          href={item.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            font: '500 13px var(--font-sans)',
+            color: 'var(--fg-1)',
+            textDecoration: 'none',
+            display: 'block',
+            marginBottom: 3,
+            lineHeight: 1.4,
+          }}
+        >
+          {item.title}
+        </a>
+        {item.summary && (
+          <p style={{
+            font: '400 12px/1.4 var(--font-sans)',
+            color: 'var(--fg-2)',
+            margin: '0 0 4px',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}>
+            {item.summary}
+          </p>
+        )}
+        <div style={{ font: '500 11px var(--font-mono)', color: 'var(--fg-3)', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span>{item.sourceName}</span>
+          <span style={{ color: 'var(--fg-4)' }}>·</span>
+          <span>{timeSince(item.publishedAt)} ago</span>
+          {showRelevance && item.relevanceScore != null && (
+            <>
+              <span style={{ color: 'var(--fg-4)' }}>·</span>
+              <span style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}>
+                {item.relevanceScore} keyword {item.relevanceScore === 1 ? 'match' : 'matches'}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -1079,69 +1151,73 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
         )}
       </div>
 
-      {/* Recent press */}
-      {(pressItems.length > 0 || feedHealth?.stale) && (
+      {/* Coverage (press + news with toggle) */}
+      {(pressItems.length > 0 || newsItems.length > 0 || feedHealth?.stale) && (
         <div style={{ padding: '0 20px 16px', flexShrink: 0 }}>
-          <Eyebrow style={{ marginBottom: 10 }}>Recent press</Eyebrow>
-          {feedHealth?.stale && (
-            <div style={{
-              font: '400 12px/1.4 var(--font-sans)',
-              color: 'var(--fg-2)',
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              padding: '8px 12px',
-              marginBottom: 10,
-            }}>
-              Press feed is currently unreachable — showing the last fetched items.
-            </div>
-          )}
-          {pressItems.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-            {pressItems.map((item, i) => (
-              <div
-                key={i}
-                style={{
-                  padding: '10px 14px',
-                  borderBottom: i < pressItems.length - 1 ? '1px solid var(--border-hairline)' : 'none',
-                }}
-              >
-                <a
-                  href={item.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
+          {/* Header row: eyebrow + segmented toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <Eyebrow>Coverage</Eyebrow>
+            <div style={{ display: 'inline-flex', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 999, padding: 3, gap: 2 }}>
+              {(['PRESS', 'NEWS'] as const).map((kind) => (
+                <button
+                  key={kind}
+                  type="button"
+                  onClick={() => setFeedKind(kind)}
                   style={{
-                    font: '500 13px var(--font-sans)',
-                    color: 'var(--fg-1)',
-                    textDecoration: 'none',
-                    display: 'block',
-                    marginBottom: 3,
-                    lineHeight: 1.4,
+                    border: 'none', padding: '4px 10px', borderRadius: 999, cursor: 'pointer',
+                    font: '600 11px var(--font-sans)',
+                    background: feedKind === kind ? 'var(--bg-elevated)' : 'transparent',
+                    color: feedKind === kind ? 'var(--fg-1)' : 'var(--fg-3)',
+                    boxShadow: feedKind === kind ? '0 1px 2px rgba(0,0,0,0.12)' : 'none',
                   }}
                 >
-                  {item.title}
-                </a>
-                {item.summary && (
-                  <p style={{
-                    font: '400 12px/1.4 var(--font-sans)',
-                    color: 'var(--fg-2)',
-                    margin: '0 0 4px',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                  }}>
-                    {item.summary}
-                  </p>
-                )}
-                <div style={{ font: '500 11px var(--font-mono)', color: 'var(--fg-3)', display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <span>{item.sourceName}</span>
-                  <span style={{ color: 'var(--fg-4)' }}>·</span>
-                  <span>{timeSince(item.publishedAt)} ago</span>
-                </div>
-              </div>
-            ))}
+                  {kind === 'PRESS' ? 'Press' : 'News'}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* Press tab */}
+          {feedKind === 'PRESS' && (
+            <>
+              {feedHealth?.stale && (
+                <div style={{
+                  font: '400 12px/1.4 var(--font-sans)',
+                  color: 'var(--fg-2)',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: '8px 12px',
+                  marginBottom: 10,
+                }}>
+                  Press feed is currently unreachable — showing the last fetched items.
+                </div>
+              )}
+              {pressItems.length === 0 ? (
+                <div style={{ font: '400 12px/1.4 var(--font-sans)', color: 'var(--fg-3)', padding: '4px 0' }}>
+                  No press coverage yet.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                  {pressItems.map((item, i) => renderFeedCard(item, i, pressItems, false))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* News tab */}
+          {feedKind === 'NEWS' && (
+            <>
+              {newsItems.length === 0 ? (
+                <div style={{ font: '400 12px/1.4 var(--font-sans)', color: 'var(--fg-3)', padding: '4px 0' }}>
+                  No news coverage yet.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                  {newsItems.map((item, i) => renderFeedCard(item, i, newsItems, true))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
