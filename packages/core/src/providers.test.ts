@@ -5,7 +5,7 @@ import {
   TWITTER_PROVIDER,
   TELEGRAM_PROVIDER,
   DISCORD_PROVIDER,
-  CRYPTOPANIC_PROVIDER,
+  NEWSDATA_PROVIDER,
   CRYPTOCOMPARE_PROVIDER,
   PROVIDERS,
 } from './providers'
@@ -23,8 +23,8 @@ describe('providers registry', () => {
     expect(DISCORD_PROVIDER).toBe('discord')
   })
 
-  it('CRYPTOPANIC_PROVIDER equals "cryptopanic"', () => {
-    expect(CRYPTOPANIC_PROVIDER).toBe('cryptopanic')
+  it('NEWSDATA_PROVIDER equals "newsdata"', () => {
+    expect(NEWSDATA_PROVIDER).toBe('newsdata')
   })
 
   it('CRYPTOCOMPARE_PROVIDER equals "cryptocompare"', () => {
@@ -65,10 +65,10 @@ describe('providers registry', () => {
     expect(PROVIDERS.apify.category).toBe('apify')
   })
 
-  it('PROVIDERS.cryptopanic is enabled, named "CryptoPanic", category "news"', () => {
-    expect(PROVIDERS.cryptopanic.enabled).toBe(true)
-    expect(PROVIDERS.cryptopanic.name).toBe('CryptoPanic')
-    expect(PROVIDERS.cryptopanic.category).toBe('news')
+  it('PROVIDERS.newsdata is enabled, named "NewsData.io", category "news"', () => {
+    expect(PROVIDERS.newsdata.enabled).toBe(true)
+    expect(PROVIDERS.newsdata.name).toBe('NewsData.io')
+    expect(PROVIDERS.newsdata.category).toBe('news')
   })
 
   it('PROVIDERS.cryptocompare is enabled, named "CryptoCompare", category "news"', () => {
@@ -102,6 +102,15 @@ describe('providers registry', () => {
       expect(p!.enabled).toBe(true)
     })
 
+    it('returns the newsdata entry for "newsdata"', () => {
+      const p = getProvider('newsdata')
+      expect(p).toBeDefined()
+      expect(p!.id).toBe('newsdata')
+      expect(p!.name).toBe('NewsData.io')
+      expect(p!.category).toBe('news')
+      expect(p!.enabled).toBe(true)
+    })
+
     it('returns the cryptocompare entry for "cryptocompare"', () => {
       const p = getProvider('cryptocompare')
       expect(p).toBeDefined()
@@ -125,8 +134,8 @@ describe('providers registry', () => {
       expect(isEnabledProvider('discord')).toBe(true)
     })
 
-    it('returns true for "cryptopanic"', () => {
-      expect(isEnabledProvider('cryptopanic')).toBe(true)
+    it('returns true for "newsdata"', () => {
+      expect(isEnabledProvider('newsdata')).toBe(true)
     })
 
     it('returns true for "cryptocompare"', () => {

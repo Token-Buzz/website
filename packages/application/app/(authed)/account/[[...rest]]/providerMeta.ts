@@ -124,20 +124,23 @@ const META: Record<ProviderId, ProviderMeta> = {
     docUrl: 'https://docs.apify.com/platform/integrations/api',
     docLabel: 'Apify API docs',
   },
-  cryptopanic: {
-    id: 'cryptopanic',
-    label: 'CryptoPanic',
+  newsdata: {
+    id: 'newsdata',
+    label: 'NewsData.io',
     fields: [
-      { name: 'apiKey', label: 'API token', placeholder: 'Your CryptoPanic API token', secret: true },
+      { name: 'apiKey', label: 'API key', placeholder: 'Your NewsData.io API key (pub_...)', secret: true },
     ],
     instructions: [
-      'Sign up or log in at https://cryptopanic.com',
-      'Go to your Profile → API and copy your auth token',
+      'Sign up for a free account at https://newsdata.io',
+      'Open your dashboard and copy your API key (it starts with "pub_")',
       'Paste it below and click "Validate & save"',
-      'Your token is stored encrypted and never shared',
+      'The free plan covers the Crypto News endpoint (news is ~12h delayed on the free tier)',
+      'Your key is stored encrypted and never shared',
     ],
-    docUrl: 'https://cryptopanic.com/developers/api/',
-    docLabel: 'CryptoPanic API docs',
+    docUrl: 'https://newsdata.io/documentation',
+    docLabel: 'NewsData.io API docs',
+    docUrl2: 'https://newsdata.io/register',
+    docLabel2: 'Get a free API key',
   },
   cryptocompare: {
     id: 'cryptocompare',
