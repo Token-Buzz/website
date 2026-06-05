@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.62.0](https://github.com/Token-Buzz/website/compare/v0.61.0...v0.62.0) (2026-06-04)
+
+
+### 🚀 Features
+
+* **feeds:** M13 Phase 5 — news-volume aggregation, user-submitted press links, dead-feed surfacing ([#396](https://github.com/Token-Buzz/website/issues/396)) ([34bdcd7](https://github.com/Token-Buzz/website/commit/34bdcd78a31e12770239242e3b57cdd3206c3d5e))
+* **feeds:** per-token press alerts — opt-in toggle, watcher fan-out, inbox triggers (M13 Phase 4) ([#395](https://github.com/Token-Buzz/website/issues/395)) ([e676d22](https://github.com/Token-Buzz/website/commit/e676d2211db7bfa9cc480babf49037dc611eaecf))
+* **feeds:** press feed ingestion — fetch boundary, poller cron, detail-pane feed (M13 Phase 3) ([5f2faa2](https://github.com/Token-Buzz/website/commit/5f2faa27f5f77aeddeeae5d6e1c07745a663335e))
+
 ## [0.61.0](https://github.com/Token-Buzz/website/compare/v0.60.2...v0.61.0) (2026-06-04)
 
 
