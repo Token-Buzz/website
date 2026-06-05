@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.64.0](https://github.com/Token-Buzz/website/compare/v0.63.0...v0.64.0) (2026-06-05)
+
+
+### 🚀 Features
+
+* **feeds:** M14 Phase 3 — news feed UI with Press/News toggle ([2530c84](https://github.com/Token-Buzz/website/commit/2530c84febd353e96330dde5e4599a0f4194a551))
+
+
+### 🐛 Fixes
+
+* **core:** export db/news-outlets so the NewsPoller Lambda bundles ([ea29114](https://github.com/Token-Buzz/website/commit/ea29114ccdc6e3f6d79a774e5518da0b9a775fc3))
+
 ## [0.63.0](https://github.com/Token-Buzz/website/compare/v0.62.0...v0.63.0) (2026-06-05)
 
 
