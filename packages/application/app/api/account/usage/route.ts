@@ -15,7 +15,7 @@ export async function GET() {
   ]);
 
   const enabledProviderIds = Object.values(PROVIDERS)
-    .filter((p) => p.enabled)
+    .filter((p) => p.enabled && p.category !== 'news') // news keys live in their own tab, not ingestion sources
     .map((p) => p.id);
 
   const keyStatuses = await Promise.all(
