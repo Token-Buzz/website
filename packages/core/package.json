@@ -64,6 +64,7 @@
     "./lib/telegram": "./src/lib/telegram.ts",
     "./lib/apify": "./src/lib/apify.ts",
     "./lib/discord": "./src/lib/discord.ts",
+    "./lib/news-relevance": "./src/lib/news-relevance.ts",
     "./lib/newsdata": "./src/lib/newsdata.ts",
     "./lib/cryptocompare": "./src/lib/cryptocompare.ts",
     "./movers": "./src/movers.ts",
