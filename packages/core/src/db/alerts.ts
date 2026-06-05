@@ -28,8 +28,8 @@ import type { AlertCondition, AlertRule, SentimentTarget } from '../alerts-eval'
 
 export type { AlertCondition, AlertRule, SentimentTarget }
 
-/** Trigger flavour. 'metric' = threshold alert; 'press' = per-token press alert. (M14 adds 'news'.) */
-export type AlertTone = 'metric' | 'press'
+/** Trigger flavour. 'metric' = threshold alert; 'press' = per-token press alert; 'news' = per-token news alert (M14 Phase 4). */
+export type AlertTone = 'metric' | 'press' | 'news'
 
 export interface AlertTrigger {
   /** Full DynamoDB sort key — passed to markTriggerRead for precise addressing. */
@@ -336,6 +336,48 @@ export async function recordPressTrigger(params: {
     symbol: sym,
     tone: 'press',
     message: `New press · $${sym}: ${title}`,
+    link,
+    createdAt: isoTs,
+    read: false,
+  }
+
+  await ddb.send(
+    new PutCommand({
+      TableName: TableNames.userData,
+      Item: item,
+    }),
+  )
+
+  return itemToTrigger(item as unknown as Record<string, unknown>)
+}
+
+/**
+ * Records a news-alert trigger in the same inbox partition as metric and press
+ * triggers (sk = TRIGGER#<isoTs>#<triggerId>). News triggers have no parent rule
+ * row, so `alertId` is the synthetic literal 'news' and no rule is updated. They
+ * carry `tone: 'news'` and an external article `link`, and never write
+ * condition/value. (M14 Phase 4)
+ */
+export async function recordNewsTrigger(params: {
+  userId: string
+  symbol: string
+  title: string
+  link: string
+  sourceName: string
+}): Promise<AlertTrigger> {
+  const { userId, symbol, title, link } = params
+  const triggerId = crypto.randomUUID()
+  const isoTs = new Date().toISOString()
+  const sym = symbol.toUpperCase()
+
+  const item: AlertTriggerItem & { tone: AlertTone } = {
+    ...alertTriggerKey(userId, isoTs, triggerId),
+    triggerId,
+    userId,
+    alertId: 'news',
+    symbol: sym,
+    tone: 'news',
+    message: `New news · $${sym}: ${title}`,
     link,
     createdAt: isoTs,
     read: false,

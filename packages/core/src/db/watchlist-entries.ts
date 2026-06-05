@@ -30,13 +30,15 @@ export interface WatchlistEntry {
   updatedAt: string
   /** Whether per-token press alerts are enabled for this entry (M13 Phase 4). */
   pressAlerts?: boolean
+  /** Whether per-token news alerts are enabled for this entry (M14 Phase 4). */
+  newsAlerts?: boolean
   /** User-submitted newsroom override (M13 Phase 5); read precedence user → global PROFILE. */
   pressUrlOverride?: string
   /** User-submitted feed override (M13 Phase 5); read precedence user → global PROFILE. */
   pressFeedUrlOverride?: string
-  /** WatchersBySymbol GSI key — present only when pressAlerts is true. */
+  /** WatchersBySymbol GSI key — present only when pressAlerts or newsAlerts is true. */
   gsi1pk?: string
-  /** WatchersBySymbol GSI key — present only when pressAlerts is true. */
+  /** WatchersBySymbol GSI key — present only when pressAlerts or newsAlerts is true. */
   gsi1sk?: string
 }
 
@@ -150,7 +152,8 @@ export async function updateWatchlistEntry(
 
   // Maintain the WatchersBySymbol GSI invariant. The `{...existing}` spread above
   // would otherwise carry stale gsi keys when the symbol changes.
-  if (updated.pressAlerts === true) {
+  // The GSI must be present when EITHER pressAlerts OR newsAlerts is true.
+  if (updated.pressAlerts === true || updated.newsAlerts === true) {
     const gsi = watchlistBySymbolGsi(updated.symbol, userId)
     updated.gsi1pk = gsi.gsi1pk
     updated.gsi1sk = gsi.gsi1sk
@@ -164,24 +167,32 @@ export async function updateWatchlistEntry(
 }
 
 /**
- * Toggles per-token press alerts for a watchlist entry. When enabled, the row
- * joins the WatchersBySymbol partition on the ByokHolders GSI (gsi1pk/gsi1sk);
- * when disabled, the full PutCommand replaces the item without those attributes,
- * dropping it out of the GSI. Returns null if the entry does not exist.
+ * Toggles per-token press and/or news alerts for a watchlist entry. When either
+ * pressAlerts or newsAlerts is enabled, the row joins the WatchersBySymbol
+ * partition on the ByokHolders GSI (gsi1pk/gsi1sk); when both are disabled, the
+ * full PutCommand replaces the item without those attributes, dropping it out of
+ * the GSI. Only the provided fields are modified; omitting a field leaves it
+ * unchanged. Returns null if the entry does not exist.
  */
 export async function setWatchlistAlertPrefs(
   userId: string,
   entryId: string,
-  prefs: { pressAlerts: boolean },
+  prefs: { pressAlerts?: boolean; newsAlerts?: boolean },
 ): Promise<WatchlistEntry | null> {
   const existing = await getWatchlistEntry(userId, entryId)
   if (!existing) return null
 
   const updated: WatchlistEntry = { ...existing }
-  updated.pressAlerts = prefs.pressAlerts
+
+  // Apply only the provided fields; omitted fields remain unchanged.
+  if (prefs.pressAlerts !== undefined) updated.pressAlerts = prefs.pressAlerts
+  if (prefs.newsAlerts !== undefined) updated.newsAlerts = prefs.newsAlerts
+
   updated.updatedAt = new Date().toISOString()
 
-  if (prefs.pressAlerts) {
+  // The GSI must be present when EITHER pressAlerts OR newsAlerts is true.
+  const wantsGsi = updated.pressAlerts === true || updated.newsAlerts === true
+  if (wantsGsi) {
     const gsi = watchlistBySymbolGsi(updated.symbol, userId)
     updated.gsi1pk = gsi.gsi1pk
     updated.gsi1sk = gsi.gsi1sk
@@ -229,10 +240,12 @@ export async function setWatchlistLinkOverrides(
 }
 
 /**
- * Returns the watchlist entries that have opted into press alerts for a given
- * symbol, via the WatchersBySymbol partition on the ByokHolders GSI. Only
- * opted-in entries carry gsi1pk/gsi1sk, so this returns exactly the watchers
- * whose `pressAlerts` is true.
+ * Returns the watchlist entries that have opted into press OR news alerts for a
+ * given symbol, via the WatchersBySymbol partition on the ByokHolders GSI.
+ * Only entries with gsi1pk/gsi1sk carry those keys (written when pressAlerts or
+ * newsAlerts is true), so this returns the union of both alert types.
+ * Callers that want kind-specific delivery MUST filter the result by the
+ * relevant field (e.g. `e.pressAlerts === true` or `e.newsAlerts === true`).
  */
 export async function listWatchersForSymbol(symbol: string): Promise<WatchlistEntry[]> {
   const { Items = [] } = await ddb.send(

@@ -4,7 +4,7 @@ import { getAllTrackedQueries } from "@monorepo-template/core/db/user-data";
 import { getSpikingTokens, listTrackedTokens } from "@monorepo-template/core/db/tokens";
 import { getPulse, readAggregateTopK } from "@monorepo-template/core/db/aggregates";
 import { listTriggers } from "@monorepo-template/core/db/alerts";
-import type { AlertCondition } from "@monorepo-template/core/db/alerts";
+import type { AlertCondition, AlertTone } from "@monorepo-template/core/db/alerts";
 import { bucketRange, hourBucket } from "@monorepo-template/core/db/keys";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -90,17 +90,36 @@ function sentScore(counts: SentCounts): number {
   return total > 0 ? Math.round(((counts.positive - counts.negative) / total) * 100) : 0;
 }
 
-// ── Alert condition → tone mapping ─────────────────────────────────────────
+// ── Alert condition/tone → display tag/tone mapping ───────────────────────
 
+/**
+ * Maps a trigger's tone + condition to a display tone. Checks `alertTone`
+ * first so that press and news triggers (both have `condition === undefined`)
+ * are distinguished from each other and from metric triggers.
+ */
 function conditionToTone(
   condition: AlertCondition | undefined,
+  alertTone?: AlertTone,
 ): "buzz" | "sent" | "handle" | "narrative" {
+  // Tone-aware branches (press and news both show as "buzz" in the feed)
+  if (alertTone === "news") return "buzz";
+  if (alertTone === "press") return "buzz";
   if (condition === "sentiment_swing") return "sent";
-  // mention_spike, price_move, press triggers (no condition), and any others → buzz
+  // mention_spike, price_move, and any others → buzz
   return "buzz";
 }
 
-function conditionToTag(condition: AlertCondition | undefined): string {
+/**
+ * Maps a trigger's tone + condition to a display tag string. Checks `alertTone`
+ * first so that news triggers are tagged "NEWS" rather than "PRESS".
+ */
+function conditionToTag(
+  condition: AlertCondition | undefined,
+  alertTone?: AlertTone,
+): string {
+  // Tone-aware branches
+  if (alertTone === "news") return "NEWS";
+  if (alertTone === "press") return "PRESS";
   if (condition === "mention_spike") return "BUZZ SPIKE";
   if (condition === "sentiment_swing") return "SENTIMENT FLIP";
   if (condition === undefined) return "PRESS";
@@ -177,10 +196,10 @@ export async function GET() {
       hour12: false,
       timeZone: "UTC",
     }),
-    tag: conditionToTag(trigger.condition),
+    tag: conditionToTag(trigger.condition, trigger.tone),
     target: `$${trigger.symbol}`,
     body: trigger.message,
-    tone: conditionToTone(trigger.condition),
+    tone: conditionToTone(trigger.condition, trigger.tone),
   }));
 
   // ── sentiment grid — per-symbol fan-out (cap at 12 to bound cost) ─────────

@@ -121,6 +121,30 @@ function SetAlertModal({ symbol, onClose }: { symbol: string; onClose: () => voi
     return () => { cancelled = true }
   }, [symbol])
 
+  // ── Per-token news alert (M14 Phase 4) ───────────────────────────────────
+  const [newsAvailable, setNewsAvailable] = useState(false)
+  const [newsEnabled, setNewsEnabled] = useState(false)
+  const [newsSaving, setNewsSaving] = useState(false)
+  const [newsError, setNewsError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadNews() {
+      try {
+        const res = await fetch(`/api/tokens/${encodeURIComponent(symbol)}/news-alert`)
+        if (cancelled || !res.ok) return
+        const data = await res.json() as { available?: boolean; enabled?: boolean }
+        if (cancelled) return
+        setNewsAvailable(Boolean(data.available))
+        setNewsEnabled(Boolean(data.enabled))
+      } catch {
+        // Leave defaults (unavailable) on error
+      }
+    }
+    void loadNews()
+    return () => { cancelled = true }
+  }, [symbol])
+
   async function togglePress() {
     if (!pressAvailable || pressSaving) return
     const next = !pressEnabled
@@ -143,6 +167,31 @@ function SetAlertModal({ symbol, onClose }: { symbol: string; onClose: () => voi
       setPressError('Couldn\'t update press alert.')
     } finally {
       setPressSaving(false)
+    }
+  }
+
+  async function toggleNews() {
+    if (!newsAvailable || newsSaving) return
+    const next = !newsEnabled
+    setNewsSaving(true)
+    setNewsError(null)
+    // Optimistic update
+    setNewsEnabled(next)
+    try {
+      const res = await fetch(`/api/tokens/${encodeURIComponent(symbol)}/news-alert`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: next }),
+      })
+      if (!res.ok) {
+        setNewsEnabled(!next) // revert
+        setNewsError('Couldn\'t update news alert.')
+      }
+    } catch {
+      setNewsEnabled(!next) // revert
+      setNewsError('Couldn\'t update news alert.')
+    } finally {
+      setNewsSaving(false)
     }
   }
 
@@ -246,6 +295,51 @@ function SetAlertModal({ symbol, onClose }: { symbol: string; onClose: () => voi
                 >
                   <span style={{
                     position: 'absolute', top: 3, left: pressEnabled && pressAvailable ? 21 : 3,
+                    width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                    transition: 'left 120ms cubic-bezier(0.2,0.7,0.2,1)',
+                  }} />
+                </button>
+              </div>
+
+              {/* News & articles opt-in (M14 Phase 4) */}
+              <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: 12,
+                paddingBottom: 16, borderBottom: '1px solid var(--border-hairline)',
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ font: '600 13px var(--font-sans)', color: 'var(--fg-1)', marginBottom: 3 }}>
+                    News &amp; articles
+                  </div>
+                  <div style={{ font: '400 12px/1.4 var(--font-sans)', color: 'var(--fg-3)' }}>
+                    {newsAvailable
+                      ? `Get notified when news is published about $${symbol}.`
+                      : 'No news coverage configured for this token.'}
+                  </div>
+                  {newsError && (
+                    <div style={{ font: '500 11px var(--font-sans)', color: 'var(--neg)', marginTop: 4 }}>
+                      {newsError}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={newsEnabled}
+                  aria-label="Toggle news alerts"
+                  disabled={!newsAvailable || newsSaving}
+                  onClick={() => { void toggleNews() }}
+                  style={{
+                    flexShrink: 0,
+                    width: 42, height: 24, borderRadius: 999, border: 'none',
+                    position: 'relative',
+                    cursor: !newsAvailable || newsSaving ? 'default' : 'pointer',
+                    background: newsEnabled && newsAvailable ? 'var(--accent)' : 'var(--border-strong)',
+                    opacity: newsAvailable ? 1 : 0.5,
+                    transition: 'background 120ms cubic-bezier(0.2,0.7,0.2,1)',
+                  }}
+                >
+                  <span style={{
+                    position: 'absolute', top: 3, left: newsEnabled && newsAvailable ? 21 : 3,
                     width: 18, height: 18, borderRadius: '50%', background: '#fff',
                     transition: 'left 120ms cubic-bezier(0.2,0.7,0.2,1)',
                   }} />

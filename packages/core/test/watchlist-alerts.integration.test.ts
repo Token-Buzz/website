@@ -26,7 +26,7 @@ import {
   listWatchersForSymbol,
   updateWatchlistEntry,
 } from '@monorepo-template/core/db/watchlist-entries'
-import { recordPressTrigger, listTriggers } from '@monorepo-template/core/db/alerts'
+import { recordPressTrigger, recordNewsTrigger, listTriggers } from '@monorepo-template/core/db/alerts'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -212,6 +212,139 @@ describe('recordPressTrigger', () => {
     expect(fetched.symbol).toBe('PEPE')
     expect(fetched.link).toBe(link)
     expect(fetched.message).toContain('PEPE lists on MegaExchange')
+    expect(fetched.condition).toBeUndefined()
+    expect(fetched.value).toBeUndefined()
+  })
+})
+
+// ── newsAlerts GSI gating (M14 Phase 4) ──────────────────────────────────────
+
+describe('setWatchlistAlertPrefs — newsAlerts GSI gating (M14 Phase 4)', () => {
+  const USER_ID = 'user_news_prefs'
+
+  test('enabling newsAlerts writes gsi keys; listWatchersForSymbol finds the entry', async () => {
+    const entry = await createWatchlistEntry({
+      userId: USER_ID,
+      symbol: 'wif',
+      query: 'wif',
+    })
+
+    const updated = await setWatchlistAlertPrefs(USER_ID, entry.entryId, {
+      newsAlerts: true,
+    })
+    expect(updated).not.toBeNull()
+    expect(updated!.newsAlerts).toBe(true)
+    expect(updated!.gsi1pk).toBe('WATCHSYM#WIF')
+    expect(updated!.gsi1sk).toBe(`USER#${USER_ID}`)
+
+    const watchers = await listWatchersForSymbol('WIF')
+    expect(watchers).toHaveLength(1)
+    expect(watchers[0].entryId).toBe(entry.entryId)
+    expect(watchers[0].userId).toBe(USER_ID)
+    expect(watchers[0].symbol).toBe('WIF')
+  })
+
+  test('disabling newsAlerts (with pressAlerts also false) drops the entry from the GSI', async () => {
+    const entry = await createWatchlistEntry({
+      userId: USER_ID,
+      symbol: 'BONK',
+      query: 'bonk',
+    })
+    await setWatchlistAlertPrefs(USER_ID, entry.entryId, { newsAlerts: true })
+    expect(await listWatchersForSymbol('BONK')).toHaveLength(1)
+
+    const off = await setWatchlistAlertPrefs(USER_ID, entry.entryId, { newsAlerts: false })
+    expect(off).not.toBeNull()
+    expect(off!.newsAlerts).toBe(false)
+    expect(off!.gsi1pk).toBeUndefined()
+    expect(off!.gsi1sk).toBeUndefined()
+
+    expect(await listWatchersForSymbol('BONK')).toHaveLength(0)
+  })
+
+  test('combined gating: pressAlerts=false but newsAlerts=true keeps entry in GSI', async () => {
+    // This is the critical shared-GSI test: the GSI must be present when EITHER
+    // pressAlerts OR newsAlerts is true. An entry with press=false but news=true
+    // must still appear in listWatchersForSymbol.
+    const entry = await createWatchlistEntry({
+      userId: USER_ID,
+      symbol: 'DOGE',
+      query: 'doge',
+    })
+
+    // Enable both, then disable press only — entry must remain visible
+    await setWatchlistAlertPrefs(USER_ID, entry.entryId, { pressAlerts: true, newsAlerts: true })
+    expect(await listWatchersForSymbol('DOGE')).toHaveLength(1)
+
+    const pressOff = await setWatchlistAlertPrefs(USER_ID, entry.entryId, { pressAlerts: false })
+    expect(pressOff!.pressAlerts).toBe(false)
+    expect(pressOff!.newsAlerts).toBe(true)
+    // GSI keys must still be present (newsAlerts is still true)
+    expect(pressOff!.gsi1pk).toBe('WATCHSYM#DOGE')
+    expect(pressOff!.gsi1sk).toBe(`USER#${USER_ID}`)
+    expect(await listWatchersForSymbol('DOGE')).toHaveLength(1)
+
+    // Turning BOTH off must remove it from the GSI
+    const bothOff = await setWatchlistAlertPrefs(USER_ID, entry.entryId, { newsAlerts: false })
+    expect(bothOff!.gsi1pk).toBeUndefined()
+    expect(bothOff!.gsi1sk).toBeUndefined()
+    expect(await listWatchersForSymbol('DOGE')).toHaveLength(0)
+  })
+
+  test('combined gating: newsAlerts=false but pressAlerts=true keeps entry in GSI', async () => {
+    // Symmetric case: press=true, news=false → entry must stay in GSI
+    const entry = await createWatchlistEntry({
+      userId: USER_ID,
+      symbol: 'PEPE',
+      query: 'pepe',
+    })
+
+    await setWatchlistAlertPrefs(USER_ID, entry.entryId, { pressAlerts: true, newsAlerts: true })
+    expect(await listWatchersForSymbol('PEPE')).toHaveLength(1)
+
+    // Disable news only
+    const newsOff = await setWatchlistAlertPrefs(USER_ID, entry.entryId, { newsAlerts: false })
+    expect(newsOff!.pressAlerts).toBe(true)
+    expect(newsOff!.newsAlerts).toBe(false)
+    expect(newsOff!.gsi1pk).toBe('WATCHSYM#PEPE')
+    expect(await listWatchersForSymbol('PEPE')).toHaveLength(1)
+  })
+})
+
+// ── recordNewsTrigger (M14 Phase 4) ──────────────────────────────────────────
+
+describe('recordNewsTrigger', () => {
+  const USER_ID = 'user_news_trigger'
+
+  test('records a news trigger surfaced by listTriggers with tone:news, alertId:news, symbol/title message and external link', async () => {
+    const link = 'https://example.com/news/wif-partnership'
+    const trigger = await recordNewsTrigger({
+      userId: USER_ID,
+      symbol: 'wif',
+      title: 'WIF announces major partnership',
+      link,
+      sourceName: 'CryptoNews',
+    })
+
+    expect(trigger.tone).toBe('news')
+    expect(trigger.alertId).toBe('news')
+    expect(trigger.symbol).toBe('WIF')
+    expect(trigger.condition).toBeUndefined()
+    expect(trigger.value).toBeUndefined()
+    expect(trigger.link).toBe(link)
+    expect(trigger.read).toBe(false)
+    expect(trigger.sk).toMatch(/^TRIGGER#/)
+    expect(trigger.message).toContain('WIF')
+    expect(trigger.message).toContain('WIF announces major partnership')
+
+    const triggers = await listTriggers(USER_ID)
+    expect(triggers).toHaveLength(1)
+    const fetched = triggers[0]
+    expect(fetched.tone).toBe('news')
+    expect(fetched.alertId).toBe('news')
+    expect(fetched.symbol).toBe('WIF')
+    expect(fetched.link).toBe(link)
+    expect(fetched.message).toContain('WIF announces major partnership')
     expect(fetched.condition).toBeUndefined()
     expect(fetched.value).toBeUndefined()
   })
