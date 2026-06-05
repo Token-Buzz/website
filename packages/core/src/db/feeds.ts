@@ -14,6 +14,7 @@ export interface FeedItemRecord {
   feedUrlHash: string
   publishedAt: string    // ISO-8601
   ingestedAt: string     // ISO-8601
+  relevanceScore?: number // optional: keyword-match score for NEWS items; omitted for PRESS
 }
 
 export interface FeedSourceCursorRecord {
@@ -59,6 +60,7 @@ export async function putFeedItem(item: FeedItemRecord): Promise<boolean> {
         feedUrlHash: item.feedUrlHash,
         publishedAt: item.publishedAt,
         ingestedAt: item.ingestedAt,
+        ...(item.relevanceScore !== undefined && { relevanceScore: item.relevanceScore }),
       },
       ConditionExpression: 'attribute_not_exists(pk)',
     }))
@@ -131,6 +133,7 @@ export async function getFeedItems(opts: {
     feedUrlHash: item['feedUrlHash'] as string,
     publishedAt: item['publishedAt'] as string,
     ingestedAt: item['ingestedAt'] as string,
+    ...(item['relevanceScore'] !== undefined && { relevanceScore: item['relevanceScore'] as number }),
   }))
 }
 

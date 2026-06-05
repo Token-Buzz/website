@@ -106,6 +106,25 @@ if (isProd) {
       transform: { function: withTracing },
     },
   });
+
+  // 12. News firehose ingestion — every 5 minutes (production only).
+  // Pulls keyless outlet RSS + BYOK NewsData/CryptoCompare firehoses once per
+  // cycle and fans each article out to matching FEED#<SYM>#NEWS rows by
+  // relevance. Decrypts BYOK keys, so it needs the KMS key id + Decrypt grant.
+  new sst.aws.Cron("NewsPoller", {
+    schedule: "rate(5 minutes)",
+    function: {
+      handler: "packages/jobs/src/news-poller.handler",
+      environment: {
+        BYOK_KMS_KEY_ID: byokKmsKey.id,
+      },
+      link: allTables,
+      timeout: "120 seconds",
+      memory: "256 MB",
+      permissions: [{ actions: ["kms:Decrypt"], resources: [byokKmsKey.arn] }],
+      transform: { function: withTracing },
+    },
+  });
 }
 
 // 2. DDB Streams aggregator — INSERT fan-out to Aggregates table.
