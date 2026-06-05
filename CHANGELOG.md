@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.63.0](https://github.com/Token-Buzz/website/compare/v0.62.0...v0.63.0) (2026-06-05)
+
+
+### 🚀 Features
+
+* **feeds:** M14 Phase 1 — news sourcing config + NewsData.io/CryptoCompare BYOK ([#397](https://github.com/Token-Buzz/website/issues/397)) ([85a2205](https://github.com/Token-Buzz/website/commit/85a220598fee58de8424d5157544337662556dc3))
+* **feeds:** M14 Phase 2 — news ingestion + relevance fan-out ([d5aeb1e](https://github.com/Token-Buzz/website/commit/d5aeb1e901b81736a51346ef35fea00e084eb03f))
+
 ## [0.62.0](https://github.com/Token-Buzz/website/compare/v0.61.0...v0.62.0) (2026-06-04)
 
 
