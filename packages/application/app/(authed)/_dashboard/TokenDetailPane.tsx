@@ -537,6 +537,7 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
   const [profileRefresh, setProfileRefresh] = useState(0)
   const [pressItems, setPressItems] = useState<FeedItem[]>([])
   const [newsItems, setNewsItems] = useState<FeedItem[]>([])
+  const [newsTopSources, setNewsTopSources] = useState<Array<{ value: string; count: number }>>([])
   const [feedKind, setFeedKind] = useState<'PRESS' | 'NEWS'>('PRESS')
   const [feedHealth, setFeedHealth] = useState<{ stale: boolean; errorCount: number; lastError?: string } | null>(null)
   // Link-override editor state
@@ -848,6 +849,7 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
     async function loadFeedItems() {
       setPressItems([])
       setNewsItems([])
+      setNewsTopSources([])
       setFeedHealth(null)
       async function loadPress() {
         try {
@@ -867,9 +869,10 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
           const res = await fetch(`/api/tokens/${encodeURIComponent(token.sym)}/feed?kind=NEWS&limit=10`)
           if (cancelled) return
           if (!res.ok) return
-          const data = await res.json() as { items: FeedItem[]; feedHealth?: unknown }
+          const data = await res.json() as { items: FeedItem[]; feedHealth?: unknown; topSources?: Array<{ value: string; count: number }> }
           if (cancelled) return
           setNewsItems(data.items ?? [])
+          setNewsTopSources(data.topSources ?? [])
         } catch {
           // On error, leave empty
         }
@@ -1302,6 +1305,35 @@ export function TokenDetailPane({ token, onClose, onAskHum, expanded, onToggleEx
           {/* News tab */}
           {feedKind === 'NEWS' && (
             <>
+              {newsTopSources.length > 0 && (
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ font: '500 10px var(--font-sans)', color: 'var(--fg-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                    Top sources
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {newsTopSources.map((src) => (
+                      <span
+                        key={src.value}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          borderRadius: 999,
+                          border: '1px solid var(--border)',
+                          background: 'var(--surface)',
+                          padding: '2px 8px',
+                          font: '600 11px var(--font-sans)',
+                          color: 'var(--fg-2)',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {src.value}
+                        <span style={{ color: 'var(--fg-3)', fontWeight: 400 }}>· {src.count}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               {newsItems.length === 0 ? (
                 <div style={{ font: '400 12px/1.4 var(--font-sans)', color: 'var(--fg-3)', padding: '4px 0' }}>
                   No news coverage yet.
