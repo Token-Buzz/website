@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getFeedItems, getFeedSourceCursor } from "@monorepo-template/core/db/feeds";
 import { getTokenProfile } from "@monorepo-template/core/db/token-profile";
 import { feedUrlHash } from "@monorepo-template/core/lib/feeds";
+import { readTopNewsSources } from "@monorepo-template/core/db/aggregates";
 
 /** A PRESS feed is considered "stale" once it has failed this many times in a row. */
 const STALE_FEED_ERROR_THRESHOLD = 3;
@@ -57,5 +58,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ symbol: 
     }
   }
 
-  return Response.json({ items, feedHealth });
+  // Top news outlets — only for NEWS feeds; failures must not break the items response.
+  let topSources: Array<{ value: string; count: number }> = [];
+  if (kind === "NEWS") {
+    try {
+      topSources = await readTopNewsSources(sym);
+    } catch (err) {
+      console.error("[GET /api/tokens/:symbol/feed] topSources lookup failed:", err);
+      topSources = [];
+    }
+  }
+
+  return Response.json({ items, feedHealth, topSources });
 }

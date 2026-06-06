@@ -414,6 +414,16 @@ export const newsVolumeKey = (symbol: string, kind: string, dayBucket: string) =
 /** Partition key for listing all news-volume counts for a symbol. */
 export const newsVolumePk = (symbol: string) => `AGG#NEWS_VOLUME#${symbol.toUpperCase()}`
 
+/** Top-K row on the Aggregates table for top outlets covering a token (NEWS).
+ *  pk = AGG#NEWS_SOURCE#<SYM>, sk = BUCKET#<hourBucket>#<sourceName>. */
+export const newsSourceKey = (symbol: string, hourBucket: string, sourceName: string) => ({
+  pk: `AGG#NEWS_SOURCE#${symbol.toUpperCase()}`,
+  sk: `BUCKET#${hourBucket}#${sourceName}`,
+})
+
+/** Partition key for listing all news-source counts for a symbol. */
+export const newsSourcePk = (symbol: string) => `AGG#NEWS_SOURCE#${symbol.toUpperCase()}`
+
 // ── Time bucket helpers ─────────────────────────────────────────────────────
 
 export function hourBucket(ts: Date | string | number): string {

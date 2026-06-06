@@ -1,6 +1,6 @@
 import { QueryCommand, UpdateCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from './client'
-import { bucketRange, newsVolumeKey, newsVolumePk } from './keys'
+import { bucketRange, newsVolumeKey, newsVolumePk, newsSourceKey, hourBucket } from './keys'
 
 // ── Phase 3 read helpers ─────────────────────────────────────────────────────
 
@@ -11,7 +11,7 @@ import { bucketRange, newsVolumeKey, newsVolumePk } from './keys'
  * top-k entries sorted descending by count.
  *
  * Covers: HASHTAG, MENTION, DOMAIN, BIO_DOMAIN, LANG, SOURCE, VERIFICATION,
- *         BOT, HEATMAP, KEYWORD, AUTHOR_INFLUENCE, SENTIMENT_BY_QUERY
+ *         BOT, HEATMAP, KEYWORD, AUTHOR_INFLUENCE, SENTIMENT_BY_QUERY, NEWS_SOURCE
  */
 export async function readAggregateTopK(opts: {
   type:
@@ -27,6 +27,7 @@ export async function readAggregateTopK(opts: {
     | 'KEYWORD'
     | 'AUTHOR_INFLUENCE'
     | 'SENTIMENT_BY_QUERY'
+    | 'NEWS_SOURCE'
   query: string
   from: string // ISO hour, e.g. "2026-05-17T14:00:00.000Z"
   to: string   // ISO hour, e.g. "2026-05-18T14:00:00.000Z"
@@ -529,4 +530,64 @@ export async function readNewsVolume(
   }
 
   return result.sort((a, b) => b.day.localeCompare(a.day))
+}
+
+// ── M14: News-source Top-K aggregate (per-symbol outlet counts) ──────────────
+
+/**
+ * Increment the per-symbol per-hour count of articles from a given news outlet
+ * (NEWS_SOURCE Top-K). Atomic ADD so concurrent stream-consumer invocations
+ * accumulate correctly. Read back via readAggregateTopK({ type: 'NEWS_SOURCE' }).
+ */
+export async function incrementNewsSource(
+  symbol: string,
+  sourceName: string,
+  hourBucketStr: string,
+  n = 1,
+): Promise<void> {
+  await ddb.send(
+    new UpdateCommand({
+      TableName: TableNames.aggregates,
+      Key: newsSourceKey(symbol, hourBucketStr, sourceName),
+      UpdateExpression:
+        'ADD #count :n SET #type = :type, #scope = :scope, #bucket = :bucket, #src = :src, updatedAt = :now',
+      ExpressionAttributeNames: {
+        '#count': 'count',
+        '#type': 'type',
+        '#scope': 'scope',
+        '#bucket': 'bucket',
+        '#src': 'sourceName',
+      },
+      ExpressionAttributeValues: {
+        ':n': n,
+        ':type': 'NEWS_SOURCE',
+        ':scope': symbol.toUpperCase(),
+        ':bucket': hourBucketStr,
+        ':src': sourceName,
+        ':now': new Date().toISOString(),
+      },
+    }),
+  )
+}
+
+/**
+ * Top news outlets covering a symbol over the last `hours` (default 168 = 7d),
+ * via the NEWS_SOURCE Top-K aggregate. Returns up to `k` (default 5) entries
+ * sorted descending by article count.
+ */
+export async function readTopNewsSources(
+  symbol: string,
+  opts?: { hours?: number; k?: number },
+): Promise<Array<{ value: string; count: number }>> {
+  const hours = opts?.hours ?? 168
+  const now = Date.now()
+  const from = hourBucket(now - hours * 3600 * 1000)
+  const to = hourBucket(now)
+  return readAggregateTopK({
+    type: 'NEWS_SOURCE',
+    query: symbol.toUpperCase(),
+    from,
+    to,
+    k: opts?.k ?? 5,
+  })
 }
