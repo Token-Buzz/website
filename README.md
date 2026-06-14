@@ -27,6 +27,27 @@
 
 ---
 
+## 🌱 Origins — From Java/ECS to Serverless
+
+Token Buzz began life as a very different application. Its original incarnation was written in **Java** and lived at **[gitlab.com/fintechmetrix](https://gitlab.com/fintechmetrix)**, running on **AWS ECS** — a fleet of long-running, always-on containers that had to be provisioned, orchestrated, patched, and paid for around the clock regardless of how much traffic they actually served.
+
+This codebase is a ground-up re-platforming of that project. Rather than port the Java stack container-for-container, it was **re-architected into a completely serverless TypeScript / Next.js application on AWS** — trading the always-on container model for on-demand functions, an on-demand database, and a global edge network, all defined as infrastructure-as-code and shipped through CI/CD.
+
+The payoff is a dramatically **leaner, cost-optimized platform**. There are no idle containers burning money between requests: compute runs on **AWS Lambda** and scales to zero when nothing is happening, then scales out elastically under load with no capacity planning. State lives in **on-demand DynamoDB** (a single-table design) that charges per request rather than per provisioned node, and **CloudFront** serves the apps from the global edge. Eliminating container orchestration, host patching, and standing capacity collapses both the operational overhead and the total cost of ownership — you pay only for actual usage.
+
+| | Before — Java on ECS | After — Serverless Next.js |
+|---|---|---|
+| **Language / runtime** | Java | TypeScript / Next.js |
+| **Compute** | Always-on ECS containers | AWS Lambda functions |
+| **Scaling** | Manual / provisioned capacity | Automatic, elastic, scale-to-zero |
+| **Database** | Provisioned | On-demand DynamoDB (single-table) |
+| **Delivery** | Container service | CloudFront global CDN |
+| **Infra & deploy** | Container orchestration | SST infrastructure-as-code + CI/CD |
+| **Cost model** | Pay for idle, always-on capacity | Pay-per-use, no idle cost |
+| **Ops overhead** | Patching, orchestration, capacity planning | Fully managed, minimal maintenance |
+
+---
+
 ## Overview
 
 Token Buzz is a real-time SaaS platform for crypto intelligence. It continuously monitors social activity across the web's most influential crypto communities, extracts signal from the noise, and delivers it through a fast, polished application — so traders, researchers, and analysts always know what narratives are forming before they fully break.
