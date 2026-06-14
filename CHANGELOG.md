@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.66.0](https://github.com/Token-Buzz/website/compare/v0.65.0...v0.66.0) (2026-06-14)
+
+
+### 🚀 Features
+
+* **feeds:** M14 Phase 5 — news aggregation (top outlets + NEWS volume) ([#405](https://github.com/Token-Buzz/website/issues/405)) ([27678be](https://github.com/Token-Buzz/website/commit/27678be96dc8f4cd5707fa04e9acd1e760a5d112))
+
 ## [0.65.0](https://github.com/Token-Buzz/website/compare/v0.64.0...v0.65.0) (2026-06-05)
 
 
